@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let map; // Declarada no escopo principal
   let marker;
   let alexandreLocation = null;
+  let routeLayer = null; // Para armazenar a camada da rota no mapa
 
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
@@ -227,8 +228,20 @@ document.addEventListener("DOMContentLoaded", () => {
             alexandreLocation,
             destinationCoords
           );
+
           if (routeDetails) {
             routeInfoDiv.innerHTML = `<strong>Distância:</strong> ${routeDetails.distance} km | <strong>Tempo:</strong> ${routeDetails.duration} min`;
+
+            // Remove a rota anterior do mapa, se houver
+            if (routeLayer) {
+              map.removeLayer(routeLayer);
+            }
+            // Desenha a nova rota no mapa
+            routeLayer = L.geoJSON(routeDetails.geometry, {
+              style: { color: "#b08968", weight: 5 },
+            }).addTo(map);
+            // Ajusta o mapa para mostrar toda a rota
+            map.fitBounds(routeLayer.getBounds());
           } else {
             routeInfoDiv.textContent = "Erro ao calcular a rota.";
           }
@@ -263,15 +276,16 @@ document.addEventListener("DOMContentLoaded", () => {
    * Obtém detalhes da rota (distância e duração) usando a API OSRM.
    */
   async function getRouteDetails(startCoords, endCoords) {
-    const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.lon},${endCoords.lat}?overview=false`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.lon},${endCoords.lat}?overview=full&geometries=geojson`;
     try {
       const response = await fetch(url);
       const data = await response.json();
       if (data.code === "Ok" && data.routes && data.routes.length > 0) {
         const route = data.routes[0];
+        const geometry = route.geometry; // Geometria da rota para desenhar no mapa
         const distance = (route.distance / 1000).toFixed(1); // Distância em km
         const duration = Math.round(route.duration / 60); // Duração em minutos
-        return { distance, duration };
+        return { distance, duration, geometry };
       }
     } catch (error) {
       console.error("Erro ao obter rota:", error);
