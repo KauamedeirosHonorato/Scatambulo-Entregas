@@ -23,7 +23,7 @@ body {
 
 h1, h2 {
     font-family: 'Playfair Display', serif;
-    color: var(--cor-destaque);
+    color: var(--cor-texto);
 }
 
 .container {
