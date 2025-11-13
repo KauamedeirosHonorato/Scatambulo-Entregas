@@ -1,10 +1,11 @@
 /* === GERAL E VARIÁVEIS === */
 :root {
-    --cor-principal: #f4e9e1; /* Pastel - fundo */
-    --cor-secundaria: #d4b2a7; /* Pastel - detalhes */
-    --cor-destaque: #b08968; /* Dourado/Marrom claro */
-    --cor-texto: #4a4a4a;
+    --cor-principal: #ffffff; /* Fundo branco */
+    --cor-secundaria: #e0e0e0; /* Detalhes em cinza claro */
+    --cor-destaque: #D4AF37; /* Dourado */
+    --cor-texto: #333333; /* Preto suave */
     --cor-branco: #ffffff;
+    --cor-card: #F5F5F5; /* Branco Pérola */
     --cor-sucesso: #4CAF50;
     --cor-aviso: #FFC107;
     --cor-erro: #f44336;
@@ -129,11 +130,11 @@ header {
 }
 
 .btn-primary:hover {
-    background-color: #9c7b5a;
+    background-color: #c5a231;
 }
 
 .btn-secondary {
-    background-color: var(--cor-secundaria);
+    background-color: var(--cor-destaque);
     color: var(--cor-branco);
 }
 
@@ -179,7 +180,7 @@ header {
 }
 
 .order-card {
-    background-color: var(--cor-branco);
+    background-color: var(--cor-card);
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 10px;

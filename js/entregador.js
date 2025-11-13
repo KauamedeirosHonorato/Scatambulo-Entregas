@@ -238,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             // Desenha a nova rota no mapa
             routeLayer = L.geoJSON(routeDetails.geometry, {
-              style: { color: "#b08968", weight: 5 },
+              style: { color: "#007bff", weight: 5 },
             }).addTo(map);
             // Ajusta o mapa para mostrar toda a rota
             map.fitBounds(routeLayer.getBounds());
