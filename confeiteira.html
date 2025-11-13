@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Confeiteira - Scatambulo</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <h1>Painel da Sofia</h1>
+            <button id="logout-button" class="btn-secondary">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="orders-section">
+            <h2>Pedidos para Preparar</h2>
+            <div id="kanban-board">
+                <!-- Colunas e pedidos serão gerados pelo JS -->
+            </div>
+        </div>
+    </main>
+    
+    <script type="module" src="js/confeiteira.js"></script>
+</body>
+</html>
