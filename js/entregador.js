@@ -2,7 +2,7 @@ import { db, ref, set, onValue } from "./firebase.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   // Proteção de rota: verifica se o usuário logado é o Alexandre
-  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")); // Proteção de rota: verifica se o usuário logado é o Entregador
   if (!currentUser || currentUser.panel !== "entregador.html") {
     window.location.href = "index.html";
     return;
@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let map; // Declarada no escopo principal
   let marker;
-  let alexandreLocation = null;
+  let entregadorLocation = null;
   let routeLayer = null; // Para armazenar a camada da rota no mapa
 
   // --- INICIALIZAÇÃO ---
@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
         (position) => {
           // Callback de sucesso
           const { latitude, longitude } = position.coords;
-          alexandreLocation = { latitude, longitude }; // Armazena a localização
+          entregadorLocation = { latitude, longitude }; // Armazena a localização
           locationStatus.textContent = "Localização ativa.";
 
           // Atualiza o mapa
@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
           map.setView(latLng, 16);
 
           // Envia para o Firebase
-          const locationRef = ref(db, "localizacao/alexandre");
+          const locationRef = ref(db, "localizacao/entregador");
           set(locationRef, { latitude, longitude });
         },
         (error) => {
@@ -210,7 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
       card
         .querySelector(".route-button")
         .addEventListener("click", async () => {
-          if (!alexandreLocation) {
+          if (!entregadorLocation) {
             alert("Aguardando sua localização para calcular a rota.");
             return;
           }
@@ -225,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           const routeDetails = await getRouteDetails(
-            alexandreLocation,
+            entregadorLocation,
             destinationCoords
           );
 

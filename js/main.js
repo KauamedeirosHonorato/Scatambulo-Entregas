@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Usuários fixos para o sistema
     const users = {
-        angela: { password: '123', panel: 'admin.html' },
-        sofia: { password: '456', panel: 'confeiteira.html' },
-        alexandre: { password: '789', panel: 'entregador.html' }
+      angela: { password: "123", panel: "admin.html" },
+      sofia: { password: "456", panel: "confeiteira.html" },
+      entregador: { password: "789", panel: "entregador.html" },
     };
 
     loginForm.addEventListener('submit', (e) => {

@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Usuários fixos
     const users = {
-        'angela': { password: '0124', panel: 'admin.html' },
-        'alexandre': { password: '0126', panel: 'entregador.html' },
-        'sofia': { password: '0125', panel: 'confeiteira.html' }
+      angela: { password: "0124", panel: "admin.html" },
+      entregador: { password: "0126", panel: "entregador.html" },
+      sofia: { password: "0125", panel: "confeiteira.html" },
     };
 
     const loginButton = document.getElementById('login-button');
