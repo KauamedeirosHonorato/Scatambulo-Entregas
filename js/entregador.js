@@ -14,6 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const permissionActions = document.getElementById("permission-actions");
   const readyOrdersList = document.getElementById("ready-orders-list");
   const etaDisplay = document.getElementById("eta-display");
+  const speedDisplay = document.getElementById("speed-display");
+  const distanceDisplay = document.getElementById("distance-display");
   const navigationStatus = document.getElementById("navigation-status");
   const confirmDeliveryModal = document.getElementById(
     "confirm-delivery-modal"
@@ -29,9 +31,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let routeMarkers = []; // Para armazenar os marcadores de início e fim da rota
   let orderIdToConfirm = null; // Armazena o ID do pedido a ser confirmado
   let activeDelivery = null; // Armazena o estado da entrega ativa { orderId, destinationCoords }
-  let speedMarker = null; // Marcador para a velocidade
-  let distanceMarker = null; // Marcador para a distância
   let routeRecalculationInterval = null; // Armazena o intervalo para recalcular a rota
+  let knownReadyOrderIds = new Set(); // Rastreia pedidos prontos para notificação
+  const notificationSound = new Audio(
+    "https://cdn.freesound.org/previews/219/219244_401265-lq.mp3"
+  ); // Som de notificação
 
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
@@ -157,39 +161,21 @@ document.addEventListener("DOMContentLoaded", () => {
               icon: L.icon({
                 iconUrl: "./CarroIcone/Versa2025.png",
                 iconSize: [70, 70],
-                iconAnchor: [35, 35],
+                iconAnchor: [35, 55], // Ajusta a âncora para a base do ícone
               }),
             }).addTo(map);
           } else {
             userLocationMarker.setLatLng(latLng);
           }
-          // Se uma entrega estiver ativa, centraliza o mapa no entregador
-          if (activeDelivery) {
-            map.setView(latLng, 18); // Zoom maior para navegação
-          }
 
           // Atualiza o marcador de velocidade
+          speedDisplay.style.display = "flex";
           const speed = position.coords.speed; // em m/s
-          if (speed !== null && activeDelivery) {
+          if (typeof speed === "number" && speed !== null) {
             const speedKmh = Math.round(speed * 3.6);
-            const speedIcon = L.divIcon({
-              className: "map-info-icon",
-              html: `${speedKmh}<span class="unit">km/h</span>`,
-              iconSize: [60, 60],
-            });
-
-            if (!speedMarker) {
-              speedMarker = L.marker(latLng, {
-                icon: speedIcon,
-                offset: [-50, 0], // Desloca para a esquerda do marcador do carro
-              }).addTo(map);
-            } else {
-              speedMarker.setLatLng(latLng);
-              speedMarker.setIcon(speedIcon);
-            }
-          } else if (speedMarker) {
-            map.removeLayer(speedMarker);
-            speedMarker = null;
+            speedDisplay.innerHTML = `${speedKmh}<span class="unit">km/h</span>`;
+          } else {
+            speedDisplay.innerHTML = `0<span class="unit">km/h</span>`;
           }
 
           // Envia para o Firebase
@@ -229,12 +215,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const pedidosRef = ref(db, "pedidos/");
     onValue(pedidosRef, (snapshot) => {
       const pedidos = snapshot.val() || {};
-      const readyOrders = Object.entries(pedidos)
-        .filter(([id, pedido]) => pedido.status === "pronto_para_entrega")
-        .reduce((acc, [id, pedido]) => {
-          acc[id] = pedido;
-          return acc;
-        }, {});
+      const readyOrders = {};
+      const currentReadyOrderIds = new Set();
+      let isFirstLoad = knownReadyOrderIds.size === 0;
+
+      for (const [id, pedido] of Object.entries(pedidos)) {
+        if (pedido.status === "pronto_para_entrega") {
+          readyOrders[id] = pedido;
+          currentReadyOrderIds.add(id);
+
+          // Se o ID não era conhecido e não é a primeira carga, é um novo pedido
+          if (!knownReadyOrderIds.has(id) && !isFirstLoad) {
+            // Toca o som de notificação
+            // A reprodução pode ser bloqueada pelo navegador se o usuário não tiver interagido com a página.
+            notificationSound.play().catch((error) => {
+              console.warn(
+                "Não foi possível tocar o som de notificação:",
+                error
+              );
+            });
+          }
+        }
+      }
+
+      // Atualiza o conjunto de IDs conhecidos
+      knownReadyOrderIds = currentReadyOrderIds;
+
       renderReadyOrders(readyOrders);
     });
   }
@@ -343,6 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateButtonsForNavigation(false, null);
     navigationStatus.style.display = "none";
     etaDisplay.style.display = "none";
+    distanceDisplay.style.display = "none";
   }
 
   /**
@@ -374,14 +381,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       addRouteMarkers(entregadorLocation, destinationCoords);
 
-      updateDistanceMarker(destinationCoords, routeDetails.distance);
-      // Se não for a primeira vez, apenas centraliza no usuário
-      if (map.getZoom() < 17) {
-        map.fitBounds(routeLayer.getBounds());
-      }
+      updateDistanceDisplay(routeDetails.distance);
+      // Centraliza o mapa para mostrar toda a rota
+      map.invalidateSize();
+      map.fitBounds(routeLayer.getBounds());
     } else {
       if (routeInfoDiv) routeInfoDiv.textContent = "Erro ao calcular a rota.";
       etaDisplay.style.display = "none";
+      distanceDisplay.style.display = "none";
     }
   }
 
@@ -453,25 +460,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Atualiza o marcador de distância no mapa.
+   * Atualiza o display de distância no mapa.
    */
-  function updateDistanceMarker(coords, distance) {
-    const distanceIcon = L.divIcon({
-      className: "map-info-icon",
-      html: `${distance}<span class="unit">km</span>`,
-      iconSize: [60, 60],
-    });
-
-    const markerPosition = [coords.lat, coords.lon];
-
-    if (!distanceMarker) {
-      distanceMarker = L.marker(markerPosition, {
-        icon: distanceIcon,
-      }).addTo(map);
-    } else {
-      distanceMarker.setLatLng(markerPosition);
-      distanceMarker.setIcon(distanceIcon);
-    }
+  function updateDistanceDisplay(distance) {
+    distanceDisplay.innerHTML = `${distance}<span class="unit">km</span>`;
+    distanceDisplay.style.display = "flex";
   }
 
   /**
@@ -500,14 +493,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (routeLayer) {
       map.removeLayer(routeLayer);
       routeLayer = null;
-    }
-    if (speedMarker) {
-      map.removeLayer(speedMarker);
-      speedMarker = null;
-    }
-    if (distanceMarker) {
-      map.removeLayer(distanceMarker);
-      distanceMarker = null;
     }
     routeMarkers.forEach((marker) => map.removeLayer(marker));
     routeMarkers = [];

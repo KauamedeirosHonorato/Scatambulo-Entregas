@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let map;
     let deliveryMarker;
     let entregadorLocation = null;
+    let closestOrderCoords = null;
+    let closestOrder = null;
 
     // --- INICIALIZAÇÃO ---
     initMap();
@@ -159,12 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
       onValue(locationRef, (snapshot) => {
         entregadorLocation = snapshot.val();
         updateDeliveryMarker();
-        // Re-renderizar o quadro para atualizar as distâncias
-        get(child(ref(db), "pedidos")).then((snapshot) => {
-          if (snapshot.exists()) {
-            renderBoard(snapshot.val());
-          }
-        });
       });
     }
 
@@ -294,6 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     }
 
+    let clientMarker; 
+
     /**
      * Atualiza a posição do marcador do entregador no mapa.
      */
@@ -301,20 +299,44 @@ document.addEventListener('DOMContentLoaded', () => {
       if (entregadorLocation && map) {
         const { latitude, longitude } = entregadorLocation;
         const latLng = [latitude, longitude];
+
+        // Atualiza ou cria o marcador do entregador
         if (deliveryMarker) {
           deliveryMarker.setLatLng(latLng);
         } else {
           deliveryMarker = L.marker(latLng, {
             icon: L.icon({
-              iconUrl: "./CarroIcone/Versa2025.png", // Caminho para sua imagem local
-              iconSize: [70, 70], // Tamanho pequeno e nítido, estilo Waze
-              iconAnchor: [17, 35], // Ponto do ícone que corresponde à localização
-              popupAnchor: [1, -34], // Posição do popup em relação ao ícone
+              iconUrl: "./CarroIcone/Versa2025.png",
+              iconSize: [70, 70],
+              iconAnchor: [35, 55],
             }),
           }).addTo(map);
         }
-        deliveryMarker.bindPopup("Localização do Entregador").openPopup();
-        map.panTo(latLng);
+
+        // Limpa o marcador do cliente anterior
+        if (clientMarker) {
+          map.removeLayer(clientMarker);
+          clientMarker = null;
+        }
+
+        // Se houver um pedido mais próximo, adiciona um marcador para ele
+        if (closestOrderCoords) {
+          const clientLatLng = [closestOrderCoords.lat, closestOrderCoords.lon];
+          clientMarker = L.marker(clientLatLng, {
+            icon: L.icon({
+              iconUrl: "./CarroIcone/cliente.png",
+              iconSize: [50, 50],
+              iconAnchor: [25, 50],
+            }),
+          }).addTo(map);
+
+          // Ajusta o mapa para mostrar ambos os marcadores
+          const bounds = L.latLngBounds([latLng, clientLatLng]);
+          map.fitBounds(bounds.pad(0.1)); // .pad(0.1) adiciona um pouco de preenchimento
+        } else {
+          // Se não houver pedido próximo, apenas centraliza no entregador
+          map.setView(latLng, 15);
+        }
       }
     }
 
@@ -369,7 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const orderCards = readyOrdersColumn.querySelectorAll(".order-card");
       const columnTitle = readyOrdersColumn.querySelector("h3");
-      let closestOrder = { id: null, distance: Infinity };
+      closestOrder = null; // Reset before recalculating
+      let minDistance = Infinity;
 
       // Usando for...of para permitir await dentro do loop
       for (const card of orderCards) {
@@ -390,11 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
               pedidoCoords.lon
             );
             distanceSpan.textContent = `${dist.toFixed(1)} km`;
-            if (dist < closestOrder.distance) {
+            if (dist < minDistance) {
+              minDistance = dist;
               closestOrder = {
                 id: pedidoId,
                 distance: dist,
                 clientName: pedido.nomeCliente,
+                coords: pedidoCoords,
               };
             }
           } else {
@@ -403,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      if (closestOrder.id) {
+      if (closestOrder) {
         const closestCard = document.getElementById(
           `pedido-${closestOrder.id}`
         );
@@ -413,8 +438,10 @@ document.addEventListener('DOMContentLoaded', () => {
             closestOrder.clientName
           } (${closestOrder.distance.toFixed(1)} km)`;
         }
+        closestOrderCoords = closestOrder.coords;
       } else {
         columnTitle.textContent = "Pronto para Entrega"; // Reseta o título se não houver pedidos
+        closestOrderCoords = null;
       }
     }
 
