@@ -390,6 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
    * Calcula e desenha a rota no mapa.
    */
   async function calculateAndDrawRoute() {
+    console.log("Entering calculateAndDrawRoute. activeDelivery:", activeDelivery, "entregadorLocation:", entregadorLocation);
     if (!activeDelivery || !entregadorLocation) return;
 
     const { orderId, destinationCoords } = activeDelivery;
