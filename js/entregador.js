@@ -1,7 +1,7 @@
 import { db, ref, set, onValue, update } from "./firebase.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Proteção de rota: verifica se o usuário logado é o Alexandre
+  // Proteção de rota: verifica se o usuário logado é o Entregador
   const currentUser = JSON.parse(localStorage.getItem("currentUser")); // Proteção de rota: verifica se o usuário logado é o Entregador
   if (!currentUser || currentUser.panel !== "entregador.html") {
     window.location.href = "index.html";
@@ -33,9 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeDelivery = null; // Armazena o estado da entrega ativa { orderId, destinationCoords }
   let routeRecalculationInterval = null; // Armazena o intervalo para recalcular a rota
   let knownReadyOrderIds = new Set(); // Rastreia pedidos prontos para notificação
-  const notificationSound = new Audio(
-    "https://cdn.freesound.org/previews/219/219244_401265-lq.mp3"
-  ); // Som de notificação
+  const notificationSound = new Audio("/audio/new-order.mp3"); // Som de notificação
 
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
@@ -159,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
             map.setView(latLng, 16);
             userLocationMarker = L.marker(latLng, {
               icon: L.icon({
-                iconUrl: "./CarroIcone/Versa2025.png",
+                iconUrl: "/CarroIcone/Versa2025.png",
                 iconSize: [70, 70],
                 iconAnchor: [35, 55], // Ajusta a âncora para a base do ícone
               }),
@@ -292,7 +290,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
           // Se já estiver em uma entrega, não permite iniciar outra
           if (activeDelivery && activeDelivery.orderId !== orderId) {
-            alert("Finalize a entrega atual antes de iniciar uma nova rota.");
+            const activeCard = document.getElementById(activeDelivery.orderId);
+            if (activeCard) {
+              activeCard.classList.add("highlight-active");
+              setTimeout(() => {
+                activeCard.classList.remove("highlight-active");
+              }, 1500); // Remove o destaque após 1.5s
+            }
+            alert(
+              "Finalize a entrega atual antes de iniciar uma nova rota. O pedido ativo está piscando."
+            );
             return;
           }
 
@@ -511,7 +518,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // O marcador do entregador (userLocationMarker) já está no mapa, então adicionamos apenas o do cliente.
     // Usa um ícone customizado para a localização do cliente (fim da rota)
     const clientIcon = L.icon({
-      iconUrl: "./CarroIcone/cliente.png",
+      iconUrl: "/CarroIcone/cliente.png",
       iconSize: [50, 50], // Tamanho do ícone
       iconAnchor: [25, 50], // Ponto do ícone que corresponde à localização
     });
