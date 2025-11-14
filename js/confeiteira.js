@@ -81,6 +81,10 @@ document.addEventListener("DOMContentLoaded", () => {
           map.setView(latLng, 15); // Centraliza o mapa na primeira localização
         } else {
           deliveryPersonMarker.setLatLng(latLng);
+          // Se o entregador se moveu para fora da tela, centraliza o mapa nele.
+          if (!map.getBounds().contains(deliveryPersonMarker.getLatLng())) {
+            map.panTo(latLng);
+          }
         }
         deliveryPersonStatus.textContent = `Entregador localizado em: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
       } else {

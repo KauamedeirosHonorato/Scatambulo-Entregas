@@ -165,6 +165,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }).addTo(map);
           } else {
             userLocationMarker.setLatLng(latLng);
+            // Se não houver entrega ativa, e o entregador se moveu para fora da tela, centraliza o mapa nele.
+            if (!activeDelivery && !map.getBounds().contains(userLocationMarker.getLatLng())) {
+              map.panTo(latLng);
+            }
           }
 
           // Atualiza o marcador de velocidade
@@ -428,9 +432,16 @@ document.addEventListener("DOMContentLoaded", () => {
       addRouteMarkers(entregadorLocation, destinationCoords);
 
       updateDistanceDisplay(routeDetails.distance);
-      // Centraliza o mapa para mostrar toda a rota
-      map.invalidateSize();
-      map.fitBounds(routeLayer.getBounds());
+
+      // Ajusta a visualização do mapa:
+      // Se for a primeira vez que a rota é desenhada ou se o entregador se moveu significativamente,
+      // ajusta os limites para mostrar a rota completa.
+      // Caso contrário, apenas centraliza no entregador para uma experiência de navegação mais suave.
+      if (!map.getBounds().contains(userLocationMarker.getLatLng())) {
+        map.fitBounds(routeLayer.getBounds());
+      } else {
+        map.panTo(userLocationMarker.getLatLng());
+      }
 
       // --- Proximity Check for Delivery Confirmation ---
       const entregadorLatLng = L.latLng(entregadorLocation.latitude, entregadorLocation.longitude);

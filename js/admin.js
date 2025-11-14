@@ -385,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           deliveryMarker = L.marker(latLng, {
             icon: L.icon({
-              iconUrl: "./CarroIcone/Versa2025.png",
+              iconUrl: "/CarroIcone/Versa2025.png",
               iconSize: [70, 70],
               iconAnchor: [35, 55],
             }),
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ];
           clientMarker = L.marker(clientLatLng, {
             icon: L.icon({
-              iconUrl: "./CarroIcone/cliente.png",
+              iconUrl: "/CarroIcone/cliente.png",
               iconSize: [50, 50],
               iconAnchor: [25, 50],
             }),
