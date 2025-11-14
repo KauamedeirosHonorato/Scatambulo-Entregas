@@ -178,9 +178,19 @@ document.addEventListener("DOMContentLoaded", () => {
             speedDisplay.innerHTML = `0<span class="unit">km/h</span>`;
           }
 
-          // Envia para o Firebase
+          // Envia a localização para o Firebase
           const locationRef = ref(db, "localizacao/entregador");
           set(locationRef, { latitude, longitude });
+
+          // Se houver uma entrega ativa, atualiza a velocidade no pedido
+          if (activeDelivery && typeof speed === "number" && speed !== null) {
+            const speedKmh = Math.round(speed * 3.6);
+            const speedRef = ref(
+              db,
+              `pedidos/${activeDelivery.orderId}/entrega/velocidade`
+            );
+            set(speedRef, speedKmh);
+          }
         },
         (error) => {
           // Callback de erro
@@ -331,6 +341,17 @@ document.addEventListener("DOMContentLoaded", () => {
     // Inicia o recálculo periódico
     if (routeRecalculationInterval) clearInterval(routeRecalculationInterval);
     routeRecalculationInterval = setInterval(calculateAndDrawRoute, 10000); // Recalcula a cada 10 segundos
+
+    // Atualiza o status do pedido no Firebase para "em_entrega"
+    const updates = {};
+    updates[`/pedidos/${orderId}/status`] = "em_entrega";
+    updates[`/pedidos/${orderId}/entrega`] = {
+      // Inicializa os dados da entrega
+      distancia: "Calculando...",
+      tempoEstimado: "Calculando...",
+      velocidade: 0,
+    };
+    await update(ref(db), updates);
   }
 
   /**
@@ -343,6 +364,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const orderId = activeDelivery.orderId;
     const routeInfoDiv = document.querySelector(`#route-info-${orderId}`);
     if (routeInfoDiv) routeInfoDiv.textContent = "";
+
+    // Limpa os dados de entrega no Firebase ao finalizar a navegação
+    if (activeDelivery) {
+      const entregaRef = ref(db, `pedidos/${activeDelivery.orderId}/entrega`);
+      set(entregaRef, null);
+    }
 
     activeDelivery = null;
     clearRouteFromMap();
@@ -378,6 +405,14 @@ document.addEventListener("DOMContentLoaded", () => {
       routeLayer = L.geoJSON(routeDetails.geometry, {
         style: { color: "#007bff", weight: 5 },
       }).addTo(map);
+
+      // Atualiza os detalhes da rota no Firebase
+      const routeUpdate = {};
+      routeUpdate[`/pedidos/${orderId}/entrega/distancia`] =
+        routeDetails.distance;
+      routeUpdate[`/pedidos/${orderId}/entrega/tempoEstimado`] =
+        routeDetails.duration;
+      update(ref(db), routeUpdate);
 
       addRouteMarkers(entregadorLocation, destinationCoords);
 

@@ -364,14 +364,109 @@ header {
         flex-direction: column;
         gap: 10px;
     }
-    .header-container div {
-        display: flex;
-        flex-wrap: wrap; /* Permite que os botões quebrem a linha */
-        justify-content: center; /* Centraliza os botões */
+    .header-container h1 {
+        font-size: 1.8em;
+    }
+    .header-container button {
+        width: 100%;
+        margin: 5px 0;
     }
     .modal-content {
         /* Garante que o modal não fique colado nas bordas */
         width: 95%;
+    }
+    #map-overlay-top {
+        flex-wrap: wrap; /* Allow items to wrap */
+        justify-content: center; /* Center items when wrapped */
+        top: 5px; /* Adjust top position */
+        gap: 5px; /* Reduce gap */
+    }
+    #eta-display {
+        font-size: 16px; /* Smaller font for ETA */
+        padding: 6px 10px;
+    }
+    #speed-display, #distance-display {
+        width: 40px; /* Smaller icons */
+        height: 40px;
+        font-size: 0.9em;
+    }
+    .map-info-icon .unit {
+        font-size: 0.6em;
+    }
+    #map-container, #map {
+        height: 300px; /* Reduce map height */
+    }
+    .container {
+        padding: 10px; /* Reduce general padding */
+    }
+    .order-card h4 {
+        font-size: 1em;
+    }
+    .order-card p {
+        font-size: 0.85em;
+    }
+    .order-actions button {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-container h1 {
+        font-size: 1.5em;
+    }
+    #map-overlay-top {
+        flex-direction: column; /* Stack items vertically */
+        align-items: center;
+        gap: 5px;
+    }
+    #eta-display {
+        font-size: 14px;
+        padding: 5px 8px;
+    }
+    #speed-display, #distance-display {
+        width: 35px;
+        height: 35px;
+        font-size: 0.8em;
+    }
+    .map-info-icon .unit {
+        font-size: 0.5em;
+    }
+    #map-container, #map {
+        height: 250px; /* Further reduce map height */
+    }
+    .login-box {
+        padding: 20px;
+    }
+    .login-box h1 {
+        font-size: 1.8em;
+    }
+    .login-box .subtitle {
+        font-size: 0.9em;
+    }
+    .input-group input {
+        padding: 10px;
+        font-size: 14px;
+    }
+    #login-button {
+        padding: 10px;
+        font-size: 14px;
+    }
+    h2 {
+        font-size: 1.5em;
+    }
+    .order-card {
+        padding: 10px;
+    }
+    .order-card h4 {
+        font-size: 0.9em;
+    }
+    .order-card p {
+        font-size: 0.8em;
+    }
+    .order-actions button {
+        font-size: 10px;
+        padding: 3px 6px;
     }
 }
 
@@ -379,5 +474,26 @@ header {
     #kanban-board {
         /* Em telas muito pequenas, garante 1 coluna */
         grid-template-columns: 1fr;
+    }
+    .header-container h1 {
+        font-size: 1.2em;
+    }
+    #map-overlay-top {
+        top: 2px;
+    }
+    #eta-display {
+        font-size: 12px;
+        padding: 4px 6px;
+    }
+    #speed-display, #distance-display {
+        width: 30px;
+        height: 30px;
+        font-size: 0.7em;
+    }
+    #map-container, #map {
+        height: 200px;
+    }
+    h2 {
+        font-size: 1.2em;
     }
 }

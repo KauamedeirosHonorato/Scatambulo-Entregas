@@ -238,10 +238,38 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement("div");
       card.className = "order-card";
       card.id = `pedido-${pedidoId}`;
+
+      // Seção de informações da entrega em tempo real
+      let deliveryInfoHtml = "";
+      if (pedido.status === "em_entrega" && pedido.entrega) {
+        const { velocidade, distancia, tempoEstimado } = pedido.entrega;
+
+        // Formata os dados para exibição, tratando o estado inicial "Calculando..."
+        const speedText =
+          typeof velocidade === "number" ? `${velocidade} km/h` : "...";
+        const distanceText =
+          typeof distancia === "number" || !isNaN(distancia)
+            ? `${distancia} km`
+            : "...";
+        const timeText =
+          typeof tempoEstimado === "number" || !isNaN(tempoEstimado)
+            ? `${tempoEstimado} min`
+            : "...";
+
+        deliveryInfoHtml = `
+          <div class="delivery-realtime-info">
+            <p><strong>Velocidade:</strong> ${speedText}</p>
+            <p><strong>Distância:</strong> ${distanceText}</p>
+            <p><strong>Tempo Estimado:</strong> ${timeText}</p>
+          </div>
+        `;
+      }
+
       card.innerHTML = `<h4>${pedido.nomeBolo || "Bolo"}</h4><p>${
         pedido.nomeCliente
-      }</p><p>${pedido.endereco}</p><div class="distance"></div>`;
-
+      }</p><p>${
+        pedido.endereco
+      }</p><div class="distance"></div>${deliveryInfoHtml}`;
       const actions = document.createElement("div");
       actions.className = "order-actions";
 
