@@ -430,6 +430,20 @@ document.addEventListener("DOMContentLoaded", () => {
       // Centraliza o mapa para mostrar toda a rota
       map.invalidateSize();
       map.fitBounds(routeLayer.getBounds());
+
+      // --- Proximity Check for Delivery Confirmation ---
+      const entregadorLatLng = L.latLng(entregadorLocation.latitude, entregadorLocation.longitude);
+      const destinationLatLng = L.latLng(destinationCoords.lat, destinationCoords.lon);
+      const distanceToDestination = entregadorLatLng.distanceTo(destinationLatLng); // Distance in meters
+
+      const PROXIMITY_THRESHOLD_METERS = 50; // e.g., 50 meters
+
+      if (distanceToDestination <= PROXIMITY_THRESHOLD_METERS) {
+        orderIdToConfirm = orderId;
+        confirmDeliveryModal.style.display = "block";
+        // Optionally, stop navigation automatically or provide a clear indication
+        // stopNavigation(); // Consider if navigation should stop automatically
+      }
     } else {
       if (routeInfoDiv) routeInfoDiv.textContent = "Erro ao calcular a rota.";
       etaDisplay.style.display = "none";
