@@ -38,6 +38,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let map; // Variável para o mapa Leaflet
   let deliveryPersonMarker; // Marcador para a localização do entregador
   const deliveryPersonStatus = document.getElementById("delivery-person-status");
+  const deliveryCompleteSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3"); // Som para pedido entregue
+  let knownDeliveredOrderIds = new Set(); // Rastreia pedidos entregues para notificação
 
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
@@ -178,8 +180,9 @@ document.addEventListener("DOMContentLoaded", () => {
     onValue(pedidosRef, (snapshot) => {
       const pedidos = snapshot.val() || {};
       const currentPendingOrderIds = new Set();
+      const currentDeliveredOrderIds = new Set();
 
-      // Lógica para notificação sonora
+      // Lógica para notificação sonora de novos pedidos pendentes
       for (const pedidoId in pedidos) {
         if (pedidos[pedidoId].status === "pendente") {
           currentPendingOrderIds.add(pedidoId);
@@ -187,7 +190,19 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!isFirstLoad && !knownOrderIds.has(pedidoId)) {
             newOrderSound.play().catch((error) => {
               console.warn(
-                "Não foi possível tocar o som de notificação:",
+                "Não foi possível tocar o som de notificação de novo pedido:",
+                error
+              );
+            });
+          }
+        }
+        // Lógica para notificação sonora de pedidos entregues
+        if (pedidos[pedidoId].status === "entregue") {
+          currentDeliveredOrderIds.add(pedidoId);
+          if (!isFirstLoad && !knownDeliveredOrderIds.has(pedidoId)) {
+            deliveryCompleteSound.play().catch((error) => {
+              console.warn(
+                "Não foi possível tocar o som de pedido entregue:",
                 error
               );
             });
@@ -197,6 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Atualiza o conjunto de IDs conhecidos e marca que a primeira carga terminou
       knownOrderIds = currentPendingOrderIds;
+      knownDeliveredOrderIds = currentDeliveredOrderIds;
       if (isFirstLoad) {
         isFirstLoad = false;
       }

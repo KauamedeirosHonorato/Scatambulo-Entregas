@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let routeRecalculationInterval = null; // Armazena o intervalo para recalcular a rota
   let knownReadyOrderIds = new Set(); // Rastreia pedidos prontos para notificação
   const notificationSound = new Audio("/audio/new-order.mp3"); // Som de notificação
+  const deliveryCompleteSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3"); // Som para pedido entregue
 
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
@@ -568,6 +569,11 @@ document.addEventListener("DOMContentLoaded", () => {
       // Se a entrega finalizada era a que estava em navegação, para o modo de navegação.
       if (activeDelivery && activeDelivery.orderId === pedidoId) {
         stopNavigation();
+      }
+      if (newStatus === "entregue") {
+        deliveryCompleteSound.play().catch((error) => {
+          console.warn("Não foi possível tocar o som de entrega concluída:", error);
+        });
       }
       alert('Status do pedido atualizado para "Entregue" com sucesso!');
     } catch (err) {

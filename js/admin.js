@@ -40,9 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeDeliveryOrder = null; // Guarda o pedido que está 'em_entrega'
     let activeDeliveryClientCoords = null; // Guarda as coordenadas do cliente da entrega ativa
     let routeLayer = null; // Camada para desenhar a rota no mapa
-    const deliveryCompletedSound = new Audio(
-      "https://cdn.freesound.org/previews/242/242857_4284969-lq.mp3"
-    ); // Som para entrega concluída
+    const deliveryCompletedSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3"); // Som para entrega concluída
     let knownOrderStatuses = {}; // Rastreia status para notificações
     let isFirstLoad = true; // Evita notificações na carga inicial
 
