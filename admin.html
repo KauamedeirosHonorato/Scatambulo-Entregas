@@ -45,37 +45,8 @@
         </div>
     </main>
 
-    <!-- Modal para Novo Pedido -->
-    <div id="new-order-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Criar Novo Pedido</h2>
-            <form id="new-order-form">
-                <input type="text" id="cakeName" placeholder="Nome do Bolo" required>
-                <input type="text" id="clientName" placeholder="Nome do Cliente" required>
-                <input type="text" id="whatsapp" placeholder="WhatsApp (Ex: 11999998888)">
-                <input type="text" id="cep" placeholder="CEP (somente números)" maxlength="8">
-                <input type="text" id="rua" placeholder="Rua" required>
-                <input type="text" id="numero" placeholder="Número" required>
-                <input type="text" id="bairro" placeholder="Bairro" required>
-                <input type="text" id="complemento" placeholder="Complemento (opcional)">
-                <button type="submit" class="btn-primary">Salvar Pedido</button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Modal para Ler Mensagem -->
-    <div id="read-message-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Ler Mensagem do Pedido</h2>
-            <form id="read-message-form">
-                <textarea id="message-text" placeholder="Cole a mensagem do pedido aqui..." rows="10" required></textarea>
-                <p class="info-text">Cole a mensagem completa do cliente para extrair os dados do pedido.</p>
-                <button type="submit" class="btn-primary">Extrair Dados</button>
-            </form>
-        </div>
-    </div>
+    <!-- Contêiner para carregar os modais dinamicamente -->
+    <div id="modal-container"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script type="module" src="js/admin.js"></script>
