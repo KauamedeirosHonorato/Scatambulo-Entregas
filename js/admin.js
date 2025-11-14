@@ -40,6 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeDeliveryOrder = null; // Guarda o pedido que está 'em_entrega'
     let activeDeliveryClientCoords = null; // Guarda as coordenadas do cliente da entrega ativa
     let routeLayer = null; // Camada para desenhar a rota no mapa
+    const deliveryCompletedSound = new Audio(
+      "https://cdn.freesound.org/previews/242/242857_4284969-lq.mp3"
+    ); // Som para entrega concluída
+    let knownOrderStatuses = {}; // Rastreia status para notificações
+    let isFirstLoad = true; // Evita notificações na carga inicial
 
     // --- INICIALIZAÇÃO ---
     initMap();
@@ -156,8 +161,37 @@ document.addEventListener('DOMContentLoaded', () => {
     function listenToFirebase() {
       const pedidosRef = ref(db, "pedidos/");
       onValue(pedidosRef, (snapshot) => {
-        const pedidos = snapshot.val();
-        renderBoard(pedidos || {});
+        const pedidos = snapshot.val() || {};
+
+        // Lógica para notificação sonora
+        if (!isFirstLoad) {
+          for (const pedidoId in pedidos) {
+            const oldStatus = knownOrderStatuses[pedidoId];
+            const newStatus = pedidos[pedidoId].status;
+
+            // Se o status mudou para 'entregue'
+            if (
+              oldStatus &&
+              oldStatus !== "entregue" &&
+              newStatus === "entregue"
+            ) {
+              deliveryCompletedSound.play().catch((error) => {
+                console.warn(
+                  "Não foi possível tocar o som de notificação:",
+                  error
+                );
+              });
+            }
+          }
+        }
+
+        // Atualiza os status conhecidos
+        knownOrderStatuses = Object.fromEntries(
+          Object.entries(pedidos).map(([id, pedido]) => [id, pedido.status])
+        );
+        isFirstLoad = false; // Marca que a primeira carga já ocorreu
+
+        renderBoard(pedidos);
       });
 
       const locationRef = ref(db, "localizacao/entregador");

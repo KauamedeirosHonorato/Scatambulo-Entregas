@@ -29,6 +29,11 @@ document.addEventListener("DOMContentLoaded", () => {
     complemento: document.getElementById("complemento"),
     whatsapp: document.getElementById("whatsapp"),
   };
+  const newOrderSound = new Audio(
+    "https://cdn.freesound.org/previews/219/219244_401265-lq.mp3"
+  ); // Som para novo pedido
+  let knownOrderIds = new Set(); // Rastreia pedidos para notificação
+  let isFirstLoad = true; // Evita notificações na carga inicial
 
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
@@ -119,8 +124,32 @@ document.addEventListener("DOMContentLoaded", () => {
   function listenToFirebase() {
     const pedidosRef = ref(db, "pedidos/");
     onValue(pedidosRef, (snapshot) => {
-      const pedidos = snapshot.val();
-      renderBoard(pedidos || {});
+      const pedidos = snapshot.val() || {};
+      const currentPendingOrderIds = new Set();
+
+      // Lógica para notificação sonora
+      for (const pedidoId in pedidos) {
+        if (pedidos[pedidoId].status === "pendente") {
+          currentPendingOrderIds.add(pedidoId);
+          // Se o pedido pendente não era conhecido e não é a primeira carga, notifica.
+          if (!isFirstLoad && !knownOrderIds.has(pedidoId)) {
+            newOrderSound.play().catch((error) => {
+              console.warn(
+                "Não foi possível tocar o som de notificação:",
+                error
+              );
+            });
+          }
+        }
+      }
+
+      // Atualiza o conjunto de IDs conhecidos e marca que a primeira carga terminou
+      knownOrderIds = currentPendingOrderIds;
+      if (isFirstLoad) {
+        isFirstLoad = false;
+      }
+
+      renderBoard(pedidos);
     });
   }
 
