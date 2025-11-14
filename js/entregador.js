@@ -393,9 +393,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Calcula e desenha a rota no mapa.
+   * Esta função já implementa a exibição da rota do entregador até o endereço do pedido
+   * e atualiza a estimativa de tempo (ETA) no elemento 'etaDisplay' sobre o mapa.
+   *
+   * Se a rota e o ETA não estiverem visíveis, verifique:
+   * 1. Se o botão "Iniciar Entrega" foi clicado para um pedido.
+   * 2. Se a geolocalização do entregador está ativa e funcionando.
+   * 3. Se as APIs de geocodificação (Nominatim) e roteamento (OSRM) estão respondendo.
+   * 4. Se não há regras CSS ou elementos sobrepondo 'etaDisplay' ou o mapa.
    */
   async function calculateAndDrawRoute() {
-    console.log("Entering calculateAndDrawRoute. activeDelivery:", activeDelivery, "entregadorLocation:", entregadorLocation);
     if (!activeDelivery || !entregadorLocation) return;
 
     const { orderId, destinationCoords } = activeDelivery;
