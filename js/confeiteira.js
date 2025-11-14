@@ -38,8 +38,16 @@ document.addEventListener("DOMContentLoaded", () => {
   let map; // Variável para o mapa Leaflet
   let deliveryPersonMarker; // Marcador para a localização do entregador
   const deliveryPersonStatus = document.getElementById("delivery-person-status");
+  const confeiteiraEtaDisplay = document.getElementById("confeiteira-eta-display");
+  const confeiteiraSpeedDisplay = document.getElementById("confeiteira-speed-display");
+  const confeiteiraActiveOrderDisplay = document.getElementById("confeiteira-active-order-display");
   const deliveryCompleteSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3"); // Som para pedido entregue
   let knownDeliveredOrderIds = new Set(); // Rastreia pedidos entregues para notificação
+
+  let clientMarker; // Marcador para a localização do cliente
+  let routeLayer = null; // Camada para desenhar a rota no mapa
+  let activeDeliveryOrder = null; // Guarda o pedido que está 'em_entrega'
+  let activeDeliveryClientCoords = null; // Guarda as coordenadas do cliente da entrega ativa
 
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
@@ -222,7 +230,109 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       renderBoard(pedidos);
+
+      // --- Lógica para exibir informações da entrega ativa no mapa ---
+      let foundActiveDelivery = null;
+      for (const pedidoId in pedidos) {
+        if (pedidos[pedidoId].status === "em_entrega") {
+          foundActiveDelivery = { id: pedidoId, ...pedidos[pedidoId] };
+          break;
+        }
+      }
+
+      if (foundActiveDelivery) {
+        activeDeliveryOrder = foundActiveDelivery;
+        geocodeAddress(activeDeliveryOrder.endereco).then((coords) => {
+          activeDeliveryClientCoords = coords;
+          updateConfeiteiraMapInfo();
+        });
+      } else {
+        activeDeliveryOrder = null;
+        activeDeliveryClientCoords = null;
+        clearConfeiteiraMapInfo();
+      }
     });
+  }
+
+  /**
+   * Atualiza as informações da entrega ativa no mapa da confeiteira.
+   */
+  async function updateConfeiteiraMapInfo() {
+    if (!activeDeliveryOrder || !activeDeliveryClientCoords || !deliveryPersonMarker) {
+      clearConfeiteiraMapInfo();
+      return;
+    }
+
+    const entregadorLocation = deliveryPersonMarker.getLatLng(); // Obtém a localização atual do entregador
+    const destinationCoords = activeDeliveryClientCoords;
+
+    // Desenha o marcador do cliente
+    if (!clientMarker) {
+      clientMarker = L.marker([destinationCoords.lat, destinationCoords.lon], {
+        icon: L.icon({
+          iconUrl: "/CarroIcone/cliente.png",
+          iconSize: [50, 50],
+          iconAnchor: [25, 50],
+        }),
+      }).addTo(map);
+    } else {
+      clientMarker.setLatLng([destinationCoords.lat, destinationCoords.lon]);
+    }
+
+    // Calcula e desenha a rota
+    const routeDetails = await getRouteDetails(
+      { latitude: entregadorLocation.lat, longitude: entregadorLocation.lng },
+      destinationCoords
+    );
+
+    clearRouteFromMap(); // Limpa rota anterior
+    if (routeDetails) {
+      routeLayer = L.geoJSON(routeDetails.geometry, {
+        style: { color: "#007bff", weight: 5 },
+      }).addTo(map);
+
+      // Atualiza displays de ETA e Distância
+      confeiteiraEtaDisplay.innerHTML = `${routeDetails.duration}<span class="unit">min</span>`;
+      confeiteiraEtaDisplay.style.display = "flex";
+      confeiteiraSpeedDisplay.innerHTML = `${activeDeliveryOrder.entrega?.velocidade || 0}<span class="unit">km/h</span>`;
+      confeiteiraSpeedDisplay.style.display = "flex";
+      confeiteiraActiveOrderDisplay.textContent = `Entregando para: ${activeDeliveryOrder.nomeCliente}`;
+      confeiteiraActiveOrderDisplay.style.display = "block";
+
+      // Ajusta o zoom para mostrar entregador e cliente
+      const bounds = L.latLngBounds([entregadorLocation, [destinationCoords.lat, destinationCoords.lon]]);
+      map.fitBounds(bounds.pad(0.2));
+    } else {
+      clearConfeiteiraMapInfo(); // Limpa se não conseguir calcular a rota
+    }
+  }
+
+  /**
+   * Limpa as informações da entrega ativa e a rota do mapa da confeiteira.
+   */
+  function clearConfeiteiraMapInfo() {
+    clearRouteFromMap();
+    if (clientMarker) {
+      map.removeLayer(clientMarker);
+      clientMarker = null;
+    }
+    confeiteiraEtaDisplay.style.display = "none";
+    confeiteiraSpeedDisplay.style.display = "none";
+    confeiteiraActiveOrderDisplay.style.display = "none";
+    // Opcional: centralizar o mapa apenas no entregador se ele estiver presente
+    if (deliveryPersonMarker) {
+      map.setView(deliveryPersonMarker.getLatLng(), 15);
+    }
+  }
+
+  /**
+   * Limpa a camada da rota do mapa.
+   */
+  function clearRouteFromMap() {
+    if (routeLayer) {
+      map.removeLayer(routeLayer);
+      routeLayer = null;
+    }
   }
 
   /**
@@ -369,6 +479,48 @@ document.addEventListener("DOMContentLoaded", () => {
     update(ref(db), updates).catch((err) =>
       console.error("Erro ao atualizar status:", err)
     );
+  }
+
+  /**
+   * Converte um endereço em coordenadas usando a API Nominatim.
+   */
+  async function geocodeAddress(address) {
+    const addressForQuery = address.split(", CEP:")[0];
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          addressForQuery
+        )}`
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      }
+    } catch (error) {
+      console.error("Erro de geocodificação:", error);
+    }
+    return null;
+  }
+
+  /**
+   * Obtém detalhes da rota (distância e duração) usando a API OSRM.
+   */
+  async function getRouteDetails(startCoords, endCoords) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.lon},${endCoords.lat}?overview=full&geometries=geojson`;
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const geometry = route.geometry; // Geometria da rota para desenhar no mapa
+        const distance = (route.distance / 1000).toFixed(1); // Distância em km
+        const duration = Math.round(route.duration / 60); // Duração em minutos
+        return { distance, duration, geometry };
+      }
+    } catch (error) {
+      console.error("Erro ao obter rota:", error);
+    }
+    return null;
   }
 
   /**

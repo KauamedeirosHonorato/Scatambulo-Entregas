@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const printAllEmPreparoBtn = document.getElementById('print-all-em-preparo-button');
     const readMessageBtn = document.getElementById('read-message-button');
     const clearDeliveredBtn = document.getElementById("clear-delivered-button");
+    const adminEtaDisplay = document.getElementById("admin-eta-display");
+    const adminSpeedDisplay = document.getElementById("admin-speed-display");
+    const adminActiveOrderDisplay = document.getElementById("admin-active-order-display");
     const closeButtons = document.querySelectorAll(".close-button");
     const readMessageForm = document.getElementById("read-message-form");
     const messageText = document.getElementById("message-text");
@@ -455,6 +458,9 @@ document.addEventListener('DOMContentLoaded', () => {
           const bounds = L.latLngBounds([latLng, clientLatLng]);
           map.fitBounds(bounds.pad(0.2)); // .pad() adiciona uma margem
 
+          // Atualiza informações da entrega ativa
+          updateAdminMapInfo(activeDeliveryOrder, activeDeliveryClientCoords, entregadorLocation);
+
           // Se NÃO houver entrega ativa, usa a lógica do pedido 'pronto' mais próximo
         } else if (closestOrderCoords) {
           if (clientMarker) map.removeLayer(clientMarker);
@@ -468,6 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }).addTo(map);
           const bounds = L.latLngBounds([latLng, clientLatLng]);
           map.fitBounds(bounds.pad(0.2));
+          clearAdminMapInfo(); // Limpa info da entrega ativa se estiver mostrando
         } else {
           // Se não houver nem entrega ativa nem pedido pronto, centraliza só no entregador
           if (clientMarker) {
@@ -476,8 +483,45 @@ document.addEventListener('DOMContentLoaded', () => {
             clearRouteFromMap(); // Limpa a rota se não houver entrega ativa
           }
           map.setView(latLng, 15);
+          clearAdminMapInfo(); // Limpa info da entrega ativa
         }
+      } else {
+        clearAdminMapInfo(); // Limpa info se não houver entregador
       }
+    }
+
+    /**
+     * Atualiza as informações da entrega ativa no mapa do admin.
+     */
+    async function updateAdminMapInfo(activeDeliveryOrder, destinationCoords, entregadorLocation) {
+      // Calcula e desenha a rota
+      const routeDetails = await getRouteDetails(
+        { latitude: entregadorLocation.latitude, longitude: entregadorLocation.longitude },
+        destinationCoords
+      );
+
+      drawRouteOnMap(); // Garante que a rota seja desenhada/atualizada
+
+      if (routeDetails) {
+        adminEtaDisplay.innerHTML = `${routeDetails.duration}<span class="unit">min</span>`;
+        adminEtaDisplay.style.display = "flex";
+        adminSpeedDisplay.innerHTML = `${activeDeliveryOrder.entrega?.velocidade || 0}<span class="unit">km/h</span>`;
+        adminSpeedDisplay.style.display = "flex";
+        adminActiveOrderDisplay.textContent = `Entregando para: ${activeDeliveryOrder.nomeCliente}`;
+        adminActiveOrderDisplay.style.display = "block";
+      } else {
+        clearAdminMapInfo(); // Limpa se não conseguir calcular a rota
+      }
+    }
+
+    /**
+     * Limpa as informações da entrega ativa e a rota do mapa do admin.
+     */
+    function clearAdminMapInfo() {
+      adminEtaDisplay.style.display = "none";
+      adminSpeedDisplay.style.display = "none";
+      adminActiveOrderDisplay.style.display = "none";
+      clearRouteFromMap();
     }
 
     /**
