@@ -311,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (activeDelivery && activeDelivery.orderId === orderId) {
             stopNavigation();
           } else {
-            startNavigation(orderId, order.endereco);
+            startNavigation(orderId, order.endereco, order.nomeCliente);
           }
         });
 
@@ -327,7 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * Inicia o modo de navegação para um pedido.
    */
-  async function startNavigation(orderId, address) {
+  async function startNavigation(orderId, address, clientName) {
     const routeInfoDiv = document.querySelector(`#route-info-${orderId}`);
     routeInfoDiv.textContent = "Calculando rota...";
 
@@ -341,9 +341,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Atualiza a UI
     updateButtonsForNavigation(true, orderId);
-    const clientName = document
-      .querySelector(`#${orderId} p strong`)
-      .nextSibling.textContent.trim();
     navigationStatus.textContent = `Navegando para o pedido de ${clientName}.`;
     navigationStatus.style.display = "block";
 

@@ -413,7 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (closestOrderCoords) {
           if (clientMarker) map.removeLayer(clientMarker);
           const clientLatLng = [closestOrderCoords.lat, closestOrderCoords.lon];
-          clientMarker = L.marker(clientLatLng).addTo(map); // Pode usar ícone padrão
+          clientMarker = L.marker(clientLatLng, {
+            icon: L.icon({
+              iconUrl: "/CarroIcone/cliente.png",
+              iconSize: [50, 50],
+              iconAnchor: [25, 50],
+            }),
+          }).addTo(map);
           const bounds = L.latLngBounds([latLng, clientLatLng]);
           map.fitBounds(bounds.pad(0.2));
         } else {
