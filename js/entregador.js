@@ -412,6 +412,8 @@ document.addEventListener("DOMContentLoaded", () => {
         routeDetails.distance;
       routeUpdate[`/pedidos/${orderId}/entrega/tempoEstimado`] =
         routeDetails.duration;
+      routeUpdate[`/pedidos/${orderId}/entrega/geometria`] =
+        routeDetails.geometry;
       update(ref(db), routeUpdate);
 
       addRouteMarkers(entregadorLocation, destinationCoords);

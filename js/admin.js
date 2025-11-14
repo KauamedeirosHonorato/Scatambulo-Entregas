@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let entregadorLocation = null;
     let closestOrderCoords = null;
     let closestOrder = null;
+    let activeDeliveryOrder = null; // Guarda o pedido que está 'em_entrega'
+    let activeDeliveryClientCoords = null; // Guarda as coordenadas do cliente da entrega ativa
+    let routeLayer = null; // Camada para desenhar a rota no mapa
 
     // --- INICIALIZAÇÃO ---
     initMap();
@@ -201,6 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * Renderiza o quadro Kanban com todos os pedidos.
      */
     function renderBoard(pedidos) {
+      activeDeliveryOrder = null; // Reseta a entrega ativa a cada renderização
+      activeDeliveryClientCoords = null;
       kanbanBoard.innerHTML = "";
       const statuses = [
         { id: "pendente", title: "Pendente" },
@@ -225,10 +230,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (column) {
           const card = createOrderCard(pedidoId, pedido);
           column.appendChild(card);
+
+          // Se encontrar um pedido em entrega, armazena para uso no mapa
+          if (pedido.status === "em_entrega") {
+            activeDeliveryOrder = pedido;
+          }
         }
       });
 
-      findAndHighlightClosest();
+      // Se houver uma entrega ativa, geocodifica o endereço do cliente
+      if (activeDeliveryOrder) {
+        geocodeAddress(activeDeliveryOrder.endereco).then((coords) => {
+          activeDeliveryClientCoords = coords;
+          drawRouteOnMap(); // Tenta desenhar a rota
+          updateDeliveryMarker(); // Atualiza o mapa com as novas coordenadas do cliente
+        });
+      } else {
+        findAndHighlightClosest(); // Se não, volta para a lógica do mais próximo
+      }
     }
 
     /**
@@ -318,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     }
 
-    let clientMarker; 
+    let clientMarker;
 
     /**
      * Atualiza a posição do marcador do entregador no mapa.
@@ -341,15 +360,13 @@ document.addEventListener('DOMContentLoaded', () => {
           }).addTo(map);
         }
 
-        // Limpa o marcador do cliente anterior
-        if (clientMarker) {
-          map.removeLayer(clientMarker);
-          clientMarker = null;
-        }
-
-        // Se houver um pedido mais próximo, adiciona um marcador para ele
-        if (closestOrderCoords) {
-          const clientLatLng = [closestOrderCoords.lat, closestOrderCoords.lon];
+        // Se houver uma entrega ativa, foca no entregador e no cliente
+        if (activeDeliveryOrder && activeDeliveryClientCoords) {
+          if (clientMarker) map.removeLayer(clientMarker); // Remove marcador antigo
+          const clientLatLng = [
+            activeDeliveryClientCoords.lat,
+            activeDeliveryClientCoords.lon,
+          ];
           clientMarker = L.marker(clientLatLng, {
             icon: L.icon({
               iconUrl: "./CarroIcone/cliente.png",
@@ -357,14 +374,53 @@ document.addEventListener('DOMContentLoaded', () => {
               iconAnchor: [25, 50],
             }),
           }).addTo(map);
-
-          // Ajusta o mapa para mostrar ambos os marcadores
           const bounds = L.latLngBounds([latLng, clientLatLng]);
-          map.fitBounds(bounds.pad(0.1)); // .pad(0.1) adiciona um pouco de preenchimento
+          map.fitBounds(bounds.pad(0.2)); // .pad() adiciona uma margem
+
+          // Se NÃO houver entrega ativa, usa a lógica do pedido 'pronto' mais próximo
+        } else if (closestOrderCoords) {
+          if (clientMarker) map.removeLayer(clientMarker);
+          const clientLatLng = [closestOrderCoords.lat, closestOrderCoords.lon];
+          clientMarker = L.marker(clientLatLng).addTo(map); // Pode usar ícone padrão
+          const bounds = L.latLngBounds([latLng, clientLatLng]);
+          map.fitBounds(bounds.pad(0.2));
         } else {
-          // Se não houver pedido próximo, apenas centraliza no entregador
+          // Se não houver nem entrega ativa nem pedido pronto, centraliza só no entregador
+          if (clientMarker) {
+            map.removeLayer(clientMarker);
+            clientMarker = null;
+            clearRouteFromMap(); // Limpa a rota se não houver entrega ativa
+          }
           map.setView(latLng, 15);
         }
+      }
+    }
+
+    /**
+     * Desenha a rota no mapa se houver uma entrega ativa com geometria.
+     */
+    function drawRouteOnMap() {
+      clearRouteFromMap(); // Limpa qualquer rota anterior
+
+      if (
+        activeDeliveryOrder &&
+        activeDeliveryOrder.entrega &&
+        activeDeliveryOrder.entrega.geometria
+      ) {
+        const routeGeometry = activeDeliveryOrder.entrega.geometria;
+        routeLayer = L.geoJSON(routeGeometry, {
+          style: { color: "#007bff", weight: 5 },
+        }).addTo(map);
+      }
+    }
+
+    /**
+     * Limpa a camada da rota do mapa.
+     */
+    function clearRouteFromMap() {
+      if (routeLayer) {
+        map.removeLayer(routeLayer);
+        routeLayer = null;
       }
     }
 
@@ -410,6 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
      * Encontra o pedido "Pronto para Entrega" mais próximo e o destaca.
      */
     async function findAndHighlightClosest() {
+      // Não executa esta lógica se já houver uma entrega ativa
+      if (activeDeliveryOrder) return;
+
       if (!entregadorLocation) return;
 
       const readyOrdersColumn = kanbanBoard.querySelector(
@@ -470,7 +529,9 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         columnTitle.textContent = "Pronto para Entrega"; // Reseta o título se não houver pedidos
         closestOrderCoords = null;
+        clearRouteFromMap(); // Garante que a rota seja limpa
       }
+      updateDeliveryMarker(); // Atualiza o mapa
     }
 
     /**
