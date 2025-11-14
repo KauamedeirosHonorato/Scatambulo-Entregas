@@ -191,6 +191,18 @@ header {
     border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+.map-eta-display {
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 8px 15px;
+    border-radius: var(--borda-radius);
+    font-size: 20px;
+    font-weight: bold;
+    display: none; /* Oculto por padrão */
+    box-shadow: var(--sombra);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
 #speed-display, #distance-display {
     width: 50px;
     height: 50px;
