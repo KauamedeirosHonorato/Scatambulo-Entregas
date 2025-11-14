@@ -1,4 +1,5 @@
 import { db, ref, onValue, update, push } from "./firebase.js";
+import { geocodeAddress, getRouteDetails, calcularDistancia, calculateSpeed } from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   // Proteção de rota: verifica se o usuário logado é a Sofia
@@ -279,22 +280,19 @@ document.addEventListener("DOMContentLoaded", () => {
       clientMarker.setLatLng([destinationCoords.lat, destinationCoords.lon]);
     }
 
-    // Calcula e desenha a rota
-    const routeDetails = await getRouteDetails(
-      { latitude: entregadorLocation.lat, longitude: entregadorLocation.lng },
-      destinationCoords
-    );
+    // Obtém os dados da entrega do pedido ativo
+    const entregaData = activeDeliveryOrder.entrega;
 
     clearRouteFromMap(); // Limpa rota anterior
-    if (routeDetails) {
-      routeLayer = L.geoJSON(routeDetails.geometry, {
+    if (entregaData && entregaData.geometria) {
+      routeLayer = L.geoJSON(entregaData.geometria, {
         style: { color: "#007bff", weight: 5 },
       }).addTo(map);
 
-      // Atualiza displays de ETA e Distância
-      confeiteiraEtaDisplay.innerHTML = `${routeDetails.duration}<span class="unit">min</span>`;
+      // Atualiza displays de ETA, Distância e Velocidade
+      confeiteiraEtaDisplay.innerHTML = `${entregaData.tempoEstimado || '...'}<span class="unit">min</span>`;
       confeiteiraEtaDisplay.style.display = "flex";
-      confeiteiraSpeedDisplay.innerHTML = `${activeDeliveryOrder.entrega?.velocidade || 0}<span class="unit">km/h</span>`;
+      confeiteiraSpeedDisplay.innerHTML = `${entregaData.velocidade || 0}<span class="unit">km/h</span>`;
       confeiteiraSpeedDisplay.style.display = "flex";
       confeiteiraActiveOrderDisplay.textContent = `Entregando para: ${activeDeliveryOrder.nomeCliente}`;
       confeiteiraActiveOrderDisplay.style.display = "block";
@@ -303,7 +301,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const bounds = L.latLngBounds([entregadorLocation, [destinationCoords.lat, destinationCoords.lon]]);
       map.fitBounds(bounds.pad(0.2));
     } else {
-      clearConfeiteiraMapInfo(); // Limpa se não conseguir calcular a rota
+      // Se não houver dados de entrega ou geometria, limpa as informações
+      clearConfeiteiraMapInfo();
     }
   }
 
@@ -481,47 +480,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  /**
-   * Converte um endereço em coordenadas usando a API Nominatim.
-   */
-  async function geocodeAddress(address) {
-    const addressForQuery = address.split(", CEP:")[0];
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          addressForQuery
-        )}`
-      );
-      const data = await response.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      }
-    } catch (error) {
-      console.error("Erro de geocodificação:", error);
-    }
-    return null;
-  }
 
-  /**
-   * Obtém detalhes da rota (distância e duração) usando a API OSRM.
-   */
-  async function getRouteDetails(startCoords, endCoords) {
-    const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.lon},${endCoords.lat}?overview=full&geometries=geojson`;
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.code === "Ok" && data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const geometry = route.geometry; // Geometria da rota para desenhar no mapa
-        const distance = (route.distance / 1000).toFixed(1); // Distância em km
-        const duration = Math.round(route.duration / 60); // Duração em minutos
-        return { distance, duration, geometry };
-      }
-    } catch (error) {
-      console.error("Erro ao obter rota:", error);
-    }
-    return null;
-  }
 
   /**
    * Extrai dados da mensagem e preenche o formulário de novo pedido.

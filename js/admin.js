@@ -1,4 +1,5 @@
 import { db, ref, onValue, push, update, get, child, set } from './firebase.js';
+import { geocodeAddress, getRouteDetails, calcularDistancia, calculateSpeed } from "./utils.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     // Proteção de rota
@@ -494,21 +495,40 @@ document.addEventListener('DOMContentLoaded', () => {
      * Atualiza as informações da entrega ativa no mapa do admin.
      */
     async function updateAdminMapInfo(activeDeliveryOrder, destinationCoords, entregadorLocation) {
-      // Calcula e desenha a rota
+      if (!activeDeliveryOrder || !destinationCoords || !entregadorLocation) return;
+
+      // Obtém os dados completos do pedido para ter acesso a lastEntregadorCoords
+      const pedidoSnapshot = await get(child(ref(db, 'pedidos'), activeDeliveryOrder.id));
+      const fullActiveDeliveryOrder = pedidoSnapshot.val();
+
+      // Calcula a rota e os dados de tempo/distância
       const routeDetails = await getRouteDetails(
         { latitude: entregadorLocation.latitude, longitude: entregadorLocation.longitude },
         destinationCoords
       );
 
-      drawRouteOnMap(); // Garante que a rota seja desenhada/atualizada
-
       if (routeDetails) {
+        // Calcula a velocidade
+        const currentSpeed = calculateSpeed(entregadorLocation, fullActiveDeliveryOrder.entrega?.lastEntregadorCoords);
+
+        // Salva no Firebase para sincronizar com todos os painéis
+        await update(ref(db, `pedidos/${activeDeliveryOrder.id}/entrega`), {
+          geometria: routeDetails.geometry,
+          distancia: parseFloat(routeDetails.distance),
+          tempoEstimado: routeDetails.duration,
+          velocidade: parseFloat(currentSpeed),
+          // lastEntregadorCoords é atualizado pelo entregador.js
+        });
+
+        // Atualiza o painel da Angela
         adminEtaDisplay.innerHTML = `${routeDetails.duration}<span class="unit">min</span>`;
         adminEtaDisplay.style.display = "flex";
-        adminSpeedDisplay.innerHTML = `${activeDeliveryOrder.entrega?.velocidade || 0}<span class="unit">km/h</span>`;
+        adminSpeedDisplay.innerHTML = `${currentSpeed}<span class="unit">km/h</span>`;
         adminSpeedDisplay.style.display = "flex";
         adminActiveOrderDisplay.textContent = `Entregando para: ${activeDeliveryOrder.nomeCliente}`;
         adminActiveOrderDisplay.style.display = "block";
+
+        drawRouteOnMap(); // Garante que a rota seja desenhada/atualizada
       } else {
         clearAdminMapInfo(); // Limpa se não conseguir calcular a rota
       }
@@ -552,43 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    /**
-     * Calcula a distância entre duas coordenadas usando a fórmula de Haversine.
-     */
-    function calcularDistancia(lat1, lon1, lat2, lon2) {
-      const R = 6371; // Raio da Terra em km
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLon = ((lon2 - lon1) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c; // Retorna em km
-    }
 
-    /**
-     * Converte um endereço em coordenadas usando a API Nominatim.
-     */
-    async function geocodeAddress(address) {
-      const addressForQuery = address.split(", CEP:")[0]; // Remove a parte do CEP para melhorar a busca
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-            addressForQuery
-          )}`
-        );
-        const data = await response.json();
-        if (data && data.length > 0) {
-          return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-        }
-      } catch (error) {
-        console.error("Erro de geocodificação:", error);
-      }
-      return null;
-    }
 
     /**
      * Encontra o pedido "Pronto para Entrega" mais próximo e o destaca.

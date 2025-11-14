@@ -1,4 +1,5 @@
 import { db, ref, set, onValue, update } from "./firebase.js";
+import { geocodeAddress, getRouteDetails, calcularDistancia, calculateSpeed } from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   // Proteção de rota: verifica se o usuário logado é o Entregador
@@ -148,8 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
         (position) => {
           // Callback de sucesso
           const { latitude, longitude } = position.coords;
-          entregadorLocation = { latitude, longitude }; // Armazena a localização
-          locationStatus.textContent = "Localização ativa.";
+          const timestamp = Date.now(); // Adiciona o timestamp
+          const newEntregadorLocation = { latitude, longitude, timestamp }; // Nova localização com timestamp
 
           // Atualiza o mapa
           const latLng = [latitude, longitude];
@@ -183,17 +184,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
           // Envia a localização para o Firebase
           const locationRef = ref(db, "localizacao/entregador");
-          set(locationRef, { latitude, longitude });
+          set(locationRef, newEntregadorLocation);
 
-          // Se houver uma entrega ativa, atualiza a velocidade no pedido
-          if (activeDelivery && typeof speed === "number" && speed !== null) {
-            const speedKmh = Math.round(speed * 3.6);
-            const speedRef = ref(
-              db,
-              `pedidos/${activeDelivery.orderId}/entrega/velocidade`
-            );
-            set(speedRef, speedKmh);
+          // Se houver uma entrega ativa, atualiza a velocidade e lastEntregadorCoords no pedido
+          if (activeDelivery) {
+            const pedidoRef = ref(db, `pedidos/${activeDelivery.orderId}/entrega`);
+            get(pedidoRef).then((snapshot) => {
+              const currentEntregaData = snapshot.val() || {};
+              const oldEntregadorLocation = currentEntregaData.lastEntregadorCoords;
+
+              const currentSpeed = calculateSpeed(newEntregadorLocation, oldEntregadorLocation);
+
+              update(pedidoRef, {
+                velocidade: parseFloat(currentSpeed),
+                lastEntregadorCoords: newEntregadorLocation,
+              });
+            }).catch((error) => {
+              console.error("Erro ao obter dados da entrega para calcular velocidade:", error);
+            });
           }
+
+          entregadorLocation = newEntregadorLocation; // Armazena a localização atualizada
+          locationStatus.textContent = "Localização ativa.";
         },
         (error) => {
           // Callback de erro
@@ -359,6 +371,11 @@ document.addEventListener("DOMContentLoaded", () => {
       distancia: "Calculando...",
       tempoEstimado: "Calculando...",
       velocidade: 0,
+      lastEntregadorCoords: {
+        latitude: entregadorLocation.latitude,
+        longitude: entregadorLocation.longitude,
+        timestamp: Date.now(),
+      },
     };
     await update(ref(db), updates);
   }
@@ -492,47 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /**
-   * Converte um endereço em coordenadas usando a API Nominatim.
-   */
-  async function geocodeAddress(address) {
-    const addressForQuery = address.split(", CEP:")[0];
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          addressForQuery
-        )}`
-      );
-      const data = await response.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      }
-    } catch (error) {
-      console.error("Erro de geocodificação:", error);
-    }
-    return null;
-  }
 
-  /**
-   * Obtém detalhes da rota (distância e duração) usando a API OSRM.
-   */
-  async function getRouteDetails(startCoords, endCoords) {
-    const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.lon},${endCoords.lat}?overview=full&geometries=geojson`;
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.code === "Ok" && data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const geometry = route.geometry; // Geometria da rota para desenhar no mapa
-        const distance = (route.distance / 1000).toFixed(1); // Distância em km
-        const duration = Math.round(route.duration / 60); // Duração em minutos
-        return { distance, duration, geometry };
-      }
-    } catch (error) {
-      console.error("Erro ao obter rota:", error);
-    }
-    return null;
-  }
 
   /**
    * Atualiza o display de distância no mapa.
