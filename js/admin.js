@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Atualiza a posição do marcador do entregador no mapa.
      */
-    function updateDeliveryMarker() {
+    async function updateDeliveryMarker() {
       if (entregadorLocation && map) {
         const { latitude, longitude } = entregadorLocation;
         const latLng = [latitude, longitude];
@@ -445,7 +445,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Se houver uma entrega ativa, foca no entregador e no cliente
         if (activeDeliveryOrder?.id && activeDeliveryClientCoords) {
           // Garante que activeDeliveryOrder tenha os dados mais recentes do Firebase
-          const pedidoSnapshot = await get(child(ref(db, 'pedidos'), activeDeliveryOrder.id));
+          const pedidoSnapshot = await get(
+            child(ref(db, "pedidos"), activeDeliveryOrder.id)
+          );
           const latestActiveDeliveryOrder = pedidoSnapshot.val();
 
           if (clientMarker) map.removeLayer(clientMarker); // Remove marcador antigo
@@ -464,7 +466,11 @@ document.addEventListener('DOMContentLoaded', () => {
           map.fitBounds(bounds.pad(0.2)); // .pad() adiciona uma margem
 
           // Atualiza informações da entrega ativa com os dados mais recentes
-          updateAdminMapInfo(latestActiveDeliveryOrder, activeDeliveryClientCoords, entregadorLocation);
+          updateAdminMapInfo(
+            latestActiveDeliveryOrder,
+            activeDeliveryClientCoords,
+            entregadorLocation
+          );
 
           // Se NÃO houver entrega ativa, usa a lógica do pedido 'pronto' mais próximo
         } else if (closestOrderCoords) {
