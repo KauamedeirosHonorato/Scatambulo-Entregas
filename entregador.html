@@ -21,9 +21,13 @@
     <main class="container">
         <div id="map-section">
             <h2>Sua Localização Atual</h2>
-            <div id="map"></div>
+            <div id="map-container">
+                <div id="map"></div>
+                <div id="eta-display"></div>
+            </div>
             <p id="location-status">Aguardando permissão para acessar sua localização...</p>
             <div id="permission-actions">
+                <p id="navigation-status" class="info-text" style="display: none;"></p>
                 <!-- Botão será adicionado via JS -->
             </div>
             <p class="info-text"><strong>Dica para iPhone/iOS:</strong> Se a localização não funcionar, vá em <strong>Ajustes > Privacidade e Segurança > Serviços de Localização</strong>, encontre o Safari e permita o acesso à localização.</p>
@@ -35,6 +39,20 @@
         <div id="ready-orders-list"></div>
     </section>
     
+    <!-- Modal de Confirmação de Entrega -->
+    <div id="confirm-delivery-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <span class="close-button">&times;</span>
+            <h2>Confirmar Entrega</h2>
+            <p>Você confirma que este pedido foi entregue ao cliente?</p>
+            <div class="modal-actions">
+                <button id="confirm-delivery-btn" class="btn-sucesso">Sim, Entregar</button>
+                <button id="cancel-delivery-btn" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script type="module" src="js/entregador.js"></script>
 </body>

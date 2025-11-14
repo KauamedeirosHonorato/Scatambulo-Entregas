@@ -121,6 +121,7 @@ header {
     cursor: pointer;
     font-size: 15px;
     font-weight: 600;
+    margin: 5px; /* Adiciona um pequeno espaçamento para quebra de linha */
     transition: all 0.3s;
 }
 
@@ -134,12 +135,72 @@ header {
 }
 
 .btn-secondary {
-    background-color: var(--cor-destaque);
-    color: var(--cor-branco);
+    background-color: var(--cor-secundaria);
+    color: var(--cor-texto);
+    border: 1px solid #ccc;
 }
 
 .btn-secondary:hover {
-    background-color: #c3a195;
+    background-color: #d0d0d0;
+}
+
+.btn-sucesso {
+    background-color: var(--cor-sucesso);
+    color: var(--cor-branco);
+}
+
+.btn-sucesso:hover {
+    background-color: #45a049;
+}
+
+.btn-danger {
+    background-color: var(--cor-erro);
+    color: var(--cor-branco);
+}
+
+.btn-danger:hover {
+    background-color: #d32f2f; /* Um tom de vermelho um pouco mais escuro */
+}
+
+/* === OVERLAYS DO MAPA === */
+#map-container {
+    position: relative;
+}
+
+#eta-display {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000; /* Acima dos tiles do mapa */
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 8px 15px;
+    border-radius: var(--borda-radius);
+    font-size: 20px;
+    font-weight: bold;
+    display: none; /* Oculto por padrão */
+    box-shadow: var(--sombra);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.map-info-icon {
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: var(--sombra);
+}
+
+.map-info-icon .unit {
+    font-size: 0.7em;
+    font-weight: normal;
 }
 
 /* === PAINÉIS (ADMIN, CONFEITEIRA, ENTREGADOR) === */
@@ -186,6 +247,7 @@ header {
     margin-bottom: 10px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     cursor: pointer;
+    transition: border-left 0.3s ease;
 }
 
 .order-card h4 {
@@ -208,9 +270,15 @@ header {
     border-left: 5px solid var(--cor-sucesso);
 }
 
-.order-actions button {
+.order-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
     margin-top: 10px;
-    margin-right: 5px;
+}
+
+.order-actions button {
+    margin: 0; /* Remove margens extras */
     padding: 5px 10px;
     font-size: 12px;
 }
@@ -230,12 +298,16 @@ header {
 
 .modal-content {
     background-color: var(--cor-branco);
-    margin: 15% auto;
+    margin: auto;
     padding: 30px;
     border-radius: var(--borda-radius);
     width: 90%;
     max-width: 500px;
     position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    max-height: 90vh; /* Altura máxima para evitar que o modal seja maior que a tela */
+    overflow-y: auto; /* Adiciona rolagem se o conteúdo for muito grande */
 }
 
 .close-button {
@@ -268,12 +340,32 @@ header {
 }
 
 /* === RESPONSIVIDADE === */
+@media (max-width: 992px) {
+    #kanban-board {
+        /* Em telas médias, forçamos 2 colunas se couber, senão 1 */
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+}
+
 @media (max-width: 768px) {
     .header-container {
         flex-direction: column;
         gap: 10px;
     }
+    .header-container div {
+        display: flex;
+        flex-wrap: wrap; /* Permite que os botões quebrem a linha */
+        justify-content: center; /* Centraliza os botões */
+    }
     .modal-content {
-        margin: 25% auto;
+        /* Garante que o modal não fique colado nas bordas */
+        width: 95%;
+    }
+}
+
+@media (max-width: 350px) {
+    #kanban-board {
+        /* Em telas muito pequenas, garante 1 coluna */
+        grid-template-columns: 1fr;
     }
 }
