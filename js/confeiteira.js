@@ -35,9 +35,61 @@ document.addEventListener("DOMContentLoaded", () => {
   let knownOrderIds = new Set(); // Rastreia pedidos para notificação
   let isFirstLoad = true; // Evita notificações na carga inicial
 
+  let map; // Variável para o mapa Leaflet
+  let deliveryPersonMarker; // Marcador para a localização do entregador
+  const deliveryPersonStatus = document.getElementById("delivery-person-status");
+
   // --- INICIALIZAÇÃO ---
   setupEventListeners();
   listenToFirebase();
+  initMap();
+  listenToDeliveryPersonLocation();
+
+  /**
+   * Inicializa o mapa Leaflet.
+   */
+  function initMap() {
+    const mapElement = document.getElementById("map");
+    if (!mapElement) return;
+
+    map = L.map(mapElement).setView([-23.5505, -46.6333], 13); // Ponto inicial (São Paulo)
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+  }
+
+  /**
+   * Ouve a localização do entregador no Firebase e atualiza o mapa.
+   */
+  function listenToDeliveryPersonLocation() {
+    const locationRef = ref(db, "localizacao/entregador");
+    onValue(locationRef, (snapshot) => {
+      const location = snapshot.val();
+      if (location && location.latitude && location.longitude) {
+        const latLng = [location.latitude, location.longitude];
+        if (!deliveryPersonMarker) {
+          deliveryPersonMarker = L.marker(latLng, {
+            icon: L.icon({
+              iconUrl: "/CarroIcone/Versa2025.png", // Usar o mesmo ícone do entregador
+              iconSize: [70, 70],
+              iconAnchor: [35, 55],
+            }),
+          }).addTo(map);
+          map.setView(latLng, 15); // Centraliza o mapa na primeira localização
+        } else {
+          deliveryPersonMarker.setLatLng(latLng);
+        }
+        deliveryPersonStatus.textContent = `Entregador localizado em: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
+      } else {
+        if (deliveryPersonMarker) {
+          map.removeLayer(deliveryPersonMarker);
+          deliveryPersonMarker = null;
+        }
+        deliveryPersonStatus.textContent = "Aguardando localização do entregador...";
+      }
+    });
+  }
 
   /**
    * Configura os ouvintes de eventos para a página.
@@ -243,10 +295,52 @@ document.addEventListener("DOMContentLoaded", () => {
       btnFeito.textContent = "Marcar como Feito";
       btnFeito.onclick = () => updateStatus(pedidoId, "feito");
       actions.appendChild(btnFeito);
+
+      const btnImprimir = document.createElement("button");
+      btnImprimir.textContent = "Imprimir Etiqueta";
+      btnImprimir.className = "btn-secondary"; // Usar um estilo secundário
+      btnImprimir.onclick = () => printLabel(pedido);
+      actions.appendChild(btnImprimir);
     }
 
     card.appendChild(actions);
     return card;
+  }
+
+  /**
+   * Gera e imprime uma etiqueta/nota para o pedido.
+   * @param {object} pedido - Os dados do pedido a ser impresso.
+   */
+  function printLabel(pedido) {
+    const printContent = `
+      <div style="font-family: 'Poppins', sans-serif; padding: 20px; border: 1px solid #ccc; width: 300px;">
+        <h3 style="text-align: center; margin-bottom: 15px;">Pedido Scatambulo</h3>
+        <p><strong>Bolo:</strong> ${pedido.nomeBolo}</p>
+        <p><strong>Cliente:</strong> ${pedido.nomeCliente}</p>
+        <p><strong>Endereço:</strong> ${pedido.endereco}</p>
+        <p><strong>Número:</strong> ${pedido.numero}</p>
+        ${pedido.complemento ? `<p><strong>Complemento:</strong> ${pedido.complemento}</p>` : ''}
+        <p><strong>WhatsApp:</strong> ${pedido.whatsapp}</p>
+        <p style="margin-top: 20px; text-align: center; font-size: 0.8em;">Obrigado pela preferência!</p>
+      </div>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Etiqueta do Pedido</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write(`
+      body { font-family: 'Poppins', sans-serif; margin: 0; padding: 0; }
+      div { box-sizing: border-box; }
+      @media print {
+        body { margin: 0; }
+        div { page-break-after: always; }
+      }
+    `);
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write(printContent);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
   }
 
   function updateStatus(pedidoId, newStatus) {
