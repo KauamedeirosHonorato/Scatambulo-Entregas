@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newOrderModal = document.getElementById('new-order-modal');
     const readMessageModal = document.getElementById('read-message-modal');
     const newOrderBtn = document.getElementById('new-order-button');
+    const printAllEmPreparoBtn = document.getElementById('print-all-em-preparo-button');
     const readMessageBtn = document.getElementById('read-message-button');
     const clearDeliveredBtn = document.getElementById("clear-delivered-button");
     const closeButtons = document.querySelectorAll(".close-button");
@@ -61,6 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // --- Lógica para Abrir e Fechar Modais ---
       newOrderBtn.addEventListener("click", () => {
         newOrderModal.style.display = "block";
+      });
+      printAllEmPreparoBtn.addEventListener("click", () => {
+        printAllEmPreparoLabels();
       });
       readMessageBtn.addEventListener("click", () => {
         readMessageModal.style.display = "block";
@@ -336,6 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
         btnFeito.className = "btn-secondary";
         btnFeito.onclick = () => updateStatus(pedidoId, "feito");
         actions.appendChild(btnFeito);
+
+        const btnImprimir = document.createElement("button");
+        btnImprimir.textContent = "Imprimir Etiqueta";
+        btnImprimir.className = "btn-secondary"; // Usar um estilo secundário
+        btnImprimir.onclick = () => printLabel(pedido);
+        actions.appendChild(btnImprimir);
       }
 
       if (pedido.status === "feito") {
@@ -367,6 +377,42 @@ document.addEventListener('DOMContentLoaded', () => {
       update(ref(db), updates).catch((err) =>
         console.error("Erro ao atualizar status:", err)
       );
+    }
+
+    /**
+     * Gera e imprime uma etiqueta/nota para o pedido.
+     * @param {object} pedido - Os dados do pedido a ser impresso.
+     */
+    function printLabel(pedido) {
+      const printContent = `
+        <div style="font-family: 'Poppins', sans-serif; padding: 20px; border: 1px solid #ccc; width: 300px;">
+          <h3 style="text-align: center; margin-bottom: 15px;">Pedido Scatambulo</h3>
+          <p><strong>Bolo:</strong> ${pedido.nomeBolo}</p>
+          <p><strong>Cliente:</strong> ${pedido.nomeCliente}</p>
+          <p><strong>Endereço:</strong> ${pedido.endereco}</p>
+          <p><strong>Número:</strong> ${pedido.numero}</p>
+          ${pedido.complemento ? `<p><strong>Complemento:</strong> ${pedido.complemento}</p>` : ''}
+          <p><strong>WhatsApp:</strong> ${pedido.whatsapp}</p>
+          <p style="margin-top: 20px; text-align: center; font-size: 0.8em;">Obrigado pela preferência!</p>
+        </div>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write('<html><head><title>Etiqueta do Pedido</title>');
+      printWindow.document.write('<style>');
+      printWindow.document.write(`
+        body { font-family: 'Poppins', sans-serif; margin: 0; padding: 0; }
+        div { box-sizing: border-box; }
+        @media print {
+          body { margin: 0; }
+          div { page-break-after: always; }
+        }
+      `);
+      printWindow.document.write('</style></head><body>');
+      printWindow.document.write(printContent);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
     }
 
     let clientMarker;
@@ -669,6 +715,34 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (error) {
         console.error("Erro ao remover pedidos entregues:", error);
         alert("Ocorreu um erro ao tentar remover os pedidos.");
+      }
+    }
+
+    /**
+     * Imprime etiquetas para todos os pedidos com status "em_preparo".
+     */
+    async function printAllEmPreparoLabels() {
+      const pedidosRef = ref(db, "pedidos");
+      try {
+        const snapshot = await get(pedidosRef);
+        if (snapshot.exists()) {
+          const pedidos = snapshot.val();
+          let printedCount = 0;
+          for (const pedidoId in pedidos) {
+            if (pedidos[pedidoId].status === "em_preparo") {
+              printLabel(pedidos[pedidoId]);
+              printedCount++;
+            }
+          }
+          if (printedCount === 0) {
+            alert("Não há pedidos em preparo para imprimir etiquetas.");
+          }
+        } else {
+          alert("Não há pedidos no sistema.");
+        }
+      } catch (error) {
+        console.error("Erro ao imprimir etiquetas de pedidos em preparo:", error);
+        alert("Ocorreu um erro ao tentar imprimir as etiquetas.");
       }
     }
 });
