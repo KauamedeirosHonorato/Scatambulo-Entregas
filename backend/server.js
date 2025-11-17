@@ -39,9 +39,13 @@ app.post("/notify-order-status", async (req, res) => {
   }
 
   const html = `
-    <h2>Olá, ${userName}!</h2>
-    <p>${message}</p>
-    <p>Atenciosamente,<br>Equipe</p>
+    <div style="font-family: 'Poppins', sans-serif; color: #333; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      <h2 style="color: #D4AF37;">Olá, ${userName}!</h2>
+      <p style="font-size: 16px; line-height: 1.5;">${message}</p>
+      <p style="font-size: 14px; color: #777; margin-top: 30px;">Atenciosamente,<br>Equipe Scatambulo</p>
+      <hr style="border: none; border-top: 1px solid #eee; margin-top: 20px;">
+      <p style="font-size: 12px; color: #aaa; text-align: center;">Este é um email automático, por favor não responda.</p>
+    </div>
   `;
 
   try {
