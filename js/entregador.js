@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let routeRecalculationInterval = null;
   let orderIdToConfirm = null;
   const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
+  let knownReadyOrderIds = new Set();
 
   UI.setupEventListeners(
     () => {
