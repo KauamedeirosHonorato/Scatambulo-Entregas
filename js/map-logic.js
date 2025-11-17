@@ -39,11 +39,13 @@ export function updateEntregadorLocation(location) {
  * @param {object} pedidos - O objeto de todos os pedidos do Firebase.
  */
 export async function processActiveDelivery(pedidos) {
+  console.log("MapLogic: processActiveDelivery called.");
   const activeOrderEntry = Object.entries(pedidos).find(
     ([, pedido]) => pedido.status === "em_entrega"
   );
 
   if (activeOrderEntry) {
+    console.log("MapLogic: Active delivery found (status 'em_entrega').");
     const [orderId, orderData] = activeOrderEntry;
 
     // Se a entrega ativa mudou ou é a primeira vez que encontramos uma
@@ -95,6 +97,7 @@ export async function processActiveDelivery(pedidos) {
       }
     }
   } else {
+    console.log("MapLogic: No active delivery found (status 'em_entrega'). Clearing map.");
     // Se não há mais entrega ativa, limpa o estado e o mapa.
     clearActiveDelivery();
     // Map.stopNavigation(); // Removido, pois clearActiveDelivery já chama Map.clearOrderFromMap que para a navegação
@@ -108,6 +111,7 @@ export async function processActiveDelivery(pedidos) {
  * Limpa os dados da entrega ativa e reseta o mapa.
  */
 export function clearActiveDelivery() {
+  console.log("MapLogic: clearActiveDelivery called.");
   state.activeDelivery = null;
   Map.clearOrderFromMap(); // Usa a nova função de limpeza completa
   UI.updateButtonsForNavigation(false); // Desativa botões de navegação

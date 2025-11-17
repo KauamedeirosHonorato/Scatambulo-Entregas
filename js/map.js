@@ -205,5 +205,5 @@ export function clearOrderFromMap() {
         routeRecalculationInterval = null;
     }
 
-    console.log("Mapa limpo: rota e marcadores do cliente removidos.");
+    console.log("Map: clearOrderFromMap called. Route and client markers removed.");
 }
