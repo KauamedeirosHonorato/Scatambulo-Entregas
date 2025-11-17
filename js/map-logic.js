@@ -40,9 +40,11 @@ export function updateEntregadorLocation(location) {
  */
 export async function processActiveDelivery(pedidos) {
   console.log("MapLogic: processActiveDelivery called.");
+  console.log("MapLogic: Incoming 'pedidos' object:", pedidos); // Log the entire pedidos object
   const activeOrderEntry = Object.entries(pedidos).find(
     ([, pedido]) => pedido.status === "em_entrega"
   );
+  console.log("MapLogic: Result of activeOrderEntry find:", activeOrderEntry); // Log the result of the find
 
   if (activeOrderEntry) {
     console.log("MapLogic: Active delivery found (status 'em_entrega').");
