@@ -182,6 +182,10 @@ export function createOrderCard(
     });
   }
 
+  card.appendChild(actions);
+  return card;
+}
+
 
 
 
