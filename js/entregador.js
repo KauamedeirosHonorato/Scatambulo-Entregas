@@ -216,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (routeDetails) {
       UI.updateEtaDisplay(routeDetails.duration);
       Map.drawRouteOnMap(routeDetails.geometry);
-      Map.addRouteMarkers(entregadorLocation, destinationCoords);
+      Map.updateClientMarkerOnMap(destinationCoords); // Add client marker
       UI.updateDistanceDisplay(routeDetails.distance);
       
       update(ref(db), {
