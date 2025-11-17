@@ -9,7 +9,7 @@ import {
 } from "./firebase.js";
 import { geocodeAddress, getRouteDetails, calculateSpeed, parseWhatsappMessage } from "./utils.js";
 import { loadComponents } from "./componentLoader.js";
-import * as Map from "./map.js";
+import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -19,11 +19,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  let entregadorLocation = null;
-  let activeDeliveryOrder = null;
-  let activeDeliveryClientCoords = null;
-  let closestOrder = null;
-  const deliveryCompletedSound = new Audio("audio/NotificacaoPedidoEntregue.mp3");
+  const deliveryCompletedSound = new Audio(
+    "audio/NotificacaoPedidoEntregue.mp3"
+  );
   let knownOrderStatuses = {};
   let isFirstLoad = true;
 
@@ -31,8 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "#modal-container",
     ["components/modal-new-order.html", "components/modal-read-message.html"],
     () => {
-      Map.initMap("map");
-      Map.invalidateMapSize(); // Invalidate map size after initialization
+      MapLogic.initializeMapWithLocation("map");
       setupUIEventListeners();
       listenToFirebaseChanges();
     }
@@ -60,7 +57,11 @@ document.addEventListener("DOMContentLoaded", () => {
         for (const pedidoId in pedidos) {
           const oldStatus = knownOrderStatuses[pedidoId];
           const newStatus = pedidos[pedidoId].status;
-          if (oldStatus && (newStatus === "entregue" || newStatus === "em_preparo") && oldStatus !== newStatus) {
+          if (
+            oldStatus &&
+            (newStatus === "entregue" || newStatus === "em_preparo") &&
+            oldStatus !== newStatus
+          ) {
             deliveryCompletedSound.play().catch(console.warn);
           }
         }
@@ -70,100 +71,27 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       isFirstLoad = false;
       UI.renderBoard(pedidos, updateOrderStatus, UI.printLabel);
-      findActiveAndClosestOrders(pedidos);
+      MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
     });
 
     listenToEntregadorLocation((location) => {
-      entregadorLocation = location;
-      Map.updateDeliveryMarkerOnMap(entregadorLocation);
-      updateMapFocus();
+      MapLogic.updateEntregadorLocation(location);
+      updateMapInfo();
     });
   }
 
-  async function findActiveAndClosestOrders(pedidos) {
-    Map.clearRouteFromMap(); // Ensure any existing route is cleared first
-    activeDeliveryOrder = null;
-    activeDeliveryClientCoords = null;
+  async function updateMapInfo() {
+    const activeDeliveryOrder = MapLogic.getActiveDelivery();
+    const entregadorLocation = MapLogic.getEntregadorLocation();
 
-    const activeOrderEntry = Object.entries(pedidos).find(
-      ([, pedido]) => pedido.status === "em_entrega"
-    );
-
-    if (activeOrderEntry) {
-      activeDeliveryOrder = { id: activeOrderEntry[0], ...activeOrderEntry[1] };
-      const geocodeResult = await geocodeAddress(activeDeliveryOrder.endereco);
-      if (geocodeResult && !geocodeResult.error) {
-        activeDeliveryClientCoords = geocodeResult;
-      } else {
-        console.error("Failed to geocode active delivery address:", geocodeResult ? geocodeResult.error : "Unknown error");
-        activeDeliveryOrder = null; // Invalidate active delivery if geocoding fails
-        Map.updateClientMarkerOnMap(null); // Ensure client marker is removed
-      }
-    } else {
-      // If no active delivery, ensure client marker and route are cleared
-      Map.updateClientMarkerOnMap(null);
-      Map.clearRouteFromMap();
-    }
-    updateMapForActiveDelivery();
-    updateMapFocus();
-  }
-
-  async function findAndHighlightClosest(pedidos) {
-    if (!entregadorLocation) return;
-
-    const readyOrders = Object.entries(pedidos).filter(
-      ([, pedido]) => pedido.status === "pronto_para_entrega"
-    );
-
-    let minDistance = Infinity;
-    closestOrder = null;
-
-    for (const [pedidoId, pedido] of readyOrders) {
-      const pedidoCoords = await geocodeAddress(pedido.endereco);
-      if (pedidoCoords && !pedidoCoords.error) {
-        const dist = calculateDistance(
-          entregadorLocation.latitude,
-          entregadorLocation.longitude,
-          pedidoCoords.lat,
-          pedidoCoords.lon
-        );
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestOrder = {
-            id: pedidoId,
-            distance: dist,
-            clientName: pedido.nomeCliente,
-            coords: pedidoCoords,
-          };
-        }
-      } else {
-        console.warn("Failed to geocode address for closest order check:", pedido.endereco, pedidoCoords ? pedidoCoords.error : "Unknown error");
-      }
-    }
-    UI.highlightClosestOrder(closestOrder);
-  }
-
-  function updateMapFocus() {
-    if (activeDeliveryOrder && activeDeliveryClientCoords) {
-      Map.fitMapToBounds(entregadorLocation, activeDeliveryClientCoords);
-      Map.updateClientMarkerOnMap(activeDeliveryClientCoords);
-    } else if (entregadorLocation) {
-      Map.fitMapToBounds(entregadorLocation, null);
-      Map.updateClientMarkerOnMap(null);
-    }
-  }
-
-  async function updateMapForActiveDelivery() {
-    if (
-      !activeDeliveryOrder ||
-      !activeDeliveryClientCoords ||
-      !entregadorLocation
-    )
+    if (!activeDeliveryOrder || !entregadorLocation) {
+      UI.updateAdminMapInfo(null);
       return;
+    }
 
-    // Pega os detalhes da entrega (incluindo a rota) que o entregador salvou no Firebase.
-    const fullActiveDeliveryOrder = await getPedido(activeDeliveryOrder.id);
-    const entregaData = fullActiveDeliveryOrder.entrega;
+    // `entregaData` should now be available directly from `activeDeliveryOrder`
+    // as `MapLogic.processActiveDelivery` populates it via the onRouteUpdate callback.
+    const entregaData = activeDeliveryOrder.entrega;
 
     if (entregaData) {
       const currentSpeed = calculateSpeed(
@@ -171,17 +99,17 @@ document.addEventListener("DOMContentLoaded", () => {
         entregaData.lastEntregadorCoords
       );
 
-      // Atualiza apenas a velocidade no Firebase, pois a rota já foi salva pelo entregador.
-      await updatePedido(activeDeliveryOrder.id, {
-        "entrega/velocidade": parseFloat(currentSpeed),
-      });
+      // Only update Firebase if speed is a valid number
+      if (typeof currentSpeed === 'number' && !isNaN(currentSpeed)) {
+        await updatePedido(activeDeliveryOrder.id, {
+          "entrega/velocidade": parseFloat(currentSpeed),
+        });
+      }
 
-      // Usa os dados da entrega para atualizar a UI e desenhar a rota.
       UI.updateAdminMapInfo(activeDeliveryOrder, entregaData, currentSpeed);
-      // Map.drawRouteOnMap(entregaData.geometria); // Removed route drawing
     } else {
+      // If no entregaData, clear admin map info
       UI.updateAdminMapInfo(null);
-      Map.clearRouteFromMap();
     }
   }
 
@@ -219,16 +147,16 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const messageText = document.getElementById("message-text").value;
     const parsedData = parseWhatsappMessage(messageText);
-    
+
     const orderData = {
-        clientName: parsedData.cliente.nome,
-        cakeName: parsedData.itens.length > 0 ? parsedData.itens[0].nome : "",
-        whatsapp: parsedData.cliente.telefone,
-        rua: parsedData.cliente.enderecoRaw,
+      clientName: parsedData.cliente.nome,
+      cakeName: parsedData.itens.length > 0 ? parsedData.itens[0].nome : "",
+      whatsapp: parsedData.cliente.telefone,
+      rua: parsedData.cliente.enderecoRaw,
     };
 
     UI.fillOrderForm(orderData);
-    
+
     document.getElementById("read-message-modal").style.display = "none";
     document.getElementById("new-order-modal").style.display = "block";
   }
@@ -251,16 +179,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function printAllEmPreparoLabels() {
     listenToPedidos((pedidos) => {
-        let printedCount = 0;
-        for (const pedidoId in pedidos) {
-            if (pedidos[pedidoId].status === "em_preparo") {
-                UI.printLabel(pedidos[pedidoId], pedidoId);
-                printedCount++;
-            }
+      let printedCount = 0;
+      for (const pedidoId in pedidos) {
+        if (pedidos[pedidoId].status === "em_preparo") {
+          UI.printLabel(pedidos[pedidoId], pedidoId);
+          printedCount++;
         }
-        if (printedCount === 0) {
-            alert("Não há pedidos em preparo para imprimir etiquetas.");
-        }
+      }
+      if (printedCount === 0) {
+        alert("Não há pedidos em preparo para imprimir etiquetas.");
+      }
     });
   }
 });

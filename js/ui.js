@@ -75,157 +75,252 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
   });
 }
 
-function createOrderCard(pedidoId, pedido, onStatusUpdate, onPrintLabel) {
-    const card = document.createElement("div");
-    card.className = "order-card";
-    card.id = `pedido-${pedidoId}`;
+const statusActions = new Map([
+  [
+    "pendente",
+    [
+      {
+        text: "Iniciar Preparo",
+        className: "btn-secondary",
+        newStatus: "em_preparo",
+      },
+    ],
+  ],
+  [
+    "em_preparo",
+    [
+      {
+        text: "Marcar como Feito",
+        className: "btn-secondary",
+        newStatus: "feito",
+      },
+      {
+        text: "Imprimir Etiqueta",
+        className: "btn-secondary",
+        action: "print",
+      },
+    ],
+  ],
+  [
+    "feito",
+    [
+      {
+        text: "Pronto para Entrega",
+        className: "btn-primary",
+        newStatus: "pronto_para_entrega",
+      },
+    ],
+  ],
+  [
+    "pronto_para_entrega",
+    [
+      {
+        text: "Marcar como Entregue",
+        className: "btn-sucesso",
+        newStatus: "entregue",
+      },
+    ],
+  ],
+]);
 
-    let deliveryInfoHtml = "";
-    if (pedido.status === "em_entrega" && pedido.entrega) {
-      const { velocidade, distancia, tempoEstimado } = pedido.entrega;
-      const speedText = typeof velocidade === "number" ? `${velocidade} km/h` : "...";
-      const distanceText = typeof distancia === "number" || !isNaN(distancia) ? `${distancia} km` : "...";
-      const timeText = typeof tempoEstimado === "number" || !isNaN(tempoEstimado) ? `${tempoEstimado} min` : "...";
+/**
+ * Cria um cartão de pedido para o quadro Kanban.
+ */
+export function createOrderCard(
+  pedidoId,
+  pedido,
+  onStatusUpdate,
+  onPrintLabel
+) {
+  const card = document.createElement("div");
+  card.className = "order-card";
+  card.id = `pedido-${pedidoId}`;
 
-      deliveryInfoHtml = `
+  let deliveryInfoHtml = "";
+  if (pedido.status === "em_entrega" && pedido.entrega) {
+    const { velocidade, distancia, tempoEstimado } = pedido.entrega;
+    const speedText =
+      typeof velocidade === "number" ? `${velocidade} km/h` : "...";
+    const distanceText =
+      typeof distancia === "number" || !isNaN(distancia)
+        ? `${distancia} km`
+        : "...";
+    const timeText =
+      typeof tempoEstimado === "number" || !isNaN(tempoEstimado)
+        ? `${tempoEstimado} min`
+        : "...";
+
+    deliveryInfoHtml = `
           <div class="delivery-realtime-info">
             <p>🚗 <strong>Velocidade:</strong> ${speedText}</p>
             <p>📏 <strong>Distância:</strong> ${distanceText}</p>
             <p>⏱️ <strong>Tempo Estimado:</strong> ${timeText}</p>
           </div>
         `;
-    }
+  }
 
-    card.innerHTML = `<h4>${pedido.nomeBolo || "Bolo"}</h4><p>${
-      pedido.nomeCliente
-    }</p><p>${
-      pedido.endereco
-    }</p><div class="distance"></div>${deliveryInfoHtml}`;
-    const actions = document.createElement("div");
-    actions.className = "order-actions";
+  card.innerHTML = `<h4>${pedido.nomeBolo || "Bolo"}</h4><p>${
+    pedido.nomeCliente
+  }</p><p>${
+    pedido.endereco
+  }</p><div class="distance"></div>${deliveryInfoHtml}`;
+  const actions = document.createElement("div");
+  actions.className = "order-actions";
 
-    if (pedido.status === "pendente") {
-      const btnPreparo = document.createElement("button");
-      btnPreparo.textContent = "Iniciar Preparo";
-      btnPreparo.className = "btn-secondary";
-      btnPreparo.onclick = () => onStatusUpdate(pedidoId, "em_preparo");
-      actions.appendChild(btnPreparo);
-    } else if (pedido.status === "em_preparo") {
-      const btnFeito = document.createElement("button");
-      btnFeito.textContent = "Marcar como Feito";
-      btnFeito.className = "btn-secondary";
-      btnFeito.onclick = () => onStatusUpdate(pedidoId, "feito");
-      actions.appendChild(btnFeito);
+  const availableActions = statusActions.get(pedido.status);
+  if (availableActions) {
+    availableActions.forEach((actionInfo) => {
+      const button = document.createElement("button");
+      button.textContent = actionInfo.text;
+      button.className = actionInfo.className;
+      button.onclick = () => {
+        if (actionInfo.newStatus)
+          onStatusUpdate(pedidoId, actionInfo.newStatus);
+        if (actionInfo.action === "print") onPrintLabel(pedido, pedidoId);
+      };
+      actions.appendChild(button);
+    });
+  }
 
-      const btnImprimir = document.createElement("button");
-      btnImprimir.textContent = "Imprimir Etiqueta";
-      btnImprimir.className = "btn-secondary";
-      btnImprimir.onclick = () => onPrintLabel(pedido, pedidoId);
-      actions.appendChild(btnImprimir);
-    }
+  card.appendChild(actions);
+  return card;
+}
 
-    if (pedido.status === "feito") {
-      const btnPronto = document.createElement("button");
-      btnPronto.textContent = "Pronto para Entrega";
-      btnPronto.className = "btn-primary";
-      btnPronto.onclick = () => onStatusUpdate(pedidoId, "pronto_para_entrega");
-      actions.appendChild(btnPronto);
-    }
+export function printLabel(pedido, pedidoId) {
+  const shortId = pedidoId ? pedidoId.substring(0, 5).toUpperCase() : "N/A";
+  const printContent = `
+    <div style="font-family: 'Poppins', sans-serif; padding: 20px; border: 1px solid #ccc; width: 300px; box-sizing: border-box;">
+      <h3 style="text-align: center; margin-bottom: 15px;">Pedido Scatambulo #${shortId}</h3>
+      <p><strong>Bolo:</strong> ${pedido.nomeBolo || "Não informado"}</p>
+      <p><strong>Cliente:</strong> ${pedido.nomeCliente || "Não informado"}</p>
+      <p><strong>Endereço:</strong> ${pedido.endereco || "Não informado"}</p>
+      <p><strong>WhatsApp:</strong> ${pedido.whatsapp || "Não informado"}</p>
+      <p style="margin-top: 20px; text-align: center; font-size: 0.8em;">Obrigado pela preferência!</p>
+    </div>
+  `;
 
-    if (pedido.status === "pronto_para_entrega") {
-      const btnEntregue = document.createElement("button");
-      btnEntregue.textContent = "Marcar como Entregue";
-      btnEntregue.className = "btn-sucesso";
-      btnEntregue.onclick = () => onStatusUpdate(pedidoId, "entregue");
-      actions.appendChild(btnEntregue);
-    }
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write("<html><head><title>Etiqueta do Pedido</title>");
+  printWindow.document.write("<style>");
+  printWindow.document.write(`
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+    body { font-family: 'Poppins', sans-serif; margin: 0; padding: 10px; }
+  `);
+  printWindow.document.write("</style></head><body>");
+  printWindow.document.write(printContent);
+  printWindow.document.write("</body></html>");
+  printWindow.document.close();
+  printWindow.print();
+}
 
-    card.appendChild(actions);
-    return card;
+export function updateButtonsForNavigation(isNavigating) {
+  console.log(`Admin Navigation buttons updated. Is navigating: ${isNavigating}`);
+  // Implement actual UI button updates here based on isNavigating status
+  // e.g., disable "Start Delivery" button, enable "Stop Navigation" button
 }
 
 export function updateAdminMapInfo(
   activeDeliveryOrder,
-  routeDetails,
+  entregaData,
   currentSpeed
 ) {
   const adminEtaDisplay = document.getElementById("admin-eta-display");
   const adminSpeedDisplay = document.getElementById("admin-speed-display");
+  const adminDistanceDisplay = document.getElementById(
+    "admin-distance-display"
+  ); // New element for distance
   const adminActiveOrderDisplay = document.getElementById(
     "admin-active-order-display"
   );
 
-  if (routeDetails) {
-    adminEtaDisplay.innerHTML = `${routeDetails.duration}<span class="unit">min</span>`;
+  if (entregaData && activeDeliveryOrder) {
+    adminEtaDisplay.innerHTML = `${
+      entregaData.tempoEstimado ? Math.round(entregaData.tempoEstimado / 60) : "..."
+    }<span class="unit">min</span>`; // Convert seconds to minutes
     adminEtaDisplay.style.display = "flex";
-    adminSpeedDisplay.innerHTML = `${currentSpeed}<span class="unit">km/h</span>`;
+    adminSpeedDisplay.innerHTML = `${Math.round(
+      currentSpeed || 0
+    )}<span class="unit">km/h</span>`;
     adminSpeedDisplay.style.display = "flex";
+    adminDistanceDisplay.innerHTML = `${
+      entregaData.distancia ? (entregaData.distancia / 1000).toFixed(1) : "..."
+    }<span class="unit">km</span>`; // Convert meters to kilometers
+    adminDistanceDisplay.style.display = "flex";
     adminActiveOrderDisplay.textContent = `Entregando para: ${activeDeliveryOrder.nomeCliente}`;
     adminActiveOrderDisplay.style.display = "block";
   } else {
     adminEtaDisplay.style.display = "none";
     adminSpeedDisplay.style.display = "none";
+    adminDistanceDisplay.style.display = "none"; // Clear distance display
     adminActiveOrderDisplay.style.display = "none";
   }
 }
 
 export function highlightClosestOrder(closestOrder) {
-    const readyOrdersColumn = document.querySelector(
-        '.kanban-column[data-status="pronto_para_entrega"]'
-    );
-    if(!readyOrdersColumn) return;
+  const readyOrdersColumn = document.querySelector(
+    '.kanban-column[data-status="pronto_para_entrega"]'
+  );
+  if (!readyOrdersColumn) return;
 
-    const columnTitle = readyOrdersColumn.querySelector("h3");
-    const orderCards = readyOrdersColumn.querySelectorAll(".order-card");
+  const columnTitle = readyOrdersColumn.querySelector("h3");
+  const orderCards = readyOrdersColumn.querySelectorAll(".order-card");
 
-    orderCards.forEach(card => card.classList.remove("closest-delivery"));
+  orderCards.forEach((card) => card.classList.remove("closest-delivery"));
 
-    if (closestOrder) {
-        const closestCard = document.getElementById(`pedido-${closestOrder.id}`);
-        if (closestCard) {
-            closestCard.classList.add("closest-delivery");
-            columnTitle.textContent = `Próximo: ${
-                closestOrder.clientName
-            } (${closestOrder.distance.toFixed(1)} km)`;
-        }
-    } else {
-        columnTitle.textContent = "Pronto para Entrega";
+  if (closestOrder) {
+    const closestCard = document.getElementById(`pedido-${closestOrder.id}`);
+    if (closestCard) {
+      closestCard.classList.add("closest-delivery");
+      columnTitle.textContent = `Próximo: ${
+        closestOrder.clientName
+      } (${closestOrder.distance.toFixed(1)} km)`;
     }
+  } else {
+    columnTitle.textContent = "Pronto para Entrega";
+  }
 }
 
 export function fillOrderForm(data) {
-    const fields = {
-        cakeName: document.getElementById("cakeName"),
-        clientName: document.getElementById("clientName"),
-        cep: document.getElementById("cep"),
-        rua: document.getElementById("rua"),
-        bairro: document.getElementById("bairro"),
-        numero: document.getElementById("numero"),
-        complemento: document.getElementById("complemento"),
-        whatsapp: document.getElementById("whatsapp"),
-    };
-    for (const key in fields) {
-        if (Object.prototype.hasOwnProperty.call(fields, key) && data[key]) {
-            fields[key].value = data[key];
-        }
+  const fields = {
+    cakeName: document.getElementById("cakeName"),
+    clientName: document.getElementById("clientName"),
+    cep: document.getElementById("cep"),
+    rua: document.getElementById("rua"),
+    bairro: document.getElementById("bairro"),
+    numero: document.getElementById("numero"),
+    complemento: document.getElementById("complemento"),
+    whatsapp: document.getElementById("whatsapp"),
+  };
+  for (const key in fields) {
+    if (Object.prototype.hasOwnProperty.call(fields, key) && data[key]) {
+      fields[key].value = data[key];
     }
+  }
 }
 
 export function printLabel(pedido, pedidoId) {
-    const printWindow = window.open("", "Etiqueta", "width=400,height=300");
-    printWindow.document.write(`
-      <html><head><title>Etiqueta</title>
-      <style>body{font-family:Arial;padding:10px} .label{border:1px dashed #000;padding:10px}</style>
-      </head><body>
-        <div class="label">
-          <h3>Pedido #${pedidoId ? pedidoId.substring(0, 5) : 'N/A'}</h3>
-          <p><strong>Cliente:</strong> ${pedido.nomeCliente}</p>
-          <p><strong>Telefone:</strong> ${pedido.whatsapp || 'N/A'}</p>
-          <p><strong>Endereço:</strong> ${pedido.endereco}</p>
-          <p><strong>Bolo:</strong> ${pedido.nomeBolo}</p>
-        </div>
-      </body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+  const shortId = pedidoId ? pedidoId.substring(0, 5).toUpperCase() : "N/A";
+  const printContent = `
+    <div style="font-family: 'Poppins', sans-serif; padding: 20px; border: 1px solid #ccc; width: 300px; box-sizing: border-box;">
+      <h3 style="text-align: center; margin-bottom: 15px;">Pedido Scatambulo #${shortId}</h3>
+      <p><strong>Bolo:</strong> ${pedido.nomeBolo || "Não informado"}</p>
+      <p><strong>Cliente:</strong> ${pedido.nomeCliente || "Não informado"}</p>
+      <p><strong>Endereço:</strong> ${pedido.endereco || "Não informado"}</p>
+      <p><strong>WhatsApp:</strong> ${pedido.whatsapp || "Não informado"}</p>
+      <p style="margin-top: 20px; text-align: center; font-size: 0.8em;">Obrigado pela preferência!</p>
+    </div>
+  `;
+
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write("<html><head><title>Etiqueta do Pedido</title>");
+  printWindow.document.write("<style>");
+  printWindow.document.write(`
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+    body { font-family: 'Poppins', sans-serif; margin: 0; padding: 10px; }
+  `);
+  printWindow.document.write("</style></head><body>");
+  printWindow.document.write(printContent);
+  printWindow.document.write("</body></html>");
+  printWindow.document.close();
+  printWindow.print();
 }
