@@ -182,36 +182,8 @@ export function createOrderCard(
     });
   }
 
-  card.appendChild(actions);
-  return card;
-}
 
-export function printLabel(pedido, pedidoId) {
-  const shortId = pedidoId ? pedidoId.substring(0, 5).toUpperCase() : "N/A";
-  const printContent = `
-    <div style="font-family: 'Poppins', sans-serif; padding: 20px; border: 1px solid #ccc; width: 300px; box-sizing: border-box;">
-      <h3 style="text-align: center; margin-bottom: 15px;">Pedido Scatambulo #${shortId}</h3>
-      <p><strong>Bolo:</strong> ${pedido.nomeBolo || "Não informado"}</p>
-      <p><strong>Cliente:</strong> ${pedido.nomeCliente || "Não informado"}</p>
-      <p><strong>Endereço:</strong> ${pedido.endereco || "Não informado"}</p>
-      <p><strong>WhatsApp:</strong> ${pedido.whatsapp || "Não informado"}</p>
-      <p style="margin-top: 20px; text-align: center; font-size: 0.8em;">Obrigado pela preferência!</p>
-    </div>
-  `;
 
-  const printWindow = window.open("", "_blank");
-  printWindow.document.write("<html><head><title>Etiqueta do Pedido</title>");
-  printWindow.document.write("<style>");
-  printWindow.document.write(`
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
-    body { font-family: 'Poppins', sans-serif; margin: 0; padding: 10px; }
-  `);
-  printWindow.document.write("</style></head><body>");
-  printWindow.document.write(printContent);
-  printWindow.document.write("</body></html>");
-  printWindow.document.close();
-  printWindow.print();
-}
 
 export function updateButtonsForNavigation(isNavigating) {
   console.log(`Admin Navigation buttons updated. Is navigating: ${isNavigating}`);
