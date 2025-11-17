@@ -1,576 +1,255 @@
-import { db, ref, set, onValue, update } from "./firebase.js";
-import { geocodeAddress, getRouteDetails, calcularDistancia, calculateSpeed } from "./utils.js";
+import { db, ref, set, onValue, update, get } from "./firebase.js";
+import { geocodeAddress, getRouteDetails, calculateSpeed } from "./utils.js";
+import * as Map from "./map.js";
+import * as UI from "./ui-entregador.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Proteção de rota: verifica se o usuário logado é o Entregador
-  const currentUser = JSON.parse(localStorage.getItem("currentUser")); // Proteção de rota: verifica se o usuário logado é o Entregador
+  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   if (!currentUser || currentUser.panel !== "entregador.html") {
     window.location.href = "index.html";
     return;
   }
 
-  // --- Seleção dos Elementos do DOM ---
-  const logoutButton = document.getElementById("logout-button");
-  const locationStatus = document.getElementById("location-status");
-  const permissionActions = document.getElementById("permission-actions");
-  const readyOrdersList = document.getElementById("ready-orders-list");
-  const etaDisplay = document.getElementById("eta-display");
-  const speedDisplay = document.getElementById("speed-display");
-  const distanceDisplay = document.getElementById("distance-display");
-  const navigationStatus = document.getElementById("navigation-status");
-  const confirmDeliveryModal = document.getElementById(
-    "confirm-delivery-modal"
-  );
-  const confirmDeliveryBtn = document.getElementById("confirm-delivery-btn");
-  const cancelDeliveryBtn = document.getElementById("cancel-delivery-btn");
-  const closeModalBtn = confirmDeliveryModal.querySelector(".close-button");
-
-  let map; // Declarada no escopo principal
-  let userLocationMarker;
   let entregadorLocation = null;
-  let routeLayer = null; // Para armazenar a camada da rota no mapa
-  let routeMarkers = []; // Para armazenar os marcadores de início e fim da rota
-  let orderIdToConfirm = null; // Armazena o ID do pedido a ser confirmado
-  let activeDelivery = null; // Armazena o estado da entrega ativa { orderId, destinationCoords }
-  let routeRecalculationInterval = null; // Armazena o intervalo para recalcular a rota
-  let knownReadyOrderIds = new Set(); // Rastreia pedidos prontos para notificação
-  const notificationSound = new Audio("/audio/new-order.mp3"); // Som de notificação
-  const deliveryCompleteSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3"); // Som para pedido entregue
+  let activeDelivery = null;
+  let routeRecalculationInterval = null;
+  let orderIdToConfirm = null;
+  const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
 
-  // --- INICIALIZAÇÃO ---
-  setupEventListeners();
-  initMap();
+  UI.setupEventListeners(
+    () => {
+      localStorage.removeItem("currentUser");
+      window.location.href = "index.html";
+    },
+    () => {
+      if (orderIdToConfirm) {
+        updateStatus(orderIdToConfirm, "entregue");
+        UI.showConfirmDeliveryModal(false);
+      }
+    },
+    () => UI.showConfirmDeliveryModal(false),
+    () => {
+        if (activeDelivery) {
+            orderIdToConfirm = activeDelivery.orderId;
+            UI.showConfirmDeliveryModal(true);
+        }
+    }
+  );
+
+  Map.initMap("map");
   checkGeolocationPermission();
   listenToFirebaseOrders();
 
-  /**
-   * Configura os ouvintes de eventos para a página.
-   */
-  function setupEventListeners() {
-    logoutButton.addEventListener("click", () => {
-      localStorage.removeItem("currentUser");
-      window.location.href = "index.html";
-    });
-
-    // --- Lógica do Modal de Confirmação ---
-    closeModalBtn.addEventListener("click", () => {
-      confirmDeliveryModal.style.display = "none";
-    });
-    cancelDeliveryBtn.addEventListener("click", () => {
-      confirmDeliveryModal.style.display = "none";
-    });
-    confirmDeliveryBtn.addEventListener("click", () => {
-      if (orderIdToConfirm) {
-        updateStatus(orderIdToConfirm, "entregue");
-        confirmDeliveryModal.style.display = "none";
-      }
-    });
-  }
-
-  /**
-   * Inicializa o mapa Leaflet.
-   */
-  function initMap() {
-    const mapElement = document.getElementById("map"); // Elemento do mapa
-    if (!mapElement) return; // Sai se o elemento do mapa não for encontrado
-
-    map = L.map(mapElement).setView([-23.5505, -46.6333], 13); // Ponto inicial (São Paulo)
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
-  }
-
-  /**
-   * Verifica o status da permissão de geolocalização e age de acordo.
-   */
   function checkGeolocationPermission() {
     if (!window.isSecureContext) {
-      locationStatus.textContent =
-        "Erro de segurança: A geolocalização só funciona em páginas seguras (HTTPS).";
+      UI.updateLocationStatus("Erro de segurança: A geolocalização só funciona em páginas seguras (HTTPS).");
       return;
     }
 
     if ("geolocation" in navigator && "permissions" in navigator) {
-      navigator.permissions
-        .query({ name: "geolocation" })
-        .then((permissionStatus) => {
-          updateUIForPermission(permissionStatus.state);
-          permissionStatus.onchange = () => {
-            updateUIForPermission(permissionStatus.state);
-          };
-        });
+      navigator.permissions.query({ name: "geolocation" }).then((permissionStatus) => {
+        handlePermissionChange(permissionStatus.state);
+        permissionStatus.onchange = () => handlePermissionChange(permissionStatus.state);
+      });
     } else {
-      // Fallback para navegadores mais antigos sem a API de Permissões
       startWatchingLocation();
     }
   }
 
-  /**
-   * Atualiza a interface do usuário com base no estado da permissão.
-   * @param {string} state - O estado da permissão ('granted', 'prompt', ou 'denied').
-   */
-  function updateUIForPermission(state) {
-    permissionActions.innerHTML = ""; // Limpa ações anteriores
-
+  function handlePermissionChange(state) {
     switch (state) {
       case "granted":
-        locationStatus.textContent =
-          "Permissão concedida. Iniciando monitoramento...";
+        UI.updateLocationStatus("Permissão concedida. Iniciando monitoramento...");
         startWatchingLocation();
         break;
       case "prompt":
-        locationStatus.textContent =
-          "Este aplicativo precisa da sua localização. Por favor, autorize no aviso do navegador.";
-        // Solicita a localização diretamente, o que fará o navegador exibir o prompt de permissão.
+        UI.updateLocationStatus("Este aplicativo precisa da sua localização. Por favor, autorize no aviso do navegador.");
         startWatchingLocation();
         break;
       case "denied":
-        locationStatus.textContent =
-          "Permissão de localização negada. Por favor, habilite o acesso nas configurações do seu navegador e do seu celular para continuar.";
+        UI.updateLocationStatus("Permissão de localização negada. Por favor, habilite o acesso nas configurações do seu navegador e do seu celular para continuar.");
         break;
     }
   }
 
-  /**
-   * Inicia o monitoramento da localização do dispositivo.
-   */
   function startWatchingLocation() {
-    // Geolocation API requer um contexto seguro (HTTPS) na maioria dos navegadores modernos.
-
-    if (!window.isSecureContext) {
-      locationStatus.textContent =
-        "Erro de segurança: A geolocalização só funciona em páginas seguras (HTTPS).";
-      return;
-    }
-
     if ("geolocation" in navigator) {
       navigator.geolocation.watchPosition(
         (position) => {
-          // Callback de sucesso
-          const { latitude, longitude } = position.coords;
-          const timestamp = Date.now(); // Adiciona o timestamp
-          const newEntregadorLocation = { latitude, longitude, timestamp }; // Nova localização com timestamp
+          const { latitude, longitude, speed } = position.coords;
+          entregadorLocation = { latitude, longitude, timestamp: Date.now() };
 
-          // Atualiza o mapa
-          const latLng = [latitude, longitude];
-          if (!userLocationMarker) {
-            // Se for a primeira vez, centraliza o mapa na localização do usuário
-            map.setView(latLng, 16);
-            userLocationMarker = L.marker(latLng, {
-              icon: L.icon({
-                iconUrl: "/CarroIcone/Versa2025.png",
-                iconSize: [70, 70],
-                iconAnchor: [35, 55], // Ajusta a âncora para a base do ícone
-              }),
-            }).addTo(map);
-          } else {
-            userLocationMarker.setLatLng(latLng);
-            // Se não houver entrega ativa, e o entregador se moveu para fora da tela, centraliza o mapa nele.
-            if (!activeDelivery && !map.getBounds().contains(userLocationMarker.getLatLng())) {
-              map.panTo(latLng);
-            }
-          }
+          Map.updateDeliveryMarkerOnMap(entregadorLocation);
+          UI.updateSpeedDisplay(speed || 0);
+          set(ref(db, "localizacao/entregador"), entregadorLocation);
+          UI.updateLocationStatus("Localização ativa.");
 
-          // Atualiza o marcador de velocidade
-          speedDisplay.style.display = "flex";
-          const speed = position.coords.speed; // em m/s
-          if (typeof speed === "number" && speed !== null) {
-            const speedKmh = Math.round(speed * 3.6);
-            speedDisplay.innerHTML = `${speedKmh}<span class="unit">km/h</span>`;
-          } else {
-            speedDisplay.innerHTML = `0<span class="unit">km/h</span>`;
-          }
-
-          // Envia a localização para o Firebase
-          const locationRef = ref(db, "localizacao/entregador");
-          set(locationRef, newEntregadorLocation);
-
-          // Se houver uma entrega ativa, atualiza a velocidade e lastEntregadorCoords no pedido
           if (activeDelivery) {
-            const pedidoRef = ref(db, `pedidos/${activeDelivery.orderId}/entrega`);
-            get(pedidoRef).then((snapshot) => {
-              const currentEntregaData = snapshot.val() || {};
-              const oldEntregadorLocation = currentEntregaData.lastEntregadorCoords;
-
-              const currentSpeed = calculateSpeed(newEntregadorLocation, oldEntregadorLocation);
-
-              update(pedidoRef, {
-                velocidade: parseFloat(currentSpeed),
-                lastEntregadorCoords: newEntregadorLocation,
-              });
-            }).catch((error) => {
-              console.error("Erro ao obter dados da entrega para calcular velocidade:", error);
+            update(ref(db, `entregas_ativas/${activeDelivery.orderId}`), {
+              lastLocation: { lat: latitude, lng: longitude, ts: Date.now() },
             });
+            updateDeliveryData();
           }
-
-          entregadorLocation = newEntregadorLocation; // Armazena a localização atualizada
-          locationStatus.textContent = "Localização ativa.";
         },
         (error) => {
-          // Callback de erro
-          let errorMessage = "Ocorreu um erro ao obter a localização.";
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage =
-                "Permissão de localização negada. Por favor, habilite o acesso à localização para este site nas configurações do seu navegador e do seu celular.";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage =
-                "Informações de localização não estão disponíveis no momento.";
-              break;
-            case error.TIMEOUT:
-              errorMessage = "A solicitação de localização expirou.";
-              break;
-          }
-          locationStatus.textContent = errorMessage;
+            let errorMessage = "Ocorreu um erro ao obter a localização.";
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = "Permissão de localização negada. Por favor, habilite o acesso à localização para este site nas configurações do seu navegador e do seu celular.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = "Informações de localização não estão disponíveis no momento.";
+                break;
+              case error.TIMEOUT:
+                errorMessage = "A solicitação de localização expirou.";
+                break;
+            }
+            UI.updateLocationStatus(errorMessage);
         },
         { enableHighAccuracy: true }
       );
     } else {
-      locationStatus.textContent =
-        "Geolocalização não é suportada por este navegador.";
+      UI.updateLocationStatus("Geolocalização não é suportada por este navegador.");
     }
   }
 
-  /**
-   * Ouve as alterações nos pedidos do Firebase e renderiza a lista de prontos.
-   */
   function listenToFirebaseOrders() {
-    const pedidosRef = ref(db, "pedidos/");
-    onValue(pedidosRef, (snapshot) => {
+    onValue(ref(db, "pedidos/"), (snapshot) => {
       const pedidos = snapshot.val() || {};
-      const readyOrders = {};
-      const currentReadyOrderIds = new Set();
-      let isFirstLoad = knownReadyOrderIds.size === 0;
-
-      for (const [id, pedido] of Object.entries(pedidos)) {
-        if (pedido.status === "pronto_para_entrega") {
-          readyOrders[id] = pedido;
-          currentReadyOrderIds.add(id);
-
-          // Se o ID não era conhecido e não é a primeira carga, é um novo pedido
-          if (!knownReadyOrderIds.has(id) && !isFirstLoad) {
-            // Toca o som de notificação
-            // A reprodução pode ser bloqueada pelo navegador se o usuário não tiver interagido com a página.
-            notificationSound.play().catch((error) => {
-              console.warn(
-                "Não foi possível tocar o som de notificação:",
-                error
-              );
-            });
-          }
-        }
+      const readyOrders = Object.fromEntries(
+        Object.entries(pedidos).filter(([, pedido]) => pedido.status === "pronto_para_entrega")
+      );
+      
+      const newReadyOrders = Object.keys(readyOrders).filter(id => !knownReadyOrderIds.has(id));
+      if(newReadyOrders.length > 0 && knownReadyOrderIds.size > 0){
+        notificationSound.play().catch(console.warn);
       }
+      knownReadyOrderIds = new Set(Object.keys(readyOrders));
 
-      // Atualiza o conjunto de IDs conhecidos
-      knownReadyOrderIds = currentReadyOrderIds;
-
-      renderReadyOrders(readyOrders);
+      UI.renderReadyOrders(readyOrders, (orderId) => {
+          orderIdToConfirm = orderId;
+          UI.showConfirmDeliveryModal(true);
+      }, startNavigation);
     });
   }
 
-  /**
-   * Renderiza os cards dos pedidos prontos para entrega.
-   * @param {object} orders - Objeto com os pedidos prontos.
-   */
-  function renderReadyOrders(orders) {
-    readyOrdersList.innerHTML = "";
-    if (Object.keys(orders).length === 0) {
-      readyOrdersList.innerHTML =
-        "<p>Nenhum pedido pronto para entrega no momento.</p>";
+  async function startNavigation(orderId, order) {
+    if (!entregadorLocation) {
+      alert("Aguardando sua localização para iniciar a entrega.");
+      return;
+    }
+    if (activeDelivery && activeDelivery.orderId !== orderId) {
+      alert("Finalize a entrega atual antes de iniciar uma nova rota.");
       return;
     }
 
-    for (const [orderId, order] of Object.entries(orders)) {
-      const card = document.createElement("div");
-      card.className = "order-card";
-      card.id = orderId; // Adiciona o ID do pedido ao card
-      card.innerHTML = `
-                <h4>${order.nomeBolo}</h4>
-                <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
-                <p><strong>Endereço:</strong> ${order.endereco}</p>
-                <div class="route-info" id="route-info-${orderId}"></div>
-                <div class="order-actions">
-                    <button class="btn-sucesso deliver-button">Entregar</button>
-                    <button class="btn-secondary route-button">Iniciar Entrega</button>
-                </div>
-            `;
-
-      card
-        .querySelector(".route-button")
-        .addEventListener("click", async () => {
-          if (!entregadorLocation) {
-            alert("Aguardando sua localização para iniciar a entrega.");
-            return;
-          }
-
-          // Se já estiver em uma entrega, não permite iniciar outra
-          if (activeDelivery && activeDelivery.orderId !== orderId) {
-            const activeCard = document.getElementById(activeDelivery.orderId);
-            if (activeCard) {
-              activeCard.classList.add("highlight-active");
-              setTimeout(() => {
-                activeCard.classList.remove("highlight-active");
-              }, 1500); // Remove o destaque após 1.5s
-            }
-            alert(
-              "Finalize a entrega atual antes de iniciar uma nova rota. O pedido ativo está piscando."
-            );
-            return;
-          }
-
-          if (activeDelivery && activeDelivery.orderId === orderId) {
-            stopNavigation();
-          } else {
-            startNavigation(orderId, order.endereco, order.nomeCliente);
-          }
-        });
-
-      card.querySelector(".deliver-button").addEventListener("click", () => {
-        orderIdToConfirm = orderId;
-        confirmDeliveryModal.style.display = "block";
+    if (activeDelivery && activeDelivery.orderId === orderId) {
+      stopNavigation();
+    } else {
+      const destinationCoords = await geocodeAddress(order.endereco);
+      if (!destinationCoords) {
+        alert("Não foi possível encontrar o endereço.");
+        return;
+      }
+      activeDelivery = { orderId, destinationCoords, order };
+      
+      set(ref(db, `entregas_ativas/${orderId}`), {
+          pedidoId: orderId,
+          entregadorId: currentUser.username,
+          cliente: { nome: order.nomeCliente, endereco: order.endereco },
+          statusEntrega: "em_andamento",
+          lastLocation: null
       });
 
-      readyOrdersList.appendChild(card);
+      UI.updateButtonsForNavigation(true, orderId);
+      UI.updateNavigationStatus(`Navegando para o pedido de ${order.nomeCliente}.`);
+      
+      calculateAndDrawRoute();
+      if (routeRecalculationInterval) clearInterval(routeRecalculationInterval);
+      routeRecalculationInterval = setInterval(calculateAndDrawRoute, 10000);
+
+      update(ref(db), {
+          [`/pedidos/${orderId}/status`]: "em_entrega",
+          [`/pedidos/${orderId}/entregadorId`]: currentUser.username,
+          [`/pedidos/${orderId}/entrega`]: {
+              distancia: "Calculando...",
+              tempoEstimado: "Calculando...",
+              velocidade: 0,
+              lastEntregadorCoords: entregadorLocation,
+          },
+      });
+      UI.showDynamicIsland(true, order);
     }
   }
 
-  /**
-   * Inicia o modo de navegação para um pedido.
-   */
-  async function startNavigation(orderId, address, clientName) {
-    const routeInfoDiv = document.querySelector(`#route-info-${orderId}`);
-    routeInfoDiv.textContent = "Calculando rota...";
-
-    const destinationCoords = await geocodeAddress(address);
-    if (!destinationCoords) {
-      routeInfoDiv.textContent = "Não foi possível encontrar o endereço.";
-      return;
-    }
-
-    activeDelivery = { orderId, destinationCoords };
-
-    // Atualiza a UI
-    updateButtonsForNavigation(true, orderId);
-    navigationStatus.textContent = `Navegando para o pedido de ${clientName}.`;
-    navigationStatus.style.display = "block";
-
-    // Calcula e exibe a rota inicial
-    await calculateAndDrawRoute();
-
-    // Inicia o recálculo periódico
-    if (routeRecalculationInterval) clearInterval(routeRecalculationInterval);
-    routeRecalculationInterval = setInterval(calculateAndDrawRoute, 10000); // Recalcula a cada 10 segundos
-
-    // Atualiza o status do pedido no Firebase para "em_entrega"
-    const updates = {};
-    updates[`/pedidos/${orderId}/status`] = "em_entrega";
-    updates[`/pedidos/${orderId}/entrega`] = {
-      // Inicializa os dados da entrega
-      distancia: "Calculando...",
-      tempoEstimado: "Calculando...",
-      velocidade: 0,
-      lastEntregadorCoords: {
-        latitude: entregadorLocation.latitude,
-        longitude: entregadorLocation.longitude,
-        timestamp: Date.now(),
-      },
-    };
-    await update(ref(db), updates);
-  }
-
-  /**
-   * Para o modo de navegação.
-   */
   function stopNavigation() {
     if (routeRecalculationInterval) clearInterval(routeRecalculationInterval);
     routeRecalculationInterval = null;
 
     const orderId = activeDelivery.orderId;
-    const routeInfoDiv = document.querySelector(`#route-info-${orderId}`);
-    if (routeInfoDiv) routeInfoDiv.textContent = "";
-
-    // Limpa os dados de entrega no Firebase ao finalizar a navegação
-    if (activeDelivery) {
-      const entregaRef = ref(db, `pedidos/${activeDelivery.orderId}/entrega`);
-      set(entregaRef, null);
-    }
+    set(ref(db, `pedidos/${orderId}/entrega`), null);
+    set(ref(db, `entregas_ativas/${orderId}`), null);
 
     activeDelivery = null;
-    clearRouteFromMap();
-    updateButtonsForNavigation(false, null);
-    navigationStatus.style.display = "none";
-    etaDisplay.style.display = "none";
-    distanceDisplay.style.display = "none";
+    Map.clearRouteFromMap();
+    UI.updateButtonsForNavigation(false, null);
+    UI.updateNavigationStatus("");
+    UI.updateEtaDisplay(null);
+    UI.updateDistanceDisplay(null);
+    UI.showDynamicIsland(false, null);
   }
 
-  /**
-   * Calcula e desenha a rota no mapa.
-   * Esta função já implementa a exibição da rota do entregador até o endereço do pedido
-   * e atualiza a estimativa de tempo (ETA) no elemento 'etaDisplay' sobre o mapa.
-   *
-   * Se a rota e o ETA não estiverem visíveis, verifique:
-   * 1. Se o botão "Iniciar Entrega" foi clicado para um pedido.
-   * 2. Se a geolocalização do entregador está ativa e funcionando.
-   * 3. Se as APIs de geocodificação (Nominatim) e roteamento (OSRM) estão respondendo.
-   * 4. Se não há regras CSS ou elementos sobrepondo 'etaDisplay' ou o mapa.
-   */
   async function calculateAndDrawRoute() {
     if (!activeDelivery || !entregadorLocation) return;
 
-    const { orderId, destinationCoords } = activeDelivery;
-    const routeInfoDiv = document.querySelector(`#route-info-${orderId}`);
+    const { destinationCoords } = activeDelivery;
+    const routeDetails = await getRouteDetails(entregadorLocation, destinationCoords);
 
-    const routeDetails = await getRouteDetails(
-      entregadorLocation,
-      destinationCoords
-    );
-
-    clearRouteFromMap(); // Limpa rota e marcadores anteriores
+    Map.clearRouteFromMap();
 
     if (routeDetails) {
-      if (routeInfoDiv) {
-        routeInfoDiv.innerHTML = `<strong>Distância:</strong> ${routeDetails.distance} km | <strong>Tempo:</strong> ${routeDetails.duration} min`;
-      }
-      etaDisplay.textContent = `${routeDetails.duration} min`;
-      etaDisplay.style.display = "block";
+      UI.updateEtaDisplay(routeDetails.duration);
+      Map.drawRouteOnMap(routeDetails.geometry);
+      Map.addRouteMarkers(entregadorLocation, destinationCoords);
+      UI.updateDistanceDisplay(routeDetails.distance);
+      
+      update(ref(db), {
+          [`/pedidos/${activeDelivery.orderId}/entrega/distancia`]: routeDetails.distance,
+          [`/pedidos/${activeDelivery.orderId}/entrega/tempoEstimado`]: routeDetails.duration,
+          [`/pedidos/${activeDelivery.orderId}/entrega/geometria`]: routeDetails.geometry,
+      });
 
-      routeLayer = L.geoJSON(routeDetails.geometry, {
-        style: { color: "#007bff", weight: 5 },
-      }).addTo(map);
-
-      // Atualiza os detalhes da rota no Firebase
-      const routeUpdate = {};
-      routeUpdate[`/pedidos/${orderId}/entrega/distancia`] =
-        routeDetails.distance;
-      routeUpdate[`/pedidos/${orderId}/entrega/tempoEstimado`] =
-        routeDetails.duration;
-      routeUpdate[`/pedidos/${orderId}/entrega/geometria`] =
-        routeDetails.geometry;
-      update(ref(db), routeUpdate);
-
-      addRouteMarkers(entregadorLocation, destinationCoords);
-
-      updateDistanceDisplay(routeDetails.distance);
-
-      // Ajusta a visualização do mapa:
-      // Se for a primeira vez que a rota é desenhada ou se o entregador se moveu significativamente,
-      // ajusta os limites para mostrar a rota completa.
-      // Caso contrário, apenas centraliza no entregador para uma experiência de navegação mais suave.
-      if (!map.getBounds().contains(userLocationMarker.getLatLng())) {
-        map.fitBounds(routeLayer.getBounds());
-      } else {
-        map.panTo(userLocationMarker.getLatLng());
-      }
-
-      // --- Proximity Check for Delivery Confirmation ---
-      const entregadorLatLng = L.latLng(entregadorLocation.latitude, entregadorLocation.longitude);
-      const destinationLatLng = L.latLng(destinationCoords.lat, destinationCoords.lon);
-      const distanceToDestination = entregadorLatLng.distanceTo(destinationLatLng); // Distance in meters
-
-      const PROXIMITY_THRESHOLD_METERS = 50; // e.g., 50 meters
-
-      if (distanceToDestination <= PROXIMITY_THRESHOLD_METERS) {
-        orderIdToConfirm = orderId;
-        confirmDeliveryModal.style.display = "block";
-        // Optionally, stop navigation automatically or provide a clear indication
-        // stopNavigation(); // Consider if navigation should stop automatically
+      const distanceToDestination = L.latLng(entregadorLocation.latitude, entregadorLocation.longitude).distanceTo(L.latLng(destinationCoords.lat, destinationCoords.lon));
+      if (distanceToDestination <= 50) {
+        orderIdToConfirm = activeDelivery.orderId;
+        UI.showConfirmDeliveryModal(true);
       }
     } else {
-      if (routeInfoDiv) routeInfoDiv.textContent = "Erro ao calcular a rota.";
-      etaDisplay.style.display = "none";
-      distanceDisplay.style.display = "none";
+      UI.updateEtaDisplay(null);
+      UI.updateDistanceDisplay(null);
     }
   }
 
-  /**
-   * Atualiza a aparência e o estado dos botões durante a navegação.
-   */
-  function updateButtonsForNavigation(isNavigating, activeOrderId) {
-    const allRouteButtons = document.querySelectorAll(".route-button");
-    allRouteButtons.forEach((button) => {
-      const card = button.closest(".order-card");
-      const orderId = card
-        .querySelector(".route-info")
-        .id.replace("route-info-", "");
+  async function updateDeliveryData() {
+    const snapshot = await get(ref(db, `pedidos/${activeDelivery.orderId}/entrega`));
+    const currentEntregaData = snapshot.val() || {};
+    const oldEntregadorLocation = currentEntregaData.lastEntregadorCoords;
+    const currentSpeed = calculateSpeed(entregadorLocation, oldEntregadorLocation);
 
-      if (isNavigating) {
-        if (orderId === activeOrderId) {
-          button.textContent = "Finalizar Navegação";
-          button.disabled = false;
-        } else {
-          button.disabled = true; // Desabilita botões de outras rotas
-        }
-      } else {
-        button.textContent = "Iniciar Entrega";
-        button.disabled = false;
-      }
+    update(ref(db, `pedidos/${activeDelivery.orderId}/entrega`), {
+      velocidade: parseFloat(currentSpeed),
+      lastEntregadorCoords: entregadorLocation,
     });
   }
 
-
-
-  /**
-   * Atualiza o display de distância no mapa.
-   */
-  function updateDistanceDisplay(distance) {
-    distanceDisplay.innerHTML = `${distance}<span class="unit">km</span>`;
-    distanceDisplay.style.display = "flex";
-  }
-
-  /**
-   * Adiciona marcadores de início (carro) e fim (pacote) da rota no mapa.
-   */
-  function addRouteMarkers(startCoords, endCoords) {
-    // O marcador do entregador (userLocationMarker) já está no mapa, então adicionamos apenas o do cliente.
-    // Usa um ícone customizado para a localização do cliente (fim da rota)
-    const clientIcon = L.icon({
-      iconUrl: "/CarroIcone/cliente.png",
-      iconSize: [50, 50], // Tamanho do ícone
-      iconAnchor: [25, 50], // Ponto do ícone que corresponde à localização
-    });
-
-    const endMarker = L.marker([endCoords.lat, endCoords.lon], {
-      icon: clientIcon,
-    }).addTo(map);
-
-    routeMarkers.push(endMarker); // Adiciona apenas o marcador do cliente para ser limpo depois
-  }
-
-  /**
-   * Limpa a rota e os marcadores de rota do mapa.
-   */
-  function clearRouteFromMap() {
-    if (routeLayer) {
-      map.removeLayer(routeLayer);
-      routeLayer = null;
-    }
-    routeMarkers.forEach((marker) => map.removeLayer(marker));
-    routeMarkers = [];
-  }
-
-  /**
-   * Atualiza o status de um pedido no Firebase.
-   */
   async function updateStatus(pedidoId, newStatus) {
-    const updates = {};
-    updates[`/pedidos/${pedidoId}/status`] = newStatus;
-    try {
-      await update(ref(db), updates);
-      // Se a entrega finalizada era a que estava em navegação, para o modo de navegação.
-      if (activeDelivery && activeDelivery.orderId === pedidoId) {
-        stopNavigation();
-      }
-      if (newStatus === "entregue") {
-        deliveryCompleteSound.play().catch((error) => {
-          console.warn("Não foi possível tocar o som de entrega concluída:", error);
-        });
-      }
+    await update(ref(db), { [`/pedidos/${pedidoId}/status`]: newStatus });
+    if (activeDelivery && activeDelivery.orderId === pedidoId) {
+      stopNavigation();
+    }
+    if (newStatus === "entregue") {
+      notificationSound.play().catch(console.warn);
       alert('Status do pedido atualizado para "Entregue" com sucesso!');
-    } catch (err) {
-      console.error("Erro ao atualizar status:", err);
-      alert("Ocorreu um erro ao atualizar o status do pedido.");
     }
   }
 });

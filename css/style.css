@@ -509,3 +509,32 @@ header {
         font-size: 1.2em;
     }
 }
+
+.dynamic-island {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 1001;
+  transition: bottom 0.3s ease-in-out;
+}
+
+#dynamic-island-content p {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+#dynamic-island-content p strong {
+  color: #a0a0a0;
+}
+

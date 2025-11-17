@@ -78,3 +78,69 @@ export function calculateSpeed(newLoc, oldLoc) {
 
   return (dist / timeDiffHours).toFixed(1); // km/h
 }
+
+/**
+ * Analisa uma mensagem de texto do WhatsApp para extrair detalhes do pedido.
+ * @param {string} text - A mensagem do WhatsApp.
+ * @returns {object} Um objeto com os detalhes do pedido.
+ */
+export function parseWhatsappMessage(text) {
+  const normalizedText = text.replace(/\r/g, "").trim();
+  const lines = normalizedText.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  const phone = extractPhoneNumber(normalizedText);
+  const name = extractClientName(normalizedText, lines);
+  const address = extractAddress(normalizedText);
+  const items = extractItems(normalizedText, lines);
+
+  return {
+    cliente: { nome: name, telefone: phone, enderecoRaw: address },
+    itens,
+    raw: text,
+  };
+}
+
+function extractPhoneNumber(text) {
+  const phoneMatch = text.match(/(\+?\d{2}\s?)?(\(?\d{2}\)?\s?)?9?\d{4}-?\d{4}/);
+  return phoneMatch ? phoneMatch[0] : null;
+}
+
+function extractClientName(text, lines) {
+  const nameMatch = text.match(/nome[:\-]\s*([A-Za-zÀ-ú ]{2,40})/i);
+  return nameMatch ? nameMatch[1].trim() : lines[0] || "Cliente";
+}
+
+function extractAddress(text) {
+  const addrMatch = text.match(
+    /(rua|av|avenida|rodovia|rod|travessa)\s+([^\n,]+)/i
+  );
+  return addrMatch ? addrMatch[0] : null;
+}
+
+function extractItems(text, lines) {
+  let items = [];
+  
+  // Tenta pegar itens com "x" ou "-"
+  lines.forEach((l) => {
+    const m = l.match(/^(\d+)\s?[x×]\s?(.+)/i) || l.match(/^-\s*(.+)/);
+    if (m) {
+      const qty = m[1] ? parseInt(m[1]) : 1;
+      const nomeItem = m[2] || m[1];
+      items.push({ nome: nomeItem.trim(), qty, price: 0 });
+    }
+  });
+
+  // Se não houver itens, tenta pegar depois de "pedido:" ou "itens:"
+  if (items.length === 0) {
+    const itensBlock = text.split(/pedido:|itens:|pedido -/i)[1];
+    if (itensBlock) {
+      itensBlock.split(/[,\n;]/).forEach((part) => {
+        const m = part.trim().match(/^(\d+)?\s*(.+)/);
+        if (m && m[2])
+          items.push({ nome: m[2].trim(), qty: m[1] ? parseInt(m[1]) : 1, price: 0 });
+      });
+    }
+  }
+  
+  return items;
+}
