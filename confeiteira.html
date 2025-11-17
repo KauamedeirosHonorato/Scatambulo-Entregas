@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
 <body>
     <header>
@@ -23,19 +22,6 @@
     </header>
 
     <main class="container">
-        <section id="map-section">
-            <h2>Localização do Entregador</h2>
-            <div id="map-container">
-                <div id="map"></div>
-                <div id="map-overlay-top">
-                    <div id="confeiteira-eta-display" class="map-eta-display"></div>
-                    <div id="confeiteira-speed-display" class="map-info-icon"></div>
-                    <div id="confeiteira-distance-display" class="map-info-icon"></div>
-                    <div id="confeiteira-active-order-display" class="map-info-text"></div>
-                </div>
-            </div>
-            <p id="delivery-person-status">Aguardando localização do entregador...</p>
-        </section>
         <section id="orders-section">
             <h2>Pedidos para Preparar</h2>
             <div id="kanban-board">
@@ -47,7 +33,6 @@
     <!-- Contêiner para carregar os modais dinamicamente -->
     <div id="modal-container"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script type="module" src="js/confeiteira.js"></script>
 </body>
 </html>

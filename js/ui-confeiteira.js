@@ -82,71 +82,6 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
   });
 }
 
-export function updateConfeiteiraMapInfo(
-  activeDeliveryOrder,
-  entregaData,
-  currentSpeed
-) {
-  const confeiteiraEtaDisplay = document.getElementById(
-    "confeiteira-eta-display"
-  );
-  const confeiteiraSpeedDisplay = document.getElementById(
-    "confeiteira-speed-display"
-  );
-  const confeiteiraDistanceDisplay = document.getElementById(
-    "confeiteira-distance-display"
-  ); // New element for distance
-  const confeiteiraActiveOrderDisplay = document.getElementById(
-    "confeiteira-active-order-display"
-  );
-
-  if (entregaData) {
-    confeiteiraEtaDisplay.innerHTML = `${
-      entregaData.tempoEstimado ? Math.round(entregaData.tempoEstimado / 60) : "..."
-    }<span class="unit">min</span>`; // Convert seconds to minutes
-    confeiteiraEtaDisplay.style.display = "flex";
-    confeiteiraSpeedDisplay.innerHTML = `${Math.round(
-      currentSpeed || 0
-    )}<span class="unit">km/h</span>`;
-    confeiteiraSpeedDisplay.style.display = "flex";
-    confeiteiraDistanceDisplay.innerHTML = `${
-      entregaData.distancia ? (entregaData.distancia / 1000).toFixed(1) : "..."
-    }<span class="unit">km</span>`; // Convert meters to kilometers
-    confeiteiraDistanceDisplay.style.display = "flex";
-    confeiteiraActiveOrderDisplay.textContent = `Entregando para: ${activeDeliveryOrder.nomeCliente}`;
-    confeiteiraActiveOrderDisplay.style.display = "block";
-  } else {
-    clearConfeiteiraMapInfo();
-  }
-}
-
-export function clearConfeiteiraMapInfo() {
-  const confeiteiraEtaDisplay = document.getElementById(
-    "confeiteira-eta-display"
-  );
-  const confeiteiraSpeedDisplay = document.getElementById(
-    "confeiteira-speed-display"
-  );
-  const confeiteiraDistanceDisplay = document.getElementById(
-    "confeiteira-distance-display"
-  ); // Clear distance display
-  const confeiteiraActiveOrderDisplay = document.getElementById(
-    "confeiteira-active-order-display"
-  );
-
-  confeiteiraEtaDisplay.style.display = "none";
-  confeiteiraSpeedDisplay.style.display = "none";
-  confeiteiraDistanceDisplay.style.display = "none"; // Clear distance display
-  confeiteiraActiveOrderDisplay.style.display = "none";
-}
-
-export function updateDeliveryPersonStatus(status) {
-  const deliveryPersonStatus = document.getElementById(
-    "delivery-person-status"
-  );
-  deliveryPersonStatus.textContent = status;
-}
-
 export function fillOrderForm(data) {
   const fields = {
     cakeName: document.getElementById("cakeName"),
@@ -167,10 +102,4 @@ export function fillOrderForm(data) {
 
 export function printLabel(pedido, pedidoId) {
   genericPrintLabel(pedido, pedidoId);
-}
-
-export function updateButtonsForNavigation(isNavigating) {
-  console.log(`Navigation buttons updated. Is navigating: ${isNavigating}`);
-  // Implement actual UI button updates here based on isNavigating status
-  // e.g., disable "Start Delivery" button, enable "Stop Navigation" button
 }

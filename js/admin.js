@@ -1,15 +1,14 @@
 import {
   listenToPedidos,
-  listenToEntregadorLocation,
   createNewOrder,
   updateOrderStatus,
   clearDeliveredOrders,
   getPedido,
   updatePedido,
 } from "./firebase.js";
-import { geocodeAddress, getRouteDetails, calculateSpeed, parseWhatsappMessage } from "./utils.js";
+import { parseWhatsappMessage } from "./utils.js";
 import { loadComponents } from "./componentLoader.js";
-import * as MapLogic from "./map-logic.js";
+// Removed: import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -29,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "#modal-container",
     ["components/modal-new-order.html", "components/modal-read-message.html"],
     () => {
-      MapLogic.initializeMapWithLocation("map");
+      // Removed: MapLogic.initializeMapWithLocation("map");
       setupUIEventListeners();
       listenToFirebaseChanges();
     }
@@ -71,47 +70,47 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       isFirstLoad = false;
       UI.renderBoard(pedidos, updateOrderStatus, UI.printLabel);
-      MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
+      // Removed: MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
     });
 
-    listenToEntregadorLocation((location) => {
-      MapLogic.updateEntregadorLocation(location);
-      updateMapInfo();
-    });
+    // Removed: listenToEntregadorLocation((location) => {
+    // Removed:   MapLogic.updateEntregadorLocation(location);
+    // Removed:   updateMapInfo();
+    // Removed: });
   }
 
-  async function updateMapInfo() {
-    const activeDeliveryOrder = MapLogic.getActiveDelivery();
-    const entregadorLocation = MapLogic.getEntregadorLocation();
-
-    if (!activeDeliveryOrder || !entregadorLocation) {
-      UI.updateAdminMapInfo(null);
-      return;
-    }
-
-    // `entregaData` should now be available directly from `activeDeliveryOrder`
-    // as `MapLogic.processActiveDelivery` populates it via the onRouteUpdate callback.
-    const entregaData = activeDeliveryOrder.entrega;
-
-    if (entregaData) {
-      const currentSpeed = calculateSpeed(
-        entregadorLocation,
-        entregaData.lastEntregadorCoords
-      );
-
-      // Only update Firebase if speed is a valid number
-      if (typeof currentSpeed === 'number' && !isNaN(currentSpeed)) {
-        await updatePedido(activeDeliveryOrder.id, {
-          "entrega/velocidade": parseFloat(currentSpeed),
-        });
-      }
-
-      UI.updateAdminMapInfo(activeDeliveryOrder, entregaData, currentSpeed);
-    } else {
-      // If no entregaData, clear admin map info
-      UI.updateAdminMapInfo(null);
-    }
-  }
+  // Removed: async function updateMapInfo() {
+  // Removed:   const activeDeliveryOrder = MapLogic.getActiveDelivery();
+  // Removed:   const entregadorLocation = MapLogic.getEntregadorLocation();
+  // Removed:
+  // Removed:   if (!activeDeliveryOrder || !entregadorLocation) {
+  // Removed:     UI.updateAdminMapInfo(null);
+  // Removed:     return;
+  // Removed:   }
+  // Removed:
+  // Removed:   // `entregaData` should now be available directly from `activeDeliveryOrder`
+  // Removed:   // as `MapLogic.processActiveDelivery` populates it via the onRouteUpdate callback.
+  // Removed:   const entregaData = activeDeliveryOrder.entrega;
+  // Removed:
+  // Removed:   if (entregaData) {
+  // Removed:     const currentSpeed = calculateSpeed(
+  // Removed:       entregadorLocation,
+  // Removed:       entregaData.lastEntregadorCoords
+  // Removed:     );
+  // Removed:
+  // Removed:     // Only update Firebase if speed is a valid number
+  // Removed:     if (typeof currentSpeed === 'number' && !isNaN(currentSpeed)) {
+  // Removed:       await updatePedido(activeDeliveryOrder.id, {
+  // Removed:         "entrega/velocidade": parseFloat(currentSpeed),
+  // Removed:       });
+  // Removed:     }
+  // Removed:
+  // Removed:     UI.updateAdminMapInfo(activeDeliveryOrder, entregaData, currentSpeed);
+  // Removed:   } else {
+  // Removed:     // If no entregaData, clear admin map info
+  // Removed:     UI.updateAdminMapInfo(null);
+  // Removed:   }
+  // Removed: }
 
   function handleNewOrderSubmit(e) {
     e.preventDefault();

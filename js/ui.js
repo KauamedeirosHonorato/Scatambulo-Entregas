@@ -189,48 +189,7 @@ export function createOrderCard(
 
 
 
-export function updateButtonsForNavigation(isNavigating) {
-  console.log(`Admin Navigation buttons updated. Is navigating: ${isNavigating}`);
-  // Implement actual UI button updates here based on isNavigating status
-  // e.g., disable "Start Delivery" button, enable "Stop Navigation" button
-}
 
-export function updateAdminMapInfo(
-  activeDeliveryOrder,
-  entregaData,
-  currentSpeed
-) {
-  const adminEtaDisplay = document.getElementById("admin-eta-display");
-  const adminSpeedDisplay = document.getElementById("admin-speed-display");
-  const adminDistanceDisplay = document.getElementById(
-    "admin-distance-display"
-  ); // New element for distance
-  const adminActiveOrderDisplay = document.getElementById(
-    "admin-active-order-display"
-  );
-
-  if (entregaData && activeDeliveryOrder) {
-    adminEtaDisplay.innerHTML = `${
-      entregaData.tempoEstimado ? Math.round(entregaData.tempoEstimado / 60) : "..."
-    }<span class="unit">min</span>`; // Convert seconds to minutes
-    adminEtaDisplay.style.display = "flex";
-    adminSpeedDisplay.innerHTML = `${Math.round(
-      currentSpeed || 0
-    )}<span class="unit">km/h</span>`;
-    adminSpeedDisplay.style.display = "flex";
-    adminDistanceDisplay.innerHTML = `${
-      entregaData.distancia ? (entregaData.distancia / 1000).toFixed(1) : "..."
-    }<span class="unit">km</span>`; // Convert meters to kilometers
-    adminDistanceDisplay.style.display = "flex";
-    adminActiveOrderDisplay.textContent = `Entregando para: ${activeDeliveryOrder.nomeCliente}`;
-    adminActiveOrderDisplay.style.display = "block";
-  } else {
-    adminEtaDisplay.style.display = "none";
-    adminSpeedDisplay.style.display = "none";
-    adminDistanceDisplay.style.display = "none"; // Clear distance display
-    adminActiveOrderDisplay.style.display = "none";
-  }
-}
 
 export function highlightClosestOrder(closestOrder) {
   const readyOrdersColumn = document.querySelector(

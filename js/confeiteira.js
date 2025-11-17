@@ -1,12 +1,11 @@
 import {
   listenToPedidos,
-  listenToEntregadorLocation,
   createNewOrder,
   updateOrderStatus,
 } from "./firebase.js";
-import { parseWhatsappMessage, calculateSpeed } from "./utils.js";
+import { parseWhatsappMessage } from "./utils.js";
 import { loadComponents } from "./componentLoader.js";
-import * as MapLogic from "./map-logic.js";
+// Removed: import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui-confeiteira.js";
 
 // Configurações e Constantes
@@ -55,7 +54,7 @@ function initApp() {
     "#modal-container",
     ["components/modal-new-order.html", "components/modal-read-message.html"],
     () => {
-      MapLogic.initializeMapWithLocation("map");
+      // Removed: MapLogic.initializeMapWithLocation("map");
       setupUIEventListeners();
       listenToFirebaseChanges();
     }
@@ -108,48 +107,48 @@ function handleLogout() {
         )
       );
       UI.renderBoard(confeiteiraPedidos, updateOrderStatus, UI.printLabel);
-      MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
+      // Removed: MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
     });
   
-    listenToEntregadorLocation((location) => {
-      MapLogic.updateEntregadorLocation(location);
-      if (!location) {
-        UI.updateDeliveryPersonStatus("Aguardando localização do entregador...");
-        return;
-      }
-      UI.updateDeliveryPersonStatus(
-        `Entregador localizado em: ${location.latitude.toFixed(
-          4
-        )}, ${location.longitude.toFixed(4)}`
-      );
-      updateMapInfo();
-    });
+    // Removed: listenToEntregadorLocation((location) => {
+    // Removed:   MapLogic.updateEntregadorLocation(location);
+    // Removed:   if (!location) {
+    // Removed:     UI.updateDeliveryPersonStatus("Aguardando localização do entregador...");
+    // Removed:     return;
+    // Removed:   }
+    // Removed:   UI.updateDeliveryPersonStatus(
+    // Removed:     `Entregador localizado em: ${location.latitude.toFixed(
+    // Removed:       4
+    // Removed:     )}, ${location.longitude.toFixed(4)}`
+    // Removed:   );
+    // Removed:   updateMapInfo();
+    // Removed: });
   }
-  function updateMapInfo() {
-    const activeDeliveryOrder = MapLogic.getActiveDelivery();
-    const entregadorLocation = MapLogic.getEntregadorLocation();
-  
-    if (!activeDeliveryOrder || !entregadorLocation) {
-      UI.clearConfeiteiraMapInfo();
-      return;
-    }
-  
-    const entregaData = activeDeliveryOrder.entrega;
-    if (!entregaData) {
-      UI.clearConfeiteiraMapInfo();
-      return;
-    }
-  
-    const currentSpeed = calculateSpeed(
-      entregadorLocation,
-      entregaData.lastEntregadorCoords
-    );
-    UI.updateConfeiteiraMapInfo(
-      activeDeliveryOrder,
-      entregaData,
-      currentSpeed
-    );
-  }
+  // Removed: function updateMapInfo() {
+  // Removed:   const activeDeliveryOrder = MapLogic.getActiveDelivery();
+  // Removed:   const entregadorLocation = MapLogic.getEntregadorLocation();
+  // Removed:
+  // Removed:   if (!activeDeliveryOrder || !entregadorLocation) {
+  // Removed:     UI.clearConfeiteiraMapInfo();
+  // Removed:     return;
+  // Removed:   }
+  // Removed:
+  // Removed:   const entregaData = activeDeliveryOrder.entrega;
+  // Removed:   if (!entregaData) {
+  // Removed:     UI.clearConfeiteiraMapInfo();
+  // Removed:     return;
+  // Removed:   }
+  // Removed:
+  // Removed:   const currentSpeed = calculateSpeed(
+  // Removed:     entregadorLocation,
+  // Removed:     entregaData.lastEntregadorCoords
+  // Removed:   );
+  // Removed:   UI.updateConfeiteiraMapInfo(
+  // Removed:     activeDeliveryOrder,
+  // Removed:     entregaData,
+  // Removed:     currentSpeed
+  // Removed:   );
+  // Removed: }
   function handleNewOrderSubmit(e) {
     e.preventDefault();
     const form = e.target;
