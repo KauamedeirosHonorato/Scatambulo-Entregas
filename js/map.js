@@ -21,7 +21,7 @@ export function initMap(elementId) {
  */
 export function updateDeliveryMarkerOnMap(location) {
   if (location && map) {
-    const { latitude, longitude } = location;
+    const { latitude, longitude, heading } = location;
     const latLng = [latitude, longitude];
 
     if (deliveryMarker) {
