@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let orderIdToConfirm = null;
   const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
   let knownReadyOrderIds = new Set();
+  let isFollowingDeliveryPerson = false; // New state variable
 
   UI.setupEventListeners(
     () => {
@@ -34,7 +35,8 @@ document.addEventListener("DOMContentLoaded", () => {
             orderIdToConfirm = activeDelivery.orderId;
             UI.showConfirmDeliveryModal(true);
         }
-    }
+    },
+    toggleFollowMe // Pass the new function to UI setup
   );
 
   Map.initMap("map");
@@ -81,10 +83,12 @@ document.addEventListener("DOMContentLoaded", () => {
           entregadorLocation = { latitude, longitude, timestamp: Date.now() };
 
           Map.updateDeliveryMarkerOnMap(entregadorLocation);
-          if (activeDelivery && activeDelivery.destinationCoords) {
-            Map.fitMapToBounds(entregadorLocation, activeDelivery.destinationCoords);
-          } else {
-            Map.fitMapToBounds(entregadorLocation, null); // Center on delivery person only
+          if (isFollowingDeliveryPerson) { // Only re-center if follow me is active
+            if (activeDelivery && activeDelivery.destinationCoords) {
+              Map.fitMapToBounds(entregadorLocation, activeDelivery.destinationCoords);
+            } else {
+              Map.fitMapToBounds(entregadorLocation, null); // Center on delivery person only
+            }
           }
           UI.updateSpeedDisplay(speed || 0);
           set(ref(db, "localizacao/entregador"), entregadorLocation);
@@ -116,6 +120,19 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     } else {
       UI.updateLocationStatus("Geolocalização não é suportada por este navegador.");
+    }
+  }
+
+  function toggleFollowMe() {
+    isFollowingDeliveryPerson = !isFollowingDeliveryPerson;
+    UI.toggleFollowMeButton(isFollowingDeliveryPerson);
+    // Immediately re-center if activated
+    if (isFollowingDeliveryPerson && entregadorLocation) {
+        if (activeDelivery && activeDelivery.destinationCoords) {
+            Map.fitMapToBounds(entregadorLocation, activeDelivery.destinationCoords);
+        } else {
+            Map.fitMapToBounds(entregadorLocation, null);
+        }
     }
   }
 

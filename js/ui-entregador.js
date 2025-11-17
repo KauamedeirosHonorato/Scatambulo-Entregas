@@ -1,15 +1,26 @@
-export function setupEventListeners(onLogout, onConfirmDelivery, onCancelDelivery, onFinishDynamicIsland) {
+export function setupEventListeners(onLogout, onConfirmDelivery, onCancelDelivery, onFinishDynamicIsland, onToggleFollowMe) {
   const logoutButton = document.getElementById("logout-button");
   const confirmDeliveryBtn = document.getElementById("confirm-delivery-btn");
   const cancelDeliveryBtn = document.getElementById("cancel-delivery-btn");
   const closeModalBtn = document.querySelector("#confirm-delivery-modal .close-button");
   const dynamicIslandFinishBtn = document.getElementById("dynamic-island-finish-btn");
+  const followMeButton = document.getElementById("follow-me-button");
 
   logoutButton.addEventListener("click", onLogout);
   confirmDeliveryBtn.addEventListener("click", onConfirmDelivery);
   cancelDeliveryBtn.addEventListener("click", onCancelDelivery);
   closeModalBtn.addEventListener("click", onCancelDelivery);
   dynamicIslandFinishBtn.addEventListener("click", onFinishDynamicIsland);
+  followMeButton.addEventListener("click", onToggleFollowMe);
+}
+
+export function toggleFollowMeButton(isActive) {
+    const followMeButton = document.getElementById("follow-me-button");
+    if (isActive) {
+        followMeButton.classList.add("active");
+    } else {
+        followMeButton.classList.remove("active");
+    }
 }
 
 export function renderReadyOrders(orders, onDeliver, onStartNavigation) {

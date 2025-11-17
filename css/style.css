@@ -114,7 +114,7 @@ header {
 }
 
 /* === BOTÕES === */
-.btn-primary, .btn-secondary {
+.btn-primary, .btn-secondary, .btn-sucesso, .btn-danger {
     padding: 10px 20px;
     border: none;
     border-radius: 8px;
@@ -123,6 +123,17 @@ header {
     font-weight: 600;
     margin: 5px; /* Adiciona um pequeno espaçamento para quebra de linha */
     transition: all 0.3s;
+}
+
+/* Base style for all header buttons for visual consistency */
+.header-container div button {
+    background-color: var(--cor-secundaria); /* Neutral background */
+    color: var(--cor-texto); /* Neutral text color */
+    border: 1px solid #ccc; /* Subtle border */
+}
+
+.header-container div button:hover {
+    background-color: #d0d0d0; /* Hover for neutral buttons */
 }
 
 .btn-primary {
@@ -226,6 +237,29 @@ header {
 .map-info-icon .unit {
     font-size: 0.7em;
     font-weight: normal;
+}
+
+.map-control-button {
+    background-color: rgba(0, 0, 0, 0.75);
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: var(--sombra);
+    transition: background-color 0.3s ease;
+}
+
+.map-control-button:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+.map-control-button.active {
+    background-color: var(--cor-destaque);
+    border-color: var(--cor-destaque);
 }
 
 /* === PAINÉIS (ADMIN, CONFEITEIRA, ENTREGADOR) === */
