@@ -87,9 +87,12 @@ export function updateNavigationStatus(status) {
 
 export function updateSpeedDisplay(speed) {
   const speedDisplay = document.getElementById("speed-display");
-  speedDisplay.style.display = "flex";
-  const speedKmh = Math.round(speed * 3.6);
-  speedDisplay.innerHTML = `${speedKmh}<span class="unit">km/h</span>`;
+  if (speed && speed > 0) {
+    speedDisplay.innerHTML = `${Math.round(speed)}<span class="unit">km/h</span>`;
+    speedDisplay.style.display = "flex";
+  } else {
+    speedDisplay.style.display = "none";
+  }
 }
 
 export function updateEtaDisplay(duration) {

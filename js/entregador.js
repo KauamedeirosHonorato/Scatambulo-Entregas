@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   let entregadorLocation = null;
+  let previousEntregadorLocation = null;
   let activeDelivery = null;
   let orderIdToConfirm = null;
   const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
@@ -102,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
       navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude, speed, heading } = position.coords;
+          previousEntregadorLocation = entregadorLocation; // Store current location as previous
           entregadorLocation = { latitude, longitude, timestamp: Date.now(), heading: heading || 0 };
 
           Map.updateDeliveryMarkerOnMap(entregadorLocation);
@@ -250,6 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
     UI.updateDistanceDisplay(null);
     UI.showDynamicIsland(false, null);
     Map.updateClientMarkerOnMap(null);
+    Map.clearRouteFromMap();
   }
 
   async function handleCancelNavigation() {
@@ -276,12 +279,16 @@ document.addEventListener("DOMContentLoaded", () => {
       UI.updateEtaDisplay(routeDetails.duration);
       UI.updateDistanceDisplay(routeDetails.distance);
 
+      const speed = calculateSpeed(entregadorLocation, previousEntregadorLocation);
+      UI.updateSpeedDisplay(speed);
+
       // Atualiza os dados da rota no Firebase
       update(ref(db), {
         [`/pedidos/${activeDelivery.orderId}/entrega/distancia`]:
           routeDetails.distance,
         [`/pedidos/${activeDelivery.orderId}/entrega/tempoEstimado`]:
           routeDetails.duration,
+        [`/pedidos/${activeDelivery.orderId}/entrega/velocidade`]: speed,
         [`/pedidos/${activeDelivery.orderId}/entrega/geometria`]:
           routeDetails.geometry,
       });
@@ -306,6 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Failed to get route details:", routeDetails ? routeDetails.error : "Unknown error");
       UI.updateEtaDisplay(null);
       UI.updateDistanceDisplay(null);
+      UI.updateSpeedDisplay(0);
       // Optionally, alert the user or show a message on the UI
       // alert("Não foi possível obter detalhes da rota. Tente novamente mais tarde.");
     }

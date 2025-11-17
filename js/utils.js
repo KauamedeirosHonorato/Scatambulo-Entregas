@@ -82,7 +82,7 @@ export function calculateSpeed(newLoc, oldLoc) {
 
   if (timeDiffHours === 0) return 0; // Evita divisão por zero
 
-  return (dist / timeDiffHours).toFixed(1); // km/h
+  return parseFloat((dist / timeDiffHours).toFixed(1)); // km/h
 }
 
 /**
