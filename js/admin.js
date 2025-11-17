@@ -92,7 +92,9 @@ document.addEventListener("DOMContentLoaded", () => {
       activeDeliveryClientCoords = await geocodeAddress(activeDeliveryOrder.endereco);
       updateMapForActiveDelivery();
     } else {
-      await findAndHighlightClosest(pedidos);
+      // If no active delivery, ensure client marker and route are cleared
+      Map.updateClientMarkerOnMap(null);
+      Map.clearRouteFromMap();
     }
     updateMapFocus();
   }
@@ -134,9 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeDeliveryOrder && activeDeliveryClientCoords) {
       Map.fitMapToBounds(entregadorLocation, activeDeliveryClientCoords);
       Map.updateClientMarkerOnMap(activeDeliveryClientCoords);
-    } else if (closestOrder) {
-      Map.fitMapToBounds(entregadorLocation, closestOrder.coords);
-      Map.updateClientMarkerOnMap(closestOrder.coords);
     } else if (entregadorLocation) {
         Map.fitMapToBounds(entregadorLocation, null);
         Map.updateClientMarkerOnMap(null);
@@ -144,32 +143,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function updateMapForActiveDelivery() {
-    if (!activeDeliveryOrder || !activeDeliveryClientCoords || !entregadorLocation) return;
+    if (
+      !activeDeliveryOrder ||
+      !activeDeliveryClientCoords ||
+      !entregadorLocation
+    )
+      return;
 
-    const routeDetails = await getRouteDetails(
-      {
-        latitude: entregadorLocation.latitude,
-        longitude: entregadorLocation.longitude,
-      },
-      activeDeliveryClientCoords
-    );
+    // Pega os detalhes da entrega (incluindo a rota) que o entregador salvou no Firebase.
+    const fullActiveDeliveryOrder = await getPedido(activeDeliveryOrder.id);
+    const entregaData = fullActiveDeliveryOrder.entrega;
 
-    if (routeDetails) {
-      const fullActiveDeliveryOrder = await getPedido(activeDeliveryOrder.id);
+    if (entregaData) {
       const currentSpeed = calculateSpeed(
         entregadorLocation,
-        fullActiveDeliveryOrder.entrega?.lastEntregadorCoords
+        entregaData.lastEntregadorCoords
       );
 
+      // Atualiza apenas a velocidade no Firebase, pois a rota já foi salva pelo entregador.
       await updatePedido(activeDeliveryOrder.id, {
-        "entrega/geometria": routeDetails.geometry,
-        "entrega/distancia": parseFloat(routeDetails.distance),
-        "entrega/tempoEstimado": routeDetails.duration,
         "entrega/velocidade": parseFloat(currentSpeed),
       });
 
-      UI.updateAdminMapInfo(activeDeliveryOrder, routeDetails, currentSpeed);
-      Map.drawRouteOnMap(routeDetails.geometry);
+      // Usa os dados da entrega para atualizar a UI e desenhar a rota.
+      UI.updateAdminMapInfo(activeDeliveryOrder, entregaData, currentSpeed);
+      Map.drawRouteOnMap(entregaData.geometria);
     } else {
       UI.updateAdminMapInfo(null);
       Map.clearRouteFromMap();
