@@ -15,7 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let orderIdToConfirm = null;
   const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
   let knownReadyOrderIds = new Set();
-  let initialLocationSet = false; // New flag
+  let initialLocationSet = false;
+  let isFollowingDeliveryPerson = true; // New state variable, default to true
 
   UI.setupEventListeners(
     () => {
@@ -35,12 +36,22 @@ document.addEventListener("DOMContentLoaded", () => {
         UI.showConfirmDeliveryModal(true);
       }
     },
-    handleCancelNavigation
+    handleCancelNavigation,
+    handleToggleFollowMe // New parameter
   );
 
   Map.initMap("map");
   checkGeolocationPermission();
   listenToFirebaseOrders();
+
+  function handleToggleFollowMe() {
+    isFollowingDeliveryPerson = !isFollowingDeliveryPerson;
+    UI.setFollowMeButtonState(isFollowingDeliveryPerson);
+    // If we just enabled following, pan to current location
+    if (isFollowingDeliveryPerson && entregadorLocation) {
+      Map.panMapTo(entregadorLocation);
+    }
+  }
 
   function checkGeolocationPermission() {
     if (!window.isSecureContext) {
@@ -89,8 +100,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.watchPosition(
         (position) => {
-          const { latitude, longitude, speed } = position.coords;
-          entregadorLocation = { latitude, longitude, timestamp: Date.now() };
+          const { latitude, longitude, speed, heading } = position.coords;
+          entregadorLocation = { latitude, longitude, timestamp: Date.now(), heading: heading || 0 };
 
           Map.updateDeliveryMarkerOnMap(entregadorLocation);
           UI.updateSpeedDisplay(speed || 0);
@@ -98,8 +109,13 @@ document.addEventListener("DOMContentLoaded", () => {
           UI.updateLocationStatus("Localização ativa.");
 
           if (!initialLocationSet) {
-            Map.fitMapToBounds(entregadorLocation, null); // Center map on initial location
+            Map.fitMapToBounds(entregadorLocation, null); // Center map on initial location with good zoom
             initialLocationSet = true;
+          }
+
+          // Conditionally pan the map
+          if (isFollowingDeliveryPerson) {
+            Map.panMapTo(entregadorLocation);
           }
 
           if (activeDelivery) {
