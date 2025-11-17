@@ -33,14 +33,53 @@ export function listenToEntregadorLocation(callback) {
   });
 }
 
-export function createNewOrder(orderData) {
+export async function createNewOrder(orderData) {
   const newPedidoRef = push(ref(db, "pedidos"));
+  const newPedidoId = newPedidoRef.key;
   const updates = {};
-  updates[newPedidoRef.key] = {
+  updates[newPedidoId] = {
     ...orderData,
     status: "pendente",
   };
-  return update(ref(db, "pedidos"), updates);
+  await update(ref(db, "pedidos"), updates);
+
+  // Send email notification for new order
+  const user_email = orderData.clientEmail;
+  const user_name = orderData.nomeCliente;
+  if (user_email && user_name) {
+    await sendEmailNotification(newPedidoId, user_email, user_name, "pendente");
+  } else {
+    console.warn('Missing user_email or user_name for new order:', newPedidoId, 'Email notification skipped.');
+  }
+  return newPedidoId;
+}
+
+async function sendEmailNotification(pedidoId, userEmail, userName, status) {
+  try {
+    const response = await fetch('http://localhost:3000/notify-order-status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        orderId: pedidoId,
+        userEmail: userEmail,
+        userName: userName,
+        status: status,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Failed to send email notification:', errorData.message);
+      throw new Error(errorData.message); // Re-throw for better error handling upstream
+    } else {
+      console.log('Email notification sent successfully for order:', pedidoId, 'status:', status);
+    }
+  } catch (error) {
+    console.error('Error sending email notification:', error);
+    throw error; // Re-throw the error
+  }
 }
 
 export async function updateOrderStatus(pedidoId, newStatus) {
@@ -60,29 +99,7 @@ export async function updateOrderStatus(pedidoId, newStatus) {
   const user_name = pedido.nomeCliente;
 
   if (user_email && user_name) {
-    try {
-      const response = await fetch('http://localhost:3000/notify-order-status', { // Use full URL for local testing
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId: pedidoId,
-          userEmail: user_email,
-          userName: user_name,
-          status: newStatus,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Failed to send email notification:', errorData.message);
-      } else {
-        console.log('Email notification sent successfully for order:', pedidoId, 'status:', newStatus);
-      }
-    } catch (error) {
-      console.error('Error sending email notification:', error);
-    }
+    await sendEmailNotification(pedidoId, user_email, user_name, newStatus);
   } else {
     console.warn('Missing user_email or user_name for order:', pedidoId, 'Email notification skipped.');
   }
