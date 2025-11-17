@@ -4,27 +4,18 @@ import {
   createNewOrder,
   updateOrderStatus,
 } from "./firebase.js";
-import { geocodeAddress, calculateSpeed } from "./utils.js";
+import { parseWhatsappMessage, calculateSpeed } from "./utils.js";
 import { loadComponents } from "./componentLoader.js";
-import * as Map from "./map.js";
+import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui-confeiteira.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-  let entregadorLocation = null;
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   if (!currentUser || currentUser.panel !== "confeiteira.html") {
     window.location.href = "index.html";
     return;
   }
 
-  // Define as colunas que este painel pode ver
-  const visibleStatuses = [
-    { id: "pendente", title: "Pendente" },
-    { id: "em_preparo", title: "Em Preparo" },
-    { id: "feito", title: "Feito" },
-  ];
-
-  let activeDeliveryOrder = null;
   const newOrderSound = new Audio("audio/NotificacaoPedidoNovo.mp3");
   const deliveryCompleteSound = new Audio(
     "audio/NotificacaoPedidoEntregue.mp3"
@@ -37,8 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "#modal-container",
     ["components/modal-new-order.html", "components/modal-read-message.html"],
     () => {
-      Map.initMap("map");
-      Map.invalidateMapSize(); // Invalidate map size after initialization
+      MapLogic.initializeMapWithLocation("map");
       UI.setupEventListeners(
         () => {
           localStorage.removeItem("currentUser");
@@ -54,6 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function listenToFirebaseChanges() {
     listenToPedidos((pedidos) => {
+      const visibleStatuses = ["pendente", "em_preparo", "feito"];
       const currentPendingOrderIds = new Set();
       const currentDeliveredOrderIds = new Set();
 
@@ -76,83 +67,54 @@ document.addEventListener("DOMContentLoaded", () => {
       knownDeliveredOrderIds = currentDeliveredOrderIds;
       isFirstLoad = false;
 
-      UI.renderBoard(pedidos, updateOrderStatus, UI.printLabel);
-
-      const activeOrderEntry = Object.entries(pedidos).find(
-        ([, pedido]) => pedido.status === "em_entrega"
+      // Filtra os pedidos para mostrar apenas os relevantes para a confeiteira
+      const confeiteiraPedidos = Object.fromEntries(
+        Object.entries(pedidos).filter(([, pedido]) =>
+          visibleStatuses.includes(pedido.status)
+        )
       );
-      if (activeOrderEntry) {
-        activeDeliveryOrder = {
-          id: activeOrderEntry[0],
-          ...activeOrderEntry[1],
-        };
-        updateMapForActiveDelivery();
-      } else {
-        updateMapFocus(); // Adicionado para focar no entregador se não houver entrega
-        activeDeliveryOrder = null;
-        UI.clearConfeiteiraMapInfo();
-        Map.clearRouteFromMap();
-        Map.updateClientMarkerOnMap(null); // Remove client marker when no active delivery
-      }
+      UI.renderBoard(confeiteiraPedidos, updateOrderStatus, UI.printLabel);
+      MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
     });
 
     listenToEntregadorLocation((location) => {
-      entregadorLocation = location;
-      Map.updateDeliveryMarkerOnMap(location);
+      MapLogic.updateEntregadorLocation(location);
       if (location) {
         UI.updateDeliveryPersonStatus(
           `Entregador localizado em: ${location.latitude.toFixed(
             4
           )}, ${location.longitude.toFixed(4)}`
         );
+        updateMapInfo();
       } else {
         UI.updateDeliveryPersonStatus(
           "Aguardando localização do entregador..."
         );
       }
-      updateMapForActiveDelivery();
-      updateMapFocus(); // Adicionado para focar o mapa a cada atualização de local
     });
   }
 
-  async function updateMapForActiveDelivery() {
+  function updateMapInfo() {
+    const activeDeliveryOrder = MapLogic.getActiveDelivery();
+    const entregadorLocation = MapLogic.getEntregadorLocation();
+
     if (!activeDeliveryOrder || !entregadorLocation) {
       UI.clearConfeiteiraMapInfo();
       return;
     }
 
-    const clientCoords = await geocodeAddress(activeDeliveryOrder.endereco);
-    if (clientCoords && !clientCoords.error) {
-      activeDeliveryOrder.clientCoords = clientCoords; // Salva as coordenadas no objeto do pedido
-      Map.updateClientMarkerOnMap(clientCoords);
-      const entregaData = activeDeliveryOrder.entrega;
+    const entregaData = activeDeliveryOrder.entrega;
+    if (entregaData) {
+      const currentSpeed = calculateSpeed(
+        entregadorLocation,
+        entregaData.lastEntregadorCoords
+      );
+      UI.updateConfeiteiraMapInfo(
+        activeDeliveryOrder,
+        entregaData,
+        currentSpeed
+      );
 
-      if (entregaData) {
-        const currentSpeed = calculateSpeed(
-          entregadorLocation,
-          entregaData.lastEntregadorCoords
-        );
-        UI.updateConfeiteiraMapInfo(
-          activeDeliveryOrder,
-          entregaData,
-          currentSpeed
-        );
-        // if (entregaData.geometria) Map.drawRouteOnMap(entregaData.geometria); // Removed route drawing
-      }
-    } else {
-      console.error("Failed to geocode client address:", clientCoords ? clientCoords.error : "Unknown error");
-      UI.clearConfeiteiraMapInfo();
-      Map.clearRouteFromMap();
-      Map.updateClientMarkerOnMap(null);
-    }
-  }
-
-  function updateMapFocus() {
-    if (activeDeliveryOrder && activeDeliveryOrder.clientCoords) {
-      Map.fitMapToBounds(entregadorLocation, activeDeliveryOrder.clientCoords);
-    } else if (entregadorLocation) {
-      // Se não há entrega ativa, apenas centraliza no entregador
-      Map.fitMapToBounds(entregadorLocation, null);
     }
   }
 
@@ -161,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = e.target;
     const nomeBolo = form.querySelector("#cakeName").value;
     const nomeCliente = form.querySelector("#clientName").value;
+    const clientEmail = form.querySelector("#clientEmail").value;
     const cep = form.querySelector("#cep").value;
     const rua = form.querySelector("#rua").value;
     const bairro = form.querySelector("#bairro").value;
@@ -171,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     createNewOrder({
       nomeCliente,
+      clientEmail,
       endereco,
       nomeBolo,
       cep,
