@@ -24,8 +24,8 @@
             <div id="map-container">
                 <div id="map"></div>
                 <div id="map-overlay-top">
-                    <button id="follow-me-button" class="map-control-button">
-                        <img src="https://img.icons8.com/ios-filled/50/ffffff/compass--v1.png" alt="Follow Me" style="width: 24px; height: 24px;">
+                    <button id="follow-me-button" class="map-control-button" aria-label="Centralizar mapa na sua localização">
+                        <img src="img/icons/compass.png" alt="Centralizar Mapa" class="map-control-icon">
                     </button>
                     <div id="eta-display"></div>
                     <div id="speed-display" class="map-info-icon"></div>
@@ -48,9 +48,9 @@
     
     <!-- Modal de Confirmação de Entrega -->
     <div id="confirm-delivery-modal" class="modal">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <span class="close-button">&times;</span>
+        <div class="modal-content modal-content-centered">
             <h2>Confirmar Entrega</h2>
+            <button class="close-button" aria-label="Fechar">&times;</button>
             <p>Você confirma que este pedido foi entregue ao cliente?</p>
             <div class="modal-actions">
                 <button id="confirm-delivery-btn" class="btn-sucesso">Sim, Entregar</button>
@@ -65,7 +65,10 @@
       <div id="dynamic-island-content">
         <!-- Content will be populated by JavaScript -->
       </div>
-      <button id="dynamic-island-finish-btn" class="btn-sucesso">Finalizar Entrega</button>
+      <div class="dynamic-island-actions">
+        <button id="dynamic-island-cancel-btn" class="btn-danger">Cancelar</button>
+        <button id="dynamic-island-finish-btn" class="btn-sucesso">Finalizar</button>
+      </div>
     </div>
 
 
