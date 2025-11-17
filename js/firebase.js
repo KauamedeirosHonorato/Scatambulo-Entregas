@@ -43,10 +43,49 @@ export function createNewOrder(orderData) {
   return update(ref(db, "pedidos"), updates);
 }
 
-export function updateOrderStatus(pedidoId, newStatus) {
+export async function updateOrderStatus(pedidoId, newStatus) {
+  // Fetch order details first to ensure we have clientEmail and nomeCliente
+  const pedido = await getPedido(pedidoId);
+
+  if (!pedido) {
+    console.warn('Order not found for ID:', pedidoId, 'Status update and email notification skipped.');
+    return;
+  }
+
   const updates = {};
   updates[`/pedidos/${pedidoId}/status`] = newStatus;
-  return update(ref(db), updates);
+  await update(ref(db), updates); // Wait for Firebase update to complete
+
+  const user_email = pedido.clientEmail;
+  const user_name = pedido.nomeCliente;
+
+  if (user_email && user_name) {
+    try {
+      const response = await fetch('http://localhost:3000/notify-order-status', { // Use full URL for local testing
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: pedidoId,
+          userEmail: user_email,
+          userName: user_name,
+          status: newStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to send email notification:', errorData.message);
+      } else {
+        console.log('Email notification sent successfully for order:', pedidoId, 'status:', newStatus);
+      }
+    } catch (error) {
+      console.error('Error sending email notification:', error);
+    }
+  } else {
+    console.warn('Missing user_email or user_name for order:', pedidoId, 'Email notification skipped.');
+  }
 }
 
 export async function clearDeliveredOrders() {
