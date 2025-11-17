@@ -12,6 +12,7 @@ app.use(express.json()); // For parsing application/json
 // Email sending route
 app.post("/notify-order-status", async (req, res) => {
   const { userName, userEmail, orderId, status } = req.body;
+  console.log(`Received email notification request for order: ${orderId}, status: ${status}`);
 
   if (!userName || !userEmail || !orderId || !status) {
     return res.status(400).json({ success: false, message: "Missing required fields: userName, userEmail, orderId, or status." });

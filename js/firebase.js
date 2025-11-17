@@ -55,6 +55,7 @@ export async function createNewOrder(orderData) {
 }
 
 async function sendEmailNotification(pedidoId, userEmail, userName, status) {
+  console.log(`Attempting to send email for order: ${pedidoId}, with status: ${status}`);
   try {
     const response = await fetch('http://localhost:3000/notify-order-status', {
       method: 'POST',
