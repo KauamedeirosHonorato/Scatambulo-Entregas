@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
   let knownReadyOrderIds = new Set();
   let isFollowingDeliveryPerson = false; // New state variable
+  let isInitialMapLoad = true; // New state variable for initial map centering
 
   UI.setupEventListeners(
     () => {
@@ -83,6 +84,13 @@ document.addEventListener("DOMContentLoaded", () => {
           entregadorLocation = { latitude, longitude, timestamp: Date.now() };
 
           Map.updateDeliveryMarkerOnMap(entregadorLocation);
+          
+          // Initial map centering
+          if (isInitialMapLoad) {
+            Map.fitMapToBounds(entregadorLocation, null);
+            isInitialMapLoad = false;
+          }
+
           if (isFollowingDeliveryPerson) { // Only re-center if follow me is active
             if (activeDelivery && activeDelivery.destinationCoords) {
               Map.fitMapToBounds(entregadorLocation, activeDelivery.destinationCoords);
