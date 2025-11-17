@@ -100,7 +100,6 @@ document.addEventListener("DOMContentLoaded", () => {
             update(ref(db, `entregas_ativas/${activeDelivery.orderId}`), {
               lastLocation: { lat: latitude, lng: longitude, ts: Date.now() },
             });
-            updateDeliveryData();
           }
         },
           (error) => {
@@ -201,6 +200,9 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       });
       UI.showDynamicIsland(true, order);
+
+      Map.updateClientMarkerOnMap(destinationCoords);
+      Map.fitMapToBounds(entregadorLocation, destinationCoords);
 
       // Inicia a navegação no mapa
       Map.startNavigation(
