@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
         for (const pedidoId in pedidos) {
           const oldStatus = knownOrderStatuses[pedidoId];
           const newStatus = pedidos[pedidoId].status;
-          if (oldStatus && oldStatus !== "entregue" && newStatus === "entregue") {
+          if (oldStatus && (newStatus === "entregue" || newStatus === "em_preparo") && oldStatus !== newStatus) {
             deliveryCompletedSound.play().catch(console.warn);
           }
         }
@@ -181,6 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = e.target;
     const nomeBolo = form.querySelector("#cakeName").value;
     const nomeCliente = form.querySelector("#clientName").value;
+    const clientEmail = form.querySelector("#clientEmail").value; // Get client email
     const cep = form.querySelector("#cep").value;
     const rua = form.querySelector("#rua").value;
     const bairro = form.querySelector("#bairro").value;
@@ -191,6 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     createNewOrder({
       nomeCliente,
+      clientEmail, // Pass client email
       endereco,
       nomeBolo,
       cep,
