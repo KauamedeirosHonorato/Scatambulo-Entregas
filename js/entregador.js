@@ -272,6 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
       )
     ) {
       const orderId = activeDelivery.orderId;
+      console.log(`Entregador: Canceling delivery for order ${orderId}. Setting status to 'pronto_para_entrega'.`);
       await update(ref(db), {
         [`/pedidos/${orderId}/status`]: "pronto_para_entrega",
       });
@@ -337,6 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function updateStatus(pedidoId, newStatus) {
+    console.log(`Entregador: Updating status for order ${pedidoId} to '${newStatus}'.`);
     await update(ref(db), { [`/pedidos/${pedidoId}/status`]: newStatus });
     if (activeDelivery && activeDelivery.orderId === pedidoId) {
       handleStopNavigation();
