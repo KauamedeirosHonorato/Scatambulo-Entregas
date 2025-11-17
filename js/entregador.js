@@ -81,6 +81,11 @@ document.addEventListener("DOMContentLoaded", () => {
           entregadorLocation = { latitude, longitude, timestamp: Date.now() };
 
           Map.updateDeliveryMarkerOnMap(entregadorLocation);
+          if (activeDelivery && activeDelivery.destinationCoords) {
+            Map.fitMapToBounds(entregadorLocation, activeDelivery.destinationCoords);
+          } else {
+            Map.fitMapToBounds(entregadorLocation, null); // Center on delivery person only
+          }
           UI.updateSpeedDisplay(speed || 0);
           set(ref(db, "localizacao/entregador"), entregadorLocation);
           UI.updateLocationStatus("Localização ativa.");
