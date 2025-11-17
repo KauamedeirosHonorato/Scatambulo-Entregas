@@ -1,6 +1,7 @@
 import { db, ref, set, onValue, update, get } from "./firebase.js";
 import { geocodeAddress, getRouteDetails, calculateSpeed } from "./utils.js";
 import * as Map from "./map.js";
+import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui-entregador.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -41,8 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     handleToggleFollowMe // New parameter
   );
 
-  Map.initMap("map");
-  Map.invalidateMapSize(); // Invalidate map size after initialization
+  MapLogic.initializeMapWithLocation("map");
   checkGeolocationPermission();
   listenToFirebaseOrders();
 
@@ -104,9 +104,14 @@ document.addEventListener("DOMContentLoaded", () => {
         (position) => {
           const { latitude, longitude, speed, heading } = position.coords;
           previousEntregadorLocation = entregadorLocation; // Store current location as previous
-          entregadorLocation = { latitude, longitude, timestamp: Date.now(), heading: heading || 0 };
+          entregadorLocation = {
+            latitude,
+            longitude,
+            timestamp: Date.now(),
+            heading: heading || 0,
+          };
 
-          Map.updateDeliveryMarkerOnMap(entregadorLocation);
+          MapLogic.updateEntregadorLocation(entregadorLocation);
           UI.updateSpeedDisplay(speed || 0);
           set(ref(db, "localizacao/entregador"), entregadorLocation);
           UI.updateLocationStatus("Localização ativa.");
@@ -127,23 +132,23 @@ document.addEventListener("DOMContentLoaded", () => {
             });
           }
         },
-          (error) => {
-            let errorMessage = "Ocorreu um erro ao obter a localização.";
-            switch (error.code) {
-              case error.PERMISSION_DENIED:
-                errorMessage =
-                  "Permissão de localização negada. Por favor, habilite o acesso à localização para este site nas configurações do seu navegador e do seu celular.";
-                break;
-              case error.POSITION_UNAVAILABLE:
-                errorMessage =
-                  "Informações de localização não estão disponíveis no momento.";
-                break;
-              case error.TIMEOUT:
-                errorMessage = "A solicitação de localização expirou.";
-                break;
-            }
-            UI.updateLocationStatus(errorMessage);
-          },
+        (error) => {
+          let errorMessage = "Ocorreu um erro ao obter a localização.";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage =
+                "Permissão de localização negada. Por favor, habilite o acesso à localização para este site nas configurações do seu navegador e do seu celular.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage =
+                "Informações de localização não estão disponíveis no momento.";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "A solicitação de localização expirou.";
+              break;
+          }
+          UI.updateLocationStatus(errorMessage);
+        },
         { enableHighAccuracy: true }
       );
     } else {
@@ -196,7 +201,11 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       const geocodeResult = await geocodeAddress(order.endereco);
       if (!geocodeResult || geocodeResult.error) {
-        alert(`Não foi possível encontrar o endereço: ${geocodeResult ? geocodeResult.error : "Erro desconhecido"}`);
+        alert(
+          `Não foi possível encontrar o endereço: ${
+            geocodeResult ? geocodeResult.error : "Erro desconhecido"
+          }`
+        );
         return;
       }
       const destinationCoords = geocodeResult;
@@ -232,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Inicia a navegação no mapa
       Map.startNavigation(
-        entregadorLocation,
+        () => state.location, // Pass a function that returns the current location
         destinationCoords,
         handleRouteUpdate
       );
@@ -251,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
     UI.updateEtaDisplay(null);
     UI.updateDistanceDisplay(null);
     UI.showDynamicIsland(false, null);
-    Map.updateClientMarkerOnMap(null);
+    Map.updateClientMarkerOnMap(null); // Remove o ícone do cliente do mapa
     Map.clearRouteFromMap();
   }
 
@@ -279,7 +288,10 @@ document.addEventListener("DOMContentLoaded", () => {
       UI.updateEtaDisplay(routeDetails.duration);
       UI.updateDistanceDisplay(routeDetails.distance);
 
-      const speed = calculateSpeed(entregadorLocation, previousEntregadorLocation);
+      const speed = calculateSpeed(
+        entregadorLocation,
+        previousEntregadorLocation
+      );
       UI.updateSpeedDisplay(speed);
 
       // Atualiza os dados da rota no Firebase
@@ -291,6 +303,9 @@ document.addEventListener("DOMContentLoaded", () => {
         [`/pedidos/${activeDelivery.orderId}/entrega/velocidade`]: speed,
         [`/pedidos/${activeDelivery.orderId}/entrega/geometria`]:
           routeDetails.geometry,
+        // Atualiza também as coordenadas do entregador para o cálculo de velocidade nos outros painéis
+        [`/pedidos/${activeDelivery.orderId}/entrega/lastEntregadorCoords`]:
+          entregadorLocation,
       });
 
       // Verifica se o entregador chegou ao destino (50 metros de tolerância)
@@ -310,7 +325,10 @@ document.addEventListener("DOMContentLoaded", () => {
         Map.stopNavigation(); // Para de recalcular a rota ao chegar
       }
     } else {
-      console.error("Failed to get route details:", routeDetails ? routeDetails.error : "Unknown error");
+      console.error(
+        "Failed to get route details:",
+        routeDetails ? routeDetails.error : "Unknown error"
+      );
       UI.updateEtaDisplay(null);
       UI.updateDistanceDisplay(null);
       UI.updateSpeedDisplay(0);
