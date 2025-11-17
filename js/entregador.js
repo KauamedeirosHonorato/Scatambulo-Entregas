@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let orderIdToConfirm = null;
   const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
   let knownReadyOrderIds = new Set();
+  let initialLocationSet = false; // New flag
 
   UI.setupEventListeners(
     () => {
@@ -95,6 +96,11 @@ document.addEventListener("DOMContentLoaded", () => {
           UI.updateSpeedDisplay(speed || 0);
           set(ref(db, "localizacao/entregador"), entregadorLocation);
           UI.updateLocationStatus("Localização ativa.");
+
+          if (!initialLocationSet) {
+            Map.fitMapToBounds(entregadorLocation, null); // Center map on initial location
+            initialLocationSet = true;
+          }
 
           if (activeDelivery) {
             update(ref(db, `entregas_ativas/${activeDelivery.orderId}`), {
