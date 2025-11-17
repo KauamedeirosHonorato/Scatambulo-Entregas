@@ -170,3 +170,13 @@ export function panMapTo(location) {
     map.panTo([location.latitude, location.longitude]);
   }
 }
+
+/**
+ * Força o mapa a recalcular seu tamanho e renderizar novamente.
+ * Útil quando o contêiner do mapa muda de tamanho ou visibilidade.
+ */
+export function invalidateMapSize() {
+  if (map) {
+    map.invalidateSize();
+  }
+}

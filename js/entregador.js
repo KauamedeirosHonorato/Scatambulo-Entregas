@@ -41,6 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   Map.initMap("map");
+  Map.invalidateMapSize(); // Invalidate map size after initialization
   checkGeolocationPermission();
   listenToFirebaseOrders();
 

@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ["components/modal-new-order.html", "components/modal-read-message.html"],
     () => {
       Map.initMap("map");
+      Map.invalidateMapSize(); // Invalidate map size after initialization
       setupUIEventListeners();
       listenToFirebaseChanges();
     }
