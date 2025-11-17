@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
         activeDeliveryOrder = null;
         UI.clearConfeiteiraMapInfo();
         Map.clearRouteFromMap();
+        Map.updateClientMarkerOnMap(null); // Remove client marker when no active delivery
       }
     });
 

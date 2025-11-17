@@ -97,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         console.error("Failed to geocode active delivery address:", geocodeResult ? geocodeResult.error : "Unknown error");
         activeDeliveryOrder = null; // Invalidate active delivery if geocoding fails
+        Map.updateClientMarkerOnMap(null); // Ensure client marker is removed
       }
     } else {
       // If no active delivery, ensure client marker and route are cleared
