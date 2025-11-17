@@ -80,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function findActiveAndClosestOrders(pedidos) {
+    Map.clearRouteFromMap(); // Ensure any existing route is cleared first
     activeDeliveryOrder = null;
     activeDeliveryClientCoords = null;
 
