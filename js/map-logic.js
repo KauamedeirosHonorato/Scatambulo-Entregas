@@ -39,15 +39,32 @@ export function updateEntregadorLocation(location) {
  * @param {object} pedidos - O objeto de todos os pedidos do Firebase.
  */
 export async function processActiveDelivery(pedidos) {
-  console.log("MapLogic: processActiveDelivery called.");
-  console.log("MapLogic: Incoming 'pedidos' object:", pedidos); // Log the entire pedidos object
+  // Remove debugging logs
+  // console.log("MapLogic: processActiveDelivery called.");
+  // console.log("MapLogic: Incoming 'pedidos' object:", pedidos);
+
   const activeOrderEntry = Object.entries(pedidos).find(
     ([, pedido]) => pedido.status === "em_entrega"
   );
-  console.log("MapLogic: Result of activeOrderEntry find:", activeOrderEntry); // Log the result of the find
+  // console.log("MapLogic: Result of activeOrderEntry find:", activeOrderEntry);
+
+  // --- Robustness Check / Failsafe ---
+  // If we currently have an active delivery in our state, but it's no longer 'em_entrega' in Firebase,
+  // or if the active delivery ID doesn't match the one found, clear it.
+  if (state.activeDelivery) {
+    const currentActivePedidoInFirebase = pedidos[state.activeDelivery.id];
+    if (!currentActivePedidoInFirebase || currentActivePedidoInFirebase.status !== "em_entrega") {
+      // console.log("MapLogic: Failsafe triggered - activeDelivery in state is out of sync with Firebase. Clearing map.");
+      clearActiveDelivery();
+      UI.updateButtonsForNavigation(false);
+      updateMapFocus(); // Re-focus map after clearing
+      return; // Exit early as map is now cleared
+    }
+  }
+  // --- End Robustness Check ---
 
   if (activeOrderEntry) {
-    console.log("MapLogic: Active delivery found (status 'em_entrega').");
+    // console.log("MapLogic: Active delivery found (status 'em_entrega').");
     const [orderId, orderData] = activeOrderEntry;
 
     // Se a entrega ativa mudou ou é a primeira vez que encontramos uma
@@ -99,10 +116,9 @@ export async function processActiveDelivery(pedidos) {
       }
     }
   } else {
-    console.log("MapLogic: No active delivery found (status 'em_entrega'). Clearing map.");
+    // console.log("MapLogic: No active delivery found (status 'em_entrega'). Clearing map.");
     // Se não há mais entrega ativa, limpa o estado e o mapa.
     clearActiveDelivery();
-    // Map.stopNavigation(); // Removido, pois clearActiveDelivery já chama Map.clearOrderFromMap que para a navegação
     UI.updateButtonsForNavigation(false); // Desativa botões de navegação
   }
 
@@ -113,7 +129,7 @@ export async function processActiveDelivery(pedidos) {
  * Limpa os dados da entrega ativa e reseta o mapa.
  */
 export function clearActiveDelivery() {
-  console.log("MapLogic: clearActiveDelivery called.");
+  // console.log("MapLogic: clearActiveDelivery called.");
   state.activeDelivery = null;
   Map.clearOrderFromMap(); // Usa a nova função de limpeza completa
   UI.updateButtonsForNavigation(false); // Desativa botões de navegação
