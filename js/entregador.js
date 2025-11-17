@@ -191,11 +191,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeDelivery && activeDelivery.orderId === orderId) {
       handleStopNavigation();
     } else {
-      const destinationCoords = await geocodeAddress(order.endereco);
-      if (!destinationCoords) {
-        alert("Não foi possível encontrar o endereço.");
+      const geocodeResult = await geocodeAddress(order.endereco);
+      if (!geocodeResult || geocodeResult.error) {
+        alert(`Não foi possível encontrar o endereço: ${geocodeResult ? geocodeResult.error : "Erro desconhecido"}`);
         return;
       }
+      const destinationCoords = geocodeResult;
       activeDelivery = { orderId, destinationCoords, order };
 
       set(ref(db, `entregas_ativas/${orderId}`), {
@@ -270,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
    * Callback para lidar com as atualizações da rota vindas do módulo do mapa.
    */
   function handleRouteUpdate(routeDetails) {
-    if (routeDetails) {
+    if (routeDetails && !routeDetails.error) {
       UI.updateEtaDisplay(routeDetails.duration);
       UI.updateDistanceDisplay(routeDetails.distance);
 
@@ -301,8 +302,11 @@ document.addEventListener("DOMContentLoaded", () => {
         Map.stopNavigation(); // Para de recalcular a rota ao chegar
       }
     } else {
+      console.error("Failed to get route details:", routeDetails ? routeDetails.error : "Unknown error");
       UI.updateEtaDisplay(null);
       UI.updateDistanceDisplay(null);
+      // Optionally, alert the user or show a message on the UI
+      // alert("Não foi possível obter detalhes da rota. Tente novamente mais tarde.");
     }
   }
 

@@ -28,13 +28,7 @@ export function updateDeliveryMarkerOnMap(location) {
       deliveryMarker.setLatLng(latLng);
       if (typeof heading === 'number' && !isNaN(heading)) {
         if (deliveryMarker._icon) {
-          const currentTransform = deliveryMarker._icon.style.transform;
-          const translateMatch = currentTransform.match(/translate3d\(([^)]+)\)/);
-          if (translateMatch) {
-            deliveryMarker._icon.style.transform = `${translateMatch[0]} rotate(${heading}deg)`;
-          } else {
-            deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
-          }
+          deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
         }
       }
     } else {
@@ -46,13 +40,7 @@ export function updateDeliveryMarkerOnMap(location) {
         }),
       }).addTo(map);
       if (typeof heading === 'number' && !isNaN(heading) && deliveryMarker._icon) {
-        const currentTransform = deliveryMarker._icon.style.transform;
-        const translateMatch = currentTransform.match(/translate3d\(([^)]+)\)/);
-        if (translateMatch) {
-          deliveryMarker._icon.style.transform = `${translateMatch[0]} rotate(${heading}deg)`;
-        } else {
-          deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
-        }
+        deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
       }
     }
     return deliveryMarker;

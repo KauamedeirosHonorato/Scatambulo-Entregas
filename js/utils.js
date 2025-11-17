@@ -12,11 +12,14 @@ export async function geocodeAddress(address) {
     const data = await response.json();
     if (data && data.length > 0) {
       return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    } else {
+      console.warn("Geocoding returned no results for address:", address);
+      return { error: "No geocoding results" };
     }
   } catch (error) {
     console.error("Erro de geocodificação:", error);
+    return { error: error.message };
   }
-  return null;
 }
 
 /**
@@ -33,11 +36,14 @@ export async function getRouteDetails(startCoords, endCoords) {
       const distance = (route.distance / 1000).toFixed(1); // Distância em km
       const duration = Math.round(route.duration / 60); // Duração em minutos
       return { distance, duration, geometry };
+    } else {
+      console.warn("Route details returned no valid routes:", data);
+      return { error: "No valid route found" };
     }
   } catch (error) {
     console.error("Erro ao obter rota:", error);
+    return { error: error.message };
   }
-  return null;
 }
 
 /**

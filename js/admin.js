@@ -90,13 +90,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (activeOrderEntry) {
       activeDeliveryOrder = { id: activeOrderEntry[0], ...activeOrderEntry[1] };
-      activeDeliveryClientCoords = await geocodeAddress(activeDeliveryOrder.endereco);
-      updateMapForActiveDelivery();
+      const geocodeResult = await geocodeAddress(activeDeliveryOrder.endereco);
+      if (geocodeResult && !geocodeResult.error) {
+        activeDeliveryClientCoords = geocodeResult;
+      } else {
+        console.error("Failed to geocode active delivery address:", geocodeResult ? geocodeResult.error : "Unknown error");
+        activeDeliveryOrder = null; // Invalidate active delivery if geocoding fails
+      }
     } else {
       // If no active delivery, ensure client marker and route are cleared
       Map.updateClientMarkerOnMap(null);
       Map.clearRouteFromMap();
     }
+    updateMapForActiveDelivery();
     updateMapFocus();
   }
 
@@ -112,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (const [pedidoId, pedido] of readyOrders) {
       const pedidoCoords = await geocodeAddress(pedido.endereco);
-      if (pedidoCoords) {
+      if (pedidoCoords && !pedidoCoords.error) {
         const dist = calculateDistance(
           entregadorLocation.latitude,
           entregadorLocation.longitude,
@@ -128,6 +134,8 @@ document.addEventListener("DOMContentLoaded", () => {
             coords: pedidoCoords,
           };
         }
+      } else {
+        console.warn("Failed to geocode address for closest order check:", pedido.endereco, pedidoCoords ? pedidoCoords.error : "Unknown error");
       }
     }
     UI.highlightClosestOrder(closestOrder);
@@ -138,8 +146,8 @@ document.addEventListener("DOMContentLoaded", () => {
       Map.fitMapToBounds(entregadorLocation, activeDeliveryClientCoords);
       Map.updateClientMarkerOnMap(activeDeliveryClientCoords);
     } else if (entregadorLocation) {
-        Map.fitMapToBounds(entregadorLocation, null);
-        Map.updateClientMarkerOnMap(null);
+      Map.fitMapToBounds(entregadorLocation, null);
+      Map.updateClientMarkerOnMap(null);
     }
   }
 
