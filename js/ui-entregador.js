@@ -63,7 +63,7 @@ export function updateEtaDisplay(duration) {
     const etaDisplay = document.getElementById("eta-display");
     if(duration){
         etaDisplay.textContent = `${duration} min`;
-        etaDisplay.style.display = "block";
+        etaDisplay.style.display = "block"; // Explicitly set to block
     } else {
         etaDisplay.style.display = "none";
     }
@@ -73,7 +73,7 @@ export function updateDistanceDisplay(distance) {
     const distanceDisplay = document.getElementById("distance-display");
     if(distance){
         distanceDisplay.innerHTML = `${distance}<span class="unit">km</span>`;
-        distanceDisplay.style.display = "flex";
+        distanceDisplay.style.display = "flex"; // Explicitly set to flex
     } else {
         distanceDisplay.style.display = "none";
     }
