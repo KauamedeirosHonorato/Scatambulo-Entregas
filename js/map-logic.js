@@ -97,7 +97,7 @@ export async function processActiveDelivery(pedidos) {
   } else {
     // Se não há mais entrega ativa, limpa o estado e o mapa.
     clearActiveDelivery();
-    Map.stopNavigation(); // Garante que a navegação seja parada
+    // Map.stopNavigation(); // Removido, pois clearActiveDelivery já chama Map.clearOrderFromMap que para a navegação
     UI.updateButtonsForNavigation(false); // Desativa botões de navegação
   }
 
@@ -109,9 +109,7 @@ export async function processActiveDelivery(pedidos) {
  */
 export function clearActiveDelivery() {
   state.activeDelivery = null;
-  Map.updateClientMarkerOnMap(null);
-  Map.clearRouteFromMap();
-  Map.stopNavigation(); // Garante que a navegação seja parada
+  Map.clearOrderFromMap(); // Usa a nova função de limpeza completa
   UI.updateButtonsForNavigation(false); // Desativa botões de navegação
 }
 

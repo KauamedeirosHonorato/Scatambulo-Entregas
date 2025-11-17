@@ -254,14 +254,12 @@ document.addEventListener("DOMContentLoaded", () => {
     set(ref(db, `entregas_ativas/${orderId}`), null);
 
     activeDelivery = null;
-    Map.stopNavigation();
+    Map.clearOrderFromMap(); // Usa a nova função de limpeza completa
     UI.updateButtonsForNavigation(false, null);
     UI.updateNavigationStatus("");
     UI.updateEtaDisplay(null);
     UI.updateDistanceDisplay(null);
     UI.showDynamicIsland(false, null);
-    Map.updateClientMarkerOnMap(null); // Remove o ícone do cliente do mapa
-    Map.clearRouteFromMap();
     Map.fitMapToBounds(entregadorLocation, null); // Redireciona o mapa para o entregador
   }
 
