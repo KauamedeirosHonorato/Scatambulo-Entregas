@@ -501,11 +501,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   
 
-    function handleStopNavigation() {
+      function handleStopNavigation() {
 
-      const activeDelivery = MapLogic.getActiveDelivery(); // Get from MapLogic
+  
 
-      if (!activeDelivery) return; // Guard clause
+        console.log("Entregador: handleStopNavigation called.");
+
+  
+
+        const activeDelivery = MapLogic.getActiveDelivery(); // Get from MapLogic
+
+  
+
+        if (!activeDelivery) return; // Guard clause
 
   
 
