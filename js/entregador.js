@@ -262,6 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
     UI.showDynamicIsland(false, null);
     Map.updateClientMarkerOnMap(null); // Remove o ícone do cliente do mapa
     Map.clearRouteFromMap();
+    Map.fitMapToBounds(entregadorLocation, null); // Redireciona o mapa para o entregador
   }
 
   async function handleCancelNavigation() {
