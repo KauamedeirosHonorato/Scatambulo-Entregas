@@ -14,7 +14,7 @@
     <header>
         <div class="header-container">
             <h1>Painel do Entregador</h1>
-            <button id="logout-button" class="btn-secondary">Sair</button>
+            <button id="logout-button" class="btn-secondary" aria-label="Sair do painel do entregador">Sair</button>
         </div>
     </header>
 
@@ -47,10 +47,10 @@
     </section>
     
     <!-- Modal de Confirmação de Entrega -->
-    <div id="confirm-delivery-modal" class="modal">
+    <div id="confirm-delivery-modal" class="modal" role="dialog" aria-modal="true">
         <div class="modal-content modal-content-centered">
             <h2>Confirmar Entrega</h2>
-            <button class="close-button" aria-label="Fechar">&times;</button>
+            <button class="close-button" aria-label="Fechar modal de confirmação de entrega">&times;</button>
             <p>Você confirma que este pedido foi entregue ao cliente?</p>
             <div class="modal-actions">
                 <button id="confirm-delivery-btn" class="btn-sucesso">Sim, Entregar</button>
@@ -63,11 +63,11 @@
     <!-- Ilha Dinâmica para Entrega Ativa -->
     <div id="dynamic-island" class="dynamic-island" style="display: none;">
       <div id="dynamic-island-content">
-        <!-- Content will be populated by JavaScript -->
+        <p>Carregando informações da entrega...</p> <!-- Placeholder -->
       </div>
       <div class="dynamic-island-actions">
-        <button id="dynamic-island-cancel-btn" class="btn-danger">Cancelar</button>
-        <button id="dynamic-island-finish-btn" class="btn-sucesso">Finalizar</button>
+        <button id="dynamic-island-cancel-btn" class="btn-danger" aria-label="Cancelar entrega">Cancelar</button>
+        <button id="dynamic-island-finish-btn" class="btn-sucesso" aria-label="Finalizar entrega">Finalizar</button>
       </div>
     </div>
 

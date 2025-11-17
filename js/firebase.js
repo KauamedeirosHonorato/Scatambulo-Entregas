@@ -47,37 +47,60 @@ export function createNewOrder(orderData) {
 }
 
 export async function updateOrderStatus(pedidoId, newStatus) {
-  const updates = {};
-  updates[`/pedidos/${pedidoId}/status`] = newStatus;
-  await update(ref(db), updates); // Wait for Firebase update to complete
+  try {
+    const updates = {};
+    updates[`/pedidos/${pedidoId}/status`] = newStatus;
+    await update(ref(db), updates); // Wait for Firebase update to complete
+    console.log(`Firebase: Status for pedido ${pedidoId} updated to ${newStatus}.`);
+  } catch (error) {
+    console.error(`Firebase: Error updating status for pedido ${pedidoId} to ${newStatus}:`, error);
+    throw error; // Re-throw to allow caller to handle
+  }
 }
 
 export async function clearDeliveredOrders() {
-  const pedidosRef = ref(db, "pedidos");
-  const snapshot = await get(pedidosRef);
-  if (snapshot.exists()) {
-    const pedidos = snapshot.val();
-    const updates = {}; // Objeto para conter as operações de exclusão
+  console.log("Firebase: clearDeliveredOrders called.");
+  try {
+    const pedidosRef = ref(db, "pedidos");
+    const snapshot = await get(pedidosRef);
+    if (snapshot.exists()) {
+      const pedidos = snapshot.val();
+      const updates = {}; // Objeto para conter as operações de exclusão
 
-    for (const pedidoId in pedidos) {
-      if (pedidos[pedidoId].status === "entregue") {
-        updates[`/pedidos/${pedidoId}`] = null; // Marcar para exclusão
+      for (const pedidoId in pedidos) {
+        if (pedidos[pedidoId].status === "entregue") {
+          updates[`/pedidos/${pedidoId}`] = null; // Marcar para exclusão
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db), updates);
+        console.log("Firebase: Delivered orders cleared successfully.");
+      } else {
+        alert("Não há pedidos entregues para remover.");
       }
     }
-
-    if (Object.keys(updates).length > 0) {
-      await update(ref(db), updates);
-    } else {
-      alert("Não há pedidos entregues para remover.");
-    }
+  } catch (error) {
+    console.error("Firebase: Error clearing delivered orders:", error);
+    throw error; // Re-throw to allow caller to handle
   }
 }
 
 export async function getPedido(pedidoId) {
-  const snapshot = await get(child(ref(db), `pedidos/${pedidoId}`));
-  return snapshot.val();
+  try {
+    const snapshot = await get(child(ref(db), `pedidos/${pedidoId}`));
+    return snapshot.val();
+  } catch (error) {
+    console.error(`Firebase: Error getting pedido ${pedidoId}:`, error);
+    throw error; // Re-throw to allow caller to handle
+  }
 }
 
 export function updatePedido(pedidoId, data) {
-  return update(ref(db, `pedidos/${pedidoId}`), data);
+  try {
+    return update(ref(db, `pedidos/${pedidoId}`), data);
+  } catch (error) {
+    console.error(`Firebase: Error updating pedido ${pedidoId} with data:`, data, error);
+    throw error; // Re-throw to allow caller to handle
+  }
 }

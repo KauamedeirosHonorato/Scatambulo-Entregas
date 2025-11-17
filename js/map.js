@@ -52,16 +52,24 @@ export function updateDeliveryMarkerOnMap(location) {
  * Atualiza ou cria o marcador do cliente no mapa.
  */
 export function updateClientMarkerOnMap(coords) {
-  if (clientMarker) map.removeLayer(clientMarker);
   if (coords) {
     const clientLatLng = [coords.lat, coords.lon];
-    clientMarker = L.marker(clientLatLng, {
-      icon: L.icon({
-        iconUrl: "/CarroIcone/cliente.png",
-        iconSize: [50, 50],
-        iconAnchor: [25, 50],
-      }),
-    }).addTo(map);
+    if (clientMarker) {
+      clientMarker.setLatLng(clientLatLng);
+    } else {
+      clientMarker = L.marker(clientLatLng, {
+        icon: L.icon({
+          iconUrl: "/CarroIcone/cliente.png",
+          iconSize: [50, 50],
+          iconAnchor: [25, 50],
+        }),
+      }).addTo(map);
+    }
+  } else {
+    if (clientMarker) {
+      map.removeLayer(clientMarker);
+      clientMarker = null;
+    }
   }
 }
 
