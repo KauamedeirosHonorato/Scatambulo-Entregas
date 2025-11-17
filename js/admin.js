@@ -176,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Usa os dados da entrega para atualizar a UI e desenhar a rota.
       UI.updateAdminMapInfo(activeDeliveryOrder, entregaData, currentSpeed);
-      Map.drawRouteOnMap(entregaData.geometria);
+      // Map.drawRouteOnMap(entregaData.geometria); // Removed route drawing
     } else {
       UI.updateAdminMapInfo(null);
       Map.clearRouteFromMap();

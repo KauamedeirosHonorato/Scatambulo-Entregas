@@ -135,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
           entregaData,
           currentSpeed
         );
-        if (entregaData.geometria) Map.drawRouteOnMap(entregaData.geometria);
+        // if (entregaData.geometria) Map.drawRouteOnMap(entregaData.geometria); // Removed route drawing
       }
     } else {
       console.error("Failed to geocode client address:", clientCoords ? clientCoords.error : "Unknown error");
