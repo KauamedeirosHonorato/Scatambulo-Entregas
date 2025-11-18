@@ -497,31 +497,30 @@ header {
 }
 
 /* === MODAL === */
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1001;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.5);
+/* === MODAL === */
+.modal-novo-pedido {
+    position: fixed; /* fica acima de tudo */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;     /* centraliza horizontal */
+    align-items: center;         /* centraliza vertical */
+    z-index: 9999;
 }
 
-.modal-content {
-  background-color: var(--cor-principal);
-  margin: auto;
-  padding: 30px;
-  border-radius: var(--borda-radius);
-  width: 90%;
-  max-width: 500px;
-  position: relative;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 2px solid var(--cor-destaque);
-  max-height: 90vh; /* Altura máxima para evitar que o modal seja maior que a tela */
-  overflow-y: auto; /* Adiciona rolagem se o conteúdo for muito grande */
+.modal-novo-pedido .modal-content {
+    width: 90%;
+    max-width: 500px;   /* limite bonito */
+    background: var(--cor-principal); /* Use a variável para consistência */
+    padding: 30px; /* Mantém o padding original */
+    border-radius: var(--borda-radius); /* Usa a variável para consistência */
+    box-shadow: var(--sombra); /* Usa a variável para consistência */
+    border: 2px solid var(--cor-destaque); /* Mantém a borda original */
+    max-height: 90vh; /* Altura máxima para evitar que o modal seja maior que a tela */
+    overflow-y: auto; /* Adiciona rolagem se o conteúdo for muito grande */
 }
 
 .modal-content-centered {
@@ -530,8 +529,8 @@ header {
 }
 
 .close-button {
-  color: #aaa;
-  font-size: 24px; /* Slightly smaller X */
+  color: var(--cor-texto); /* Mais visível */
+  font-size: 28px; /* Ligeiramente maior */
   font-weight: bold;
   position: absolute;
   background-color: rgba(0, 0, 0, 0.05); /* Subtle background */
@@ -551,6 +550,7 @@ header {
 .close-button:hover,
 .close-button:focus {
   color: var(--cor-texto);
+  background-color: rgba(0, 0, 0, 0.15); /* Fundo mais escuro no hover */
   text-decoration: none;
   cursor: pointer;
 }
@@ -959,9 +959,10 @@ header {
 }
 
 .modal-novo-pedido .modal-content {
+    position: relative; /* Adicionado para posicionar o botão de fechar */
     width: 90%;
-    max-width: 500px;   /* limite bonito */
-    background: white;
+    max-width: 400px;   /* limite bonito */
+    background: var(--cor-principal);
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
