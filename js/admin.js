@@ -1,22 +1,24 @@
 import {
   listenToPedidos,
+  listenToEntregadorLocation, // Não esqueça de importar isso
   createNewOrder,
   updateOrderStatus,
   clearDeliveredOrders,
-  getPedido,
-  updatePedido,
+  resetAllActiveDeliveries, // Importa a nova função
 } from "./firebase.js";
-import { parseWhatsappMessage } from "./utils.js";
+import { parseWhatsappMessage } from "./utils.js"; // Certifique-se de que este arquivo existe
 import { loadComponents } from "./componentLoader.js";
-// Removed: import * as MapLogic from "./map-logic.js";
+import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui.js";
 
-document.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("load", () => {
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   if (!currentUser || currentUser.panel !== "admin.html") {
     window.location.href = "index.html";
     return;
   }
+
+  MapLogic.initializeMapWithLocation("map");
 
   const deliveryCompletedSound = new Audio(
     "audio/NotificacaoPedidoEntregue.mp3"
@@ -28,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "#modal-container",
     ["components/modal-new-order.html", "components/modal-read-message.html"],
     () => {
-      // Removed: MapLogic.initializeMapWithLocation("map");
+      // Garante que os modais foram carregados antes de configurar os eventos
       setupUIEventListeners();
       listenToFirebaseChanges();
     }
@@ -44,22 +46,28 @@ document.addEventListener("DOMContentLoaded", () => {
       printAllEmPreparoLabels,
       () => {}, // onReadMessage (handled by modal)
       clearDeliveredOrders,
+      () => {
+        if (confirm("Tem certeza que deseja resetar TODAS as entregas ativas?"))
+          resetAllActiveDeliveries();
+      }, // Conecta a função ao UI
       handleNewOrderSubmit,
       handleReadMessageSubmit,
-      handleCepBlur
+      handleCepInput
     );
   }
 
   function listenToFirebaseChanges() {
+    // 1. Ouvir Pedidos
     listenToPedidos((pedidos) => {
+      // Sons de notificação
       if (!isFirstLoad) {
         for (const pedidoId in pedidos) {
           const oldStatus = knownOrderStatuses[pedidoId];
           const newStatus = pedidos[pedidoId].status;
           if (
             oldStatus &&
-            (newStatus === "entregue" || newStatus === "em_preparo") &&
-            oldStatus !== newStatus
+            oldStatus !== newStatus &&
+            newStatus === "entregue"
           ) {
             deliveryCompletedSound.play().catch(console.warn);
           }
@@ -69,75 +77,59 @@ document.addEventListener("DOMContentLoaded", () => {
         Object.entries(pedidos).map(([id, pedido]) => [id, pedido.status])
       );
       isFirstLoad = false;
+
+      // Atualizar Kanban
       UI.renderBoard(pedidos, updateOrderStatus, UI.printLabel);
-      // Removed: MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
+
+      // Atualizar Lógica do Mapa (Rota, Marcadores)
+      MapLogic.processActiveDelivery(pedidos).then(() => {
+        updateOverlayInfo(); // Atualiza os textos do overlay após processar o mapa
+      });
     });
 
-    // Removed: listenToEntregadorLocation((location) => {
-    // Removed:   MapLogic.updateEntregadorLocation(location);
-    // Removed:   updateMapInfo();
-    // Removed: });
+    // 2. Ouvir Localização do Entregador
+    listenToEntregadorLocation((location) => {
+      MapLogic.updateEntregadorLocation(location);
+      updateOverlayInfo();
+    });
   }
 
-  // Removed: async function updateMapInfo() {
-  // Removed:   const activeDeliveryOrder = MapLogic.getActiveDelivery();
-  // Removed:   const entregadorLocation = MapLogic.getEntregadorLocation();
-  // Removed:
-  // Removed:   if (!activeDeliveryOrder || !entregadorLocation) {
-  // Removed:     UI.updateAdminMapInfo(null);
-  // Removed:     return;
-  // Removed:   }
-  // Removed:
-  // Removed:   // `entregaData` should now be available directly from `activeDeliveryOrder`
-  // Removed:   // as `MapLogic.processActiveDelivery` populates it via the onRouteUpdate callback.
-  // Removed:   const entregaData = activeDeliveryOrder.entrega;
-  // Removed:
-  // Removed:   if (entregaData) {
-  // Removed:     const currentSpeed = calculateSpeed(
-  // Removed:       entregadorLocation,
-  // Removed:       entregaData.lastEntregadorCoords
-  // Removed:     );
-  // Removed:
-  // Removed:     // Only update Firebase if speed is a valid number
-  // Removed:     if (typeof currentSpeed === 'number' && !isNaN(currentSpeed)) {
-  // Removed:       await updatePedido(activeDeliveryOrder.id, {
-  // Removed:         "entrega/velocidade": parseFloat(currentSpeed),
-  // Removed:       });
-  // Removed:     }
-  // Removed:
-  // Removed:     UI.updateAdminMapInfo(activeDeliveryOrder, entregaData, currentSpeed);
-  // Removed:   } else {
-  // Removed:     // If no entregaData, clear admin map info
-  // Removed:     UI.updateAdminMapInfo(null);
-  // Removed:   }
-  // Removed: }
+  function updateOverlayInfo() {
+    const activeDeliveryOrder = MapLogic.getActiveDelivery();
+    const entregadorLocation = MapLogic.getEntregadorLocation();
 
+    // Se não tiver entrega ativa OU não tiver localização, limpa overlay
+    if (!activeDeliveryOrder || !entregadorLocation) {
+      UI.updateAdminMapInfo(null);
+      return;
+    }
+
+    // Pega os dados de entrega (velocidade, eta) salvos no pedido
+    const entregaData = activeDeliveryOrder.entrega;
+
+    if (entregaData) {
+      const currentSpeed = entregaData.velocidade || 0;
+      UI.updateAdminMapInfo(activeDeliveryOrder, entregaData, currentSpeed);
+    }
+  }
+
+  // --- Handlers de Formulário (Mantidos iguais) ---
   function handleNewOrderSubmit(e) {
     e.preventDefault();
     const form = e.target;
-    const nomeBolo = form.querySelector("#cakeName").value;
-    const nomeCliente = form.querySelector("#clientName").value;
-    const clientEmail = form.querySelector("#clientEmail").value; // Get client email
-    const cep = form.querySelector("#cep").value;
-    const rua = form.querySelector("#rua").value;
-    const bairro = form.querySelector("#bairro").value;
-    const numero = form.querySelector("#numero").value;
-    const complemento = form.querySelector("#complemento").value;
-    const whatsapp = form.querySelector("#whatsapp").value;
-    const endereco = `${rua}, ${numero}, ${bairro}, CEP: ${cep}`;
-
-    createNewOrder({
-      nomeCliente,
-      clientEmail, // Pass client email
-      endereco,
-      nomeBolo,
-      cep,
-      rua,
-      bairro,
-      numero,
-      complemento,
-      whatsapp,
-    });
+    const data = {
+      nomeBolo: form.querySelector("#cakeName").value,
+      nomeCliente: form.querySelector("#clientName").value,
+      clientEmail: form.querySelector("#clientEmail").value,
+      cep: form.querySelector("#cep").value,
+      rua: form.querySelector("#rua").value,
+      bairro: form.querySelector("#bairro").value,
+      numero: form.querySelector("#numero").value,
+      complemento: form.querySelector("#complemento").value,
+      whatsapp: form.querySelector("#whatsapp").value,
+    };
+    data.endereco = `${data.rua}, ${data.numero}, ${data.bairro}, CEP: ${data.cep}`;
+    createNewOrder(data);
     form.reset();
     document.getElementById("new-order-modal").style.display = "none";
   }
@@ -146,6 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     const messageText = document.getElementById("message-text").value;
     const parsedData = parseWhatsappMessage(messageText);
+    if (!parsedData) return;
 
     const orderData = {
       clientName: parsedData.cliente.nome,
@@ -155,39 +148,56 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     UI.fillOrderForm(orderData);
-
     document.getElementById("read-message-modal").style.display = "none";
     document.getElementById("new-order-modal").style.display = "block";
   }
 
-  async function handleCepBlur(e) {
+  async function handleCepInput(e) {
     const cep = e.target.value.replace(/\D/g, "");
+    const ruaField = document.getElementById("rua");
+    const bairroField = document.getElementById("bairro");
+    const numeroField = document.getElementById("numero");
+    const complementoField = document.getElementById("complemento");
+
+    // Clear previous address data
+    ruaField.value = "";
+    bairroField.value = "";
+    if (numeroField) numeroField.value = "";
+    if (complementoField) complementoField.value = "";
+
+    if (cep.length < 8) {
+      console.log("CEP incompleto.");
+      return;
+    }
+
     if (cep.length === 8) {
-      try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        const data = await response.json();
-        if (!data.erro) {
-          document.getElementById("rua").value = data.logradouro;
-          document.getElementById("bairro").value = data.bairro;
-        }
-      } catch (error) {
-        console.error("Erro ao buscar CEP:", error);
+
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+
+      if (!data.erro) {
+        ruaField.value = data.logradouro;
+        bairroField.value = data.bairro;
+        if (numeroField) numeroField.focus();
+      } else {
+        console.log("CEP não encontrado.");
       }
+    } catch (err) {
+      console.error("Erro ao buscar CEP:", err);
     }
   }
 
   async function printAllEmPreparoLabels() {
     listenToPedidos((pedidos) => {
       let printedCount = 0;
-      for (const pedidoId in pedidos) {
-        if (pedidos[pedidoId].status === "em_preparo") {
-          UI.printLabel(pedidos[pedidoId], pedidoId);
+      for (const id in pedidos) {
+        if (pedidos[id].status === "em_preparo") {
+          UI.printLabel(pedidos[id], id);
           printedCount++;
         }
       }
-      if (printedCount === 0) {
-        alert("Não há pedidos em preparo para imprimir etiquetas.");
-      }
+      if (printedCount === 0) alert("Não há pedidos em preparo.");
     });
   }
 });

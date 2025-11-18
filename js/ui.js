@@ -4,9 +4,10 @@ export function setupEventListeners(
   onPrintAll,
   onReadMessage,
   onClearDelivered,
+  onResetActiveDeliveries, // Novo callback
   onNewOrderSubmit,
   onReadMessageSubmit,
-  onCepBlur
+  onCepInput
 ) {
   const logoutButton = document.getElementById("logout-button");
   const newOrderModal = document.getElementById("new-order-modal");
@@ -21,12 +22,24 @@ export function setupEventListeners(
   const newOrderForm = document.getElementById("new-order-form");
   const cepField = document.getElementById("cep");
   const clearDeliveredBtn = document.getElementById("clear-delivered-button");
+  const resetDeliveriesBtn = document.getElementById(
+    "reset-active-deliveries-button"
+  ); // Novo botão
 
   logoutButton.addEventListener("click", onLogout);
-  newOrderBtn.addEventListener("click", () => (newOrderModal.style.display = "block"));
+  newOrderBtn.addEventListener(
+    "click",
+    () => (newOrderModal.style.display = "block")
+  );
   printAllEmPreparoBtn.addEventListener("click", onPrintAll);
-  readMessageBtn.addEventListener("click", () => (readMessageModal.style.display = "block"));
-  if(clearDeliveredBtn) clearDeliveredBtn.addEventListener("click", onClearDelivered);
+  readMessageBtn.addEventListener(
+    "click",
+    () => (readMessageModal.style.display = "block")
+  );
+  if (clearDeliveredBtn)
+    clearDeliveredBtn.addEventListener("click", onClearDelivered);
+  if (resetDeliveriesBtn)
+    resetDeliveriesBtn.addEventListener("click", onResetActiveDeliveries); // Adiciona o listener
 
   closeButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -37,12 +50,15 @@ export function setupEventListeners(
 
   window.addEventListener("click", (event) => {
     if (event.target === newOrderModal) newOrderModal.style.display = "none";
-    if (event.target === readMessageModal) readMessageModal.style.display = "none";
+    if (event.target === readMessageModal)
+      readMessageModal.style.display = "none";
   });
 
-  cepField.addEventListener("blur", onCepBlur);
-  newOrderForm.addEventListener("submit", onNewOrderSubmit);
-  readMessageForm.addEventListener("submit", onReadMessageSubmit);
+  if (cepField && onCepInput) cepField.addEventListener("input", onCepInput);
+  if (newOrderForm && onNewOrderSubmit)
+    newOrderForm.addEventListener("submit", onNewOrderSubmit);
+  if (readMessageForm && onReadMessageSubmit)
+    readMessageForm.addEventListener("submit", onReadMessageSubmit);
 }
 
 export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
@@ -53,6 +69,7 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
     { id: "em_preparo", title: "Em Preparo" },
     { id: "feito", title: "Feito" },
     { id: "pronto_para_entrega", title: "Pronto para Entrega" },
+    { id: "em_entrega", title: "Em Entrega" },
     { id: "entregue", title: "Entregue" },
   ];
 
@@ -69,7 +86,12 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
       `.kanban-column[data-status="${pedido.status}"]`
     );
     if (column) {
-      const card = createOrderCard(pedidoId, pedido, onStatusUpdate, onPrintLabel);
+      const card = createOrderCard(
+        pedidoId,
+        pedido,
+        onStatusUpdate,
+        onPrintLabel
+      );
       column.appendChild(card);
     }
   });
@@ -159,11 +181,14 @@ export function createOrderCard(
         `;
   }
 
-  card.innerHTML = `<h4>${pedido.nomeBolo || "Bolo"}</h4><p>${
-    pedido.nomeCliente
-  }</p><p>${
-    pedido.endereco
-  }</p><div class="distance"></div>${deliveryInfoHtml}`;
+  card.innerHTML = `<div class="order-card-header">
+                      <h4>${pedido.nomeBolo || "Bolo"}</h4>
+                      <span class="order-id">#${pedidoId.toUpperCase()}</span>
+                    </div>
+                    <p>${pedido.nomeCliente}</p>
+                    <p>${pedido.endereco}</p>
+                    <div class="distance"></div>
+                    ${deliveryInfoHtml}`;
   const actions = document.createElement("div");
   actions.className = "order-actions";
 
@@ -184,6 +209,40 @@ export function createOrderCard(
 
   card.appendChild(actions);
   return card;
+}
+
+export function updateAdminMapInfo(order, deliveryData, speed) {
+  const infoEl = document.getElementById("delivery-info-admin");
+  if (!infoEl) return;
+
+  if (!order || !deliveryData) {
+    infoEl.style.display = "none";
+    infoEl.innerHTML = "";
+    return;
+  }
+
+  const speedText = typeof speed === "number" ? `${speed} km/h` : "...";
+  const distanceText =
+    typeof deliveryData.distancia === "number" || !isNaN(deliveryData.distancia)
+      ? `${deliveryData.distancia} km`
+      : "...";
+  const timeText =
+    typeof deliveryData.tempoEstimado === "number" ||
+    !isNaN(deliveryData.tempoEstimado)
+      ? `${deliveryData.tempoEstimado} min`
+      : "...";
+
+  infoEl.innerHTML = `
+    <h4>Entrega em Andamento</h4>
+    <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
+    <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
+    <div class="delivery-realtime-info">
+      <p>🚗 <strong>Velocidade:</strong> ${speedText}</p>
+      <p>📏 <strong>Distância Restante:</strong> ${distanceText}</p>
+      <p>⏱️ <strong>Tempo Estimado:</strong> ${timeText}</p>
+    </div>
+  `;
+  infoEl.style.display = "block";
 }
 
 
