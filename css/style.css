@@ -563,6 +563,17 @@ header {
   border-radius: 8px;
 }
 
+.form-textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid var(--cor-secundaria);
+  border-radius: 8px;
+  font-family: "Poppins", sans-serif; /* Ensure consistent font */
+  font-size: 16px; /* Ensure consistent font size */
+  resize: vertical; /* Allow vertical resizing */
+}
+
 #new-order-form button {
   width: 100%;
 }
