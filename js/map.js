@@ -13,7 +13,7 @@ export function initializeMap(elementId) { // Renamed from initMap
   }
 
   // Coordenadas de São Paulo como centro inicial
-  map = L.map(elementId).setView([-23.5505, -46.6333], 12);
+  map = L.map(elementId).setView([-23.4273, -51.9375], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution:
       '&copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors',
