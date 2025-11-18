@@ -497,8 +497,7 @@ header {
 }
 
 /* === MODAL === */
-/* === MODAL === */
-.modal-novo-pedido {
+.modal-novo-pedido, .modal-read-message { /* Aplica estilos a ambos os modais */
     position: fixed; /* fica acima de tudo */
     top: 0;
     left: 0;
@@ -509,18 +508,34 @@ header {
     justify-content: center;     /* centraliza horizontal */
     align-items: center;         /* centraliza vertical */
     z-index: 9999;
+    /* Oculto por padrão, será exibido via JS */
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s, opacity 0.3s ease-in-out;
 }
 
-.modal-novo-pedido .modal-content {
+.modal-novo-pedido.active, .modal-read-message.active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.modal-novo-pedido .modal-content, .modal-read-message .modal-content {
+    position: relative; /* Adicionado para posicionar o botão de fechar */
     width: 90%;
-    max-width: 500px;   /* limite bonito */
-    background: var(--cor-principal); /* Use a variável para consistência */
-    padding: 30px; /* Mantém o padding original */
-    border-radius: var(--borda-radius); /* Usa a variável para consistência */
-    box-shadow: var(--sombra); /* Usa a variável para consistência */
+    max-width: 400px;   /* limite bonito */
+    background: var(--cor-principal);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     border: 2px solid var(--cor-destaque); /* Mantém a borda original */
     max-height: 90vh; /* Altura máxima para evitar que o modal seja maior que a tela */
     overflow-y: auto; /* Adiciona rolagem se o conteúdo for muito grande */
+    transform: translateY(-20px); /* Começa um pouco acima */
+    transition: transform 0.3s ease-in-out;
+}
+
+.modal-novo-pedido.active .modal-content, .modal-read-message.active .modal-content {
+    transform: translateY(0); /* Desliza para a posição final */
 }
 
 .modal-content-centered {
@@ -547,423 +562,50 @@ header {
   transition: background-color 0.3s, color 0.3s;
 }
 
-.close-button:hover,
-.close-button:focus {
-  color: var(--cor-texto);
-  background-color: rgba(0, 0, 0, 0.15); /* Fundo mais escuro no hover */
-  text-decoration: none;
+.close-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: var(--cor-destaque);
+}
+
+.close-button:active {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+.modal-novo-pedido .modal-content label,
+.modal-read-message .modal-content label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.modal-novo-pedido .modal-content input[type="text"],
+.modal-novo-pedido .modal-content input[type="email"],
+.modal-novo-pedido .modal-content textarea,
+.modal-read-message .modal-content input[type="text"],
+.modal-read-message .modal-content input[type="email"],
+.modal-read-message .modal-content textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid var(--cor-secundaria);
+  border-radius: 8px;
+  box-sizing: border-box; /* Garante que padding não aumente a largura */
+}
+
+.modal-novo-pedido .modal-content button[type="submit"],
+.modal-read-message .modal-content button[type="submit"] {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
-#new-order-form input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 15px;
-  border: 1px solid var(--cor-secundaria);
-  border-radius: 8px;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 15px;
-  border: 1px solid var(--cor-secundaria);
-  border-radius: 8px;
-  font-family: "Poppins", sans-serif; /* Ensure consistent font */
-  font-size: 16px; /* Ensure consistent font size */
-  resize: vertical; /* Allow vertical resizing */
-}
-
-#new-order-form button {
-  width: 100%;
-}
-
-/* === LAYOUT DESKTOP === */
-@media (min-width: 993px) {
-  #kanban-board {
-    grid-template-columns: repeat(3, 1fr); /* 3 colunas em telas grandes */
-  }
-}
-
-/* === RESPONSIVIDADE === */
-@media (max-width: 992px) {
-  /* Em telas maiores, cria um layout de duas colunas */
-  .container {
-    grid-template-columns: repeat(
-      auto-fit,
-      minmax(400px, 1fr)
-    ); /* Duas colunas se houver espaço */
-  }
-  #kanban-board {
-    /* Em telas médias, forçamos 2 colunas se couber, senão 1 */
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
-}
-@media (max-width: 768px) {
-  .header-container {
-  }
-  /* Esconde os botões do desktop e mostra o menu hambúrguer */
-  .hamburger-menu {
-    display: block;
-  }
-  .header-container .desktop-nav {
-    display: none;
-  }
-
-@media (max-width: 992px) {
-  /* Em telas maiores, cria um layout de duas colunas */
-  .container {
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); /* Duas colunas se houver espaço */
-  }
-  #kanban-board {
-    /* Em telas médias, forçamos 2 colunas se couber, senão 1 */
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
-  .header-container h1 {
-    font-size: 1.8em;
-  }
-  .header-container button {
-    width: 100%;
-    margin: 5px 0;
-  }
-  .modal-content {
-    /* Garante que o modal não fique colado nas bordas */
-    width: 95%;
-  }
-  #map-overlay-top {
-    flex-wrap: wrap; /* Allow items to wrap */
-    justify-content: center; /* Center items when wrapped */
-    top: 5px; /* Adjust top position */
-    gap: 5px; /* Reduce gap */
-  }
-  #eta-display {
-    font-size: 16px; /* Smaller font for ETA */
-    padding: 6px 10px;
-  }
-  #speed-display,
-  #distance-display {
-    width: 40px; /* Smaller icons */
-    height: 40px;
-    font-size: 0.9em;
-  }
-  .map-info-icon .unit {
-    font-size: 0.6em;
-  }
-  #map-container,
-  #map {
-    height: 300px; /* Reduce map height */
-  }
-  .container {
-    padding: 10px; /* Reduce general padding */
-  }
-  .order-card h4 {
-    font-size: 1em;
-  }
-  .order-card p {
-    font-size: 0.85em;
-  }
-  .order-actions button {
-    font-size: 11px;
-    padding: 4px 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-container h1 {
-    font-size: 1.4em;
-  }
-
-  /* === AJUSTE FINO DO MODAL NO MOBILE === */
-  .modal {
-    /* Mantém uma pequena margem externa para não colar na tela */
-    padding: 15px !important;
-    align-items: center; /* Centraliza verticalmente */
-  }
-  .modal-content {
-    /* Seu pedido: padding interno reduzido e altura limitada */
-    padding: 20px 15px;
-    width: 100%;
-    max-height: 75vh; /* Modal mais curto */
-    border-radius: 12px; /* Bordas levemente menores no mobile */
-  }
-  .close-button {
-    /* Ajuste para o botão ficar bem posicionado no modal menor */
-    top: 5px;
-    right: 5px;
-    width: 32px;
-    height: 32px;
-    font-size: 20px;
-    background-color: rgba(0, 0, 0, 0.1); /* Garante contraste */
-  }
-
-  /* Compactar os inputs para caber melhor na altura reduzida (75vh) */
-  #new-order-form input {
-    padding: 10px;
-    margin-bottom: 10px;
-    font-size: 14px;
-  }
-
-  #new-order-form button {
-    padding: 10px;
-  }
-
-  /* === OUTROS AJUSTES MOBILE (Mantidos) === */
-  #map-overlay-top {
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-  }
-  #eta-display {
-    font-size: 14px;
-    padding: 5px 8px;
-  }
-  #speed-display,
-  #distance-display {
-    width: 35px;
-    height: 35px;
-    font-size: 0.8em;
-  }
-  .map-info-icon .unit {
-    font-size: 0.5em;
-  }
-  #map-container,
-  #map {
-    height: 250px;
-  }
-  .login-box {
-    padding: 20px;
-  }
-  .login-box h1 {
-    font-size: 1.8em;
-  }
-  .login-box .subtitle {
-    font-size: 0.9em;
-  }
-  h2 {
-    font-size: 1.4em;
-  }
-  .order-card {
-    padding: 10px;
-  }
-  .order-actions button {
-    font-size: 10px;
-    padding: 5px 8px;
-  }
-}
-
-@media (max-width: 350px) {
-  #kanban-board {
-    /* Em telas muito pequenas, garante 1 coluna */
-    grid-template-columns: 1fr;
-  }
-  .header-container h1 {
-    font-size: 1.2em;
-  }
-  #map-overlay-top {
-    top: 2px;
-  }
-  #eta-display {
-    font-size: 12px;
-    padding: 4px 6px;
-  }
-  #speed-display,
-  #distance-display {
-    width: 30px;
-    height: 30px;
-    font-size: 0.7em;
-  }
-  #map-container,
-  #map {
-    height: 200px;
-  }
-  h2 {
-    font-size: 1.2em;
-  }
-}
-
-.dynamic-island {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: white;
-  padding: 15px 25px;
-  border-radius: 25px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 1001;
-  transition: bottom 0.3s ease-in-out;
-}
-
-#dynamic-island-content p {
-  margin: 0;
-  font-size: 0.9em;
-}
-
-#dynamic-island-content p strong {
-  color: #a0a0a0;
-}
-
-/* === DELIVERY PANEL SPECIFIC STYLES === */
-.delivery-orders-section {
-  display: grid;
-  grid-template-columns: 1fr; /* Default to single column */
-  gap: 20px;
-  margin-top: 20px;
-}
-
-@media (min-width: 768px) {
-  .delivery-orders-section {
-    grid-template-columns: repeat(2, 1fr); /* Two columns on larger screens */
-  }
-}
-
-.delivery-status-section {
-  background-color: var(--cor-card); /* Light background for the section */
-  padding: 20px;
-  border-radius: var(--borda-radius);
-  box-shadow: var(--sombra);
-}
-
-.delivery-status-section h3 {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--cor-secundaria); /* Separator for title */
-  color: var(--cor-texto);
-}
-
-/* Styling for order cards within these sections */
-.delivery-status-section .order-card {
-  border: 1px solid var(--cor-secundaria); /* Subtle border */
-  transition: all 0.2s ease-in-out;
-}
-
-.delivery-status-section .order-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-}
-
-/* Specific styling for "Pronto para Entrega" orders */
-.order-card.ready-for-delivery {
-  border-left: 5px solid var(--cor-sucesso); /* Green highlight for ready orders */
-}
-
-.order-card.ready-for-delivery .order-card-header h4 {
-  color: var(--cor-sucesso);
-}
-
-/* Enhanced styling for "Em Rota" orders */
-.order-card.in-route {
-  border: 1px solid var(--cor-destaque);
-  background-color: var(--cor-card);
-}
-
-.order-card.in-route .order-card-header h4 {
-  color: var(--cor-destaque);
-}
-
-.order-card.in-route .order-id {
-  background-color: var(--cor-destaque);
-  color: var(--cor-branco);
-}
-
-.order-card.in-route .order-actions button {
-  background-color: var(--cor-destaque);
-  color: var(--cor-branco);
-  border-color: var(--cor-destaque);
-}
-
-.order-card.in-route .order-actions button:hover {
+.modal-novo-pedido .modal-content button[type="submit"]:hover,
+.modal-read-message .modal-content button[type="submit"]:hover {
   background-color: #c5a231;
-}
-
-/* Remove o botão de iniciar entrega que não é mais necessário */
-.order-card.in-route .route-button {
-  display: none;
-}
-
-.order-card.in-route .order-actions button:hover {
-  background-color: #ffb300;
-}
-
-/* === PAINEL DE INFORMAÇÕES DE ENTREGA (ADMIN/CONFEITEIRA) === */
-.delivery-info-panel {
-  background-color: var(--cor-principal);
-  border: 1px solid var(--cor-destaque);
-  border-radius: var(--borda-radius);
-  padding: 20px;
-  margin-top: 20px;
-  box-shadow: var(--sombra);
-}
-
-.delivery-info-panel h4 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--cor-secundaria);
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-}
-
-.delivery-info-panel p {
-  margin: 5px 0 15px 0;
-}
-
-.delivery-realtime-info {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 15px;
-  text-align: center;
-  margin-top: 10px;
-}
-
-.info-item {
-  background-color: var(--cor-card);
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid var(--cor-secundaria);
-}
-
-.info-item .value {
-  font-size: 1.4em;
-  font-weight: 600;
-  color: var(--cor-destaque);
-}
-
-.info-item .label {
-  font-size: 0.8em;
-  color: #777;
-}
-
-/* CSS FINAL PERFEITO PARA CENTRALIZAR O MODAL */
-
-.modal-novo-pedido {
-    position: fixed; /* fica acima de tudo */
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;     /* centraliza horizontal */
-    align-items: center;         /* centraliza vertical */
-    z-index: 9999;
-}
-
-.modal-novo-pedido .modal-content {
-    position: relative; /* Adicionado para posicionar o botão de fechar */
-    width: 90%;
-    max-width: 400px;   /* limite bonito */
-    background: var(--cor-principal);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
 }

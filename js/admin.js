@@ -1,11 +1,13 @@
 import {
+  db,
+  ref,
+  get,
   listenToPedidos,
-  listenToEntregadorLocation,
+  listenToEntregadorLocation, // Não esqueça de importar isso
   createNewOrder,
   updateOrderStatus,
   clearDeliveredOrders,
-  resetAllActiveDeliveries,
-  clearAllOrders, // Importa a nova função para limpar todos os pedidos
+  resetAllActiveDeliveries, // Importa a nova função
 } from "./firebase.js";
 import { parseWhatsappMessage } from "./utils.js"; // Certifique-se de que este arquivo existe
 import { loadComponents } from "./componentLoader.js";
@@ -33,32 +35,50 @@ window.addEventListener("load", () => {
     () => {
       // Garante que os modais foram carregados antes de configurar os eventos
       setupUIEventListeners();
+      // Aplica o estilo correto ao botão do modal de novo pedido
+      const newOrderSubmitButton = document.querySelector(
+        '#new-order-form button[type="submit"]'
+      );
+      if (newOrderSubmitButton)
+        newOrderSubmitButton.classList.add("btn-primary");
       listenToFirebaseChanges();
     }
   );
 
   function setupUIEventListeners() {
+    const newOrderModal = document.getElementById("new-order-modal");
+    const readMessageModal = document.getElementById("read-message-modal");
+
     UI.setupEventListeners(
       () => {
         localStorage.removeItem("currentUser");
         window.location.href = "index.html";
       },
-      () => {}, // onNewOrder (handled by modal)
+      () => {
+        newOrderModal.classList.add('active');
+      }, // onNewOrder
       printAllEmPreparoLabels,
-      () => {}, // onReadMessage (handled by modal)
+      () => {
+        readMessageModal.classList.add('active');
+      }, // onReadMessage
       clearDeliveredOrders,
       () => {
         if (confirm("Tem certeza que deseja resetar TODAS as entregas ativas?"))
           resetAllActiveDeliveries();
       }, // Conecta a função ao UI
-      () => {
-        if (confirm("Tem certeza que deseja remover TODOS os pedidos? Esta ação é irreversível!"))
-          clearAllOrders();
-      }, // Novo callback para limpar todos os pedidos
+      null, // onClearAllOrders (não usado no admin, mas necessário para alinhar os argumentos)
       handleNewOrderSubmit,
       handleReadMessageSubmit,
       handleCepInput
     );
+
+    // Adiciona event listeners para os botões de fechar dos modais
+    newOrderModal.querySelector('.close-button').addEventListener('click', () => {
+      newOrderModal.classList.remove('active');
+    });
+    readMessageModal.querySelector('.close-button').addEventListener('click', () => {
+      readMessageModal.classList.remove('active');
+    });
   }
 
   function listenToFirebaseChanges() {
@@ -136,7 +156,7 @@ window.addEventListener("load", () => {
     data.endereco = `${data.rua}, ${data.numero}, ${data.bairro}, CEP: ${data.cep}`;
     createNewOrder(data);
     form.reset();
-    document.getElementById("new-order-modal").style.display = "none";
+    document.getElementById("new-order-modal").classList.remove('active');
   }
 
   function handleReadMessageSubmit(e) {
@@ -147,14 +167,14 @@ window.addEventListener("load", () => {
 
     const orderData = {
       clientName: parsedData.cliente.nome,
-      cakeName: parsedData.itens.length > 0 ? parsedData.itens[0].nome : "",
+      cakeName: parsedData.items.length > 0 ? parsedData.items[0].nome : "",
       whatsapp: parsedData.cliente.telefone,
       rua: parsedData.cliente.enderecoRaw,
     };
 
     UI.fillOrderForm(orderData);
-    document.getElementById("read-message-modal").style.display = "none";
-    document.getElementById("new-order-modal").style.display = "block";
+    document.getElementById("read-message-modal").classList.remove('active');
+    document.getElementById("new-order-modal").classList.add('active');
   }
 
   async function handleCepInput(e) {
@@ -170,56 +190,46 @@ window.addEventListener("load", () => {
     if (numeroField) numeroField.value = "";
     if (complementoField) complementoField.value = "";
 
-        if (cep.length < 8) {
-
-          return;
-
-        }
-
-    
-
-        if (cep.length === 8) {
-
-          try {
-
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-
-            const data = await res.json();
-
-    
-
-            if (!data.erro) {
-
-              ruaField.value = data.logradouro;
-
-              bairroField.value = data.bairro;
-
-              if (numeroField) numeroField.focus();
-
-            } else {
-
-              // Optionally, provide user feedback in the UI instead of console.log
-
-            }
-
-          } catch (err) {
-
-            console.error("Erro ao buscar CEP:", err);
-
-          }
-
-        }
+    if (cep.length < 8) {
+      console.log("CEP incompleto.");
+      return;
     }
-    async function printAllEmPreparoLabels() {
-    listenToPedidos((pedidos) => {
-      let printedCount = 0;
-      for (const id in pedidos) {
-        if (pedidos[id].status === "em_preparo") {
-          UI.printLabel(pedidos[id], id);
-          printedCount++;
+
+    if (cep.length === 8) {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await res.json();
+
+        if (!data.erro) {
+          ruaField.value = data.logradouro;
+          bairroField.value = data.bairro;
+          if (numeroField) numeroField.focus();
+        } else {
+          console.log("CEP não encontrado.");
         }
+      } catch (err) {
+        console.error("Erro ao buscar CEP:", err);
       }
-      if (printedCount === 0) alert("Não há pedidos em preparo.");
-    });
+    }
+  }
+
+  async function printAllEmPreparoLabels() {
+    try {
+      const snapshot = await get(ref(db, "pedidos"));
+      const pedidos = snapshot.val() || {};
+      const pedidosEmPreparo = Object.entries(pedidos).filter(
+        ([, pedido]) => pedido.status === "em_preparo"
+      );
+
+      if (pedidosEmPreparo.length === 0) {
+        alert("Não há pedidos em preparo para imprimir.");
+        return;
+      }
+
+      pedidosEmPreparo.forEach(([id, pedido]) => UI.printLabel(pedido, id));
+    } catch (error) {
+      console.error("Erro ao buscar pedidos para impressão:", error);
+      alert("Não foi possível buscar os pedidos para impressão.");
+    }
   }
 });
