@@ -1,9 +1,16 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getDatabase, ref, set, update, onValue, push, child, get } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  update,
+  onValue,
+  push,
+  child,
+  get,
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-// AVISO: As chaves de API do Firebase no frontend são seguras,
-// desde que você configure corretamente as "Regras de Segurança" (Security Rules)
-// no console do Firebase para proteger seus dados contra acesso não autorizado.
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAdxw1I-E-esZVGfhoop-yehIo1TN3jztc",
   authDomain: "scatambulo-d7cf2.firebaseapp.com",
@@ -12,14 +19,19 @@ const firebaseConfig = {
   messagingSenderId: "793542611290",
   appId: "1:793542611290:web:2ff447165151dc92d6a363",
   measurementId: "G-CVH2148FPB",
-  databaseURL: "https://scatambulo-d7cf2-default-rtdb.firebaseio.com/"
+  databaseURL: "https://scatambulo-d7cf2-default-rtdb.firebaseio.com/",
 };
 
+// Inicializa o app e banco
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// Exporta funções do Firebase para os outros módulos
 export { db, ref, set, update, onValue, push, child, get };
 
+// ===== Funções customizadas =====
+
+// Observa todos os pedidos em tempo real
 export function listenToPedidos(callback) {
   const pedidosRef = ref(db, "pedidos/");
   onValue(pedidosRef, (snapshot) => {
@@ -28,6 +40,7 @@ export function listenToPedidos(callback) {
   });
 }
 
+// Observa localização do entregador
 export function listenToEntregadorLocation(callback) {
   const locationRef = ref(db, "localizacao/entregador");
   onValue(locationRef, (snapshot) => {
@@ -36,71 +49,122 @@ export function listenToEntregadorLocation(callback) {
   });
 }
 
-export function createNewOrder(orderData) {
-  const newPedidoRef = push(ref(db, "pedidos"));
-  const updates = {};
-  updates[newPedidoRef.key] = {
-    ...orderData,
-    status: "pendente",
-  };
-  return update(ref(db, "pedidos"), updates);
+// Cria um novo pedido
+function generateOrderId() {
+    const randomPart = Math.floor(100000 + Math.random() * 900000); // Gera 6 dígitos
+    return `SC${randomPart}`;
 }
 
+export function createNewOrder(orderData) {
+    const orderId = generateOrderId();
+    const newPedidoRef = ref(db, `pedidos/${orderId.toLowerCase()}`); // Salva em minúsculas
+    const orderPayload = {
+        ...orderData,
+        id: orderId,
+        status: "novo",
+        createdAt: Date.now(),
+    };
+
+    return set(newPedidoRef, orderPayload);
+}
+
+// Limpa todos os pedidos
+export function clearAllOrders() {
+  set(ref(db, 'pedidos'), null);
+  console.log("Todos os pedidos foram removidos.");
+}
+
+// Atualiza o status de um pedido
 export async function updateOrderStatus(pedidoId, newStatus) {
   try {
-    const updates = {};
-    updates[`/pedidos/${pedidoId}/status`] = newStatus;
-    await update(ref(db), updates); // Wait for Firebase update to complete
-    console.log(`Firebase: Status for pedido ${pedidoId} updated to ${newStatus}.`);
+    await update(ref(db), { [`/pedidos/${pedidoId}/status`]: newStatus });
+    console.log(`Firebase: Pedido ${pedidoId} atualizado para '${newStatus}'.`);
   } catch (error) {
-    console.error(`Firebase: Error updating status for pedido ${pedidoId} to ${newStatus}:`, error);
-    throw error; // Re-throw to allow caller to handle
+    console.error(`Erro ao atualizar status do pedido ${pedidoId}:`, error);
+    throw error;
   }
 }
 
-export async function clearDeliveredOrders() {
-  console.log("Firebase: clearDeliveredOrders called.");
+// Reseta todas as entregas ativas
+export async function resetAllActiveDeliveries() {
   try {
-    const pedidosRef = ref(db, "pedidos");
-    const snapshot = await get(pedidosRef);
-    if (snapshot.exists()) {
-      const pedidos = snapshot.val();
-      const updates = {}; // Objeto para conter as operações de exclusão
+    const snapshot = await get(ref(db, "pedidos"));
+    if (!snapshot.exists()) {
+      console.log("Não há pedidos para resetar.");
+      return;
+    }
 
-      for (const pedidoId in pedidos) {
-        if (pedidos[pedidoId].status === "entregue") {
-          updates[`/pedidos/${pedidoId}`] = null; // Marcar para exclusão
-        }
-      }
+    const pedidos = snapshot.val();
+    const updates = {};
+    let resetCount = 0;
 
-      if (Object.keys(updates).length > 0) {
-        await update(ref(db), updates);
-        console.log("Firebase: Delivered orders cleared successfully.");
-      } else {
-        alert("Não há pedidos entregues para remover.");
+    Object.entries(pedidos).forEach(([id, pedido]) => {
+      if (pedido.status === "em_entrega") {
+        updates[`/pedidos/${id}/status`] = "pronto_para_entrega";
+        updates[`/pedidos/${id}/entrega`] = null;
+        updates[`/entregas_ativas/${id}`] = null;
+        resetCount++;
       }
+    });
+
+    if (resetCount > 0) {
+      await update(ref(db), updates);
+      alert(`${resetCount} entrega(s) ativa(s) foram resetadas.`);
+    } else {
+      alert("Nenhuma entrega ativa encontrada para resetar.");
     }
   } catch (error) {
-    console.error("Firebase: Error clearing delivered orders:", error);
-    throw error; // Re-throw to allow caller to handle
+    console.error("Erro ao resetar entregas ativas:", error);
+    alert("Ocorreu um erro ao resetar as entregas.");
+    throw error;
   }
 }
 
+// Limpa pedidos entregues
+export async function clearDeliveredOrders() {
+  try {
+    const snapshot = await get(ref(db, "pedidos"));
+    if (!snapshot.exists()) {
+      console.log("Não há pedidos para limpar.");
+      return;
+    }
+
+    const pedidos = snapshot.val();
+    const updates = {};
+
+    Object.entries(pedidos).forEach(([id, pedido]) => {
+      if (pedido.status === "entregue") updates[`/pedidos/${id}`] = null;
+    });
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db), updates);
+      console.log("Pedidos entregues removidos com sucesso.");
+    } else {
+      console.log("Não há pedidos entregues para remover.");
+    }
+  } catch (error) {
+    console.error("Erro ao limpar pedidos entregues:", error);
+    throw error;
+  }
+}
+
+// Retorna um pedido específico
 export async function getPedido(pedidoId) {
   try {
     const snapshot = await get(child(ref(db), `pedidos/${pedidoId}`));
     return snapshot.val();
   } catch (error) {
-    console.error(`Firebase: Error getting pedido ${pedidoId}:`, error);
-    throw error; // Re-throw to allow caller to handle
+    console.error(`Erro ao buscar pedido ${pedidoId}:`, error);
+    throw error;
   }
 }
 
+// Atualiza dados de um pedido (sem modificar status automaticamente)
 export function updatePedido(pedidoId, data) {
   try {
     return update(ref(db, `pedidos/${pedidoId}`), data);
   } catch (error) {
-    console.error(`Firebase: Error updating pedido ${pedidoId} with data:`, data, error);
-    throw error; // Re-throw to allow caller to handle
+    console.error(`Erro ao atualizar pedido ${pedidoId}:`, data, error);
+    throw error;
   }
 }

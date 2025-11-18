@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastrear Pedido - Scatambulo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <h1>Rastrear Pedido</h1>
+            <a href="index.html" class="btn-secondary">Voltar</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="tracking-section">
+            <h2>Insira o Código do Pedido</h2>
+            <div class="input-group">
+                <input type="text" id="order-code-input" placeholder="Ex: SC123456" maxlength="8">
+                <button id="track-order-button" class="btn-primary">Rastrear</button>
+            </div>
+            <p id="tracking-message" class="error-message"></p>
+        </section>
+
+        <section id="map-section" style="display: none;">
+            <h2>Localização do Entregador</h2>
+            <div id="map-container">
+                <div id="map"></div>
+                <div id="map-overlay-top">
+                    <div id="customer-eta-display" class="map-eta-display"></div>
+                    <div id="customer-speed-display" class="map-info-icon"></div>
+                </div>
+            </div>
+            <div id="delivery-details">
+                <p><strong>Status:</strong> <span id="delivery-status"></span></p>
+                <p><strong>Cliente:</strong> <span id="customer-name"></span></p>
+                <p><strong>Endereço:</strong> <span id="customer-address"></span></p>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="js/rastreio.js"></script>
+</body>
+</html>

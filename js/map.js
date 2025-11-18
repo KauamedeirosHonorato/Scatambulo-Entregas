@@ -6,12 +6,17 @@ let routeLayer;
 let clientMarker; // Marcador do cliente
 let routeRecalculationInterval = null;
 
-export function initMap(elementId) {
+export function initializeMap(elementId) { // Renamed from initMap
+  // Evita reinicializar o mapa se ele já existe (causa comum de bugs visuais)
+  if (map) {
+    return map;
+  }
+
   // Coordenadas de São Paulo como centro inicial
   map = L.map(elementId).setView([-23.5505, -46.6333], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      '&copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors',
   }).addTo(map);
   return map;
 }
@@ -26,10 +31,12 @@ export function updateDeliveryMarkerOnMap(location) {
 
     if (deliveryMarker) {
       deliveryMarker.setLatLng(latLng);
-      if (typeof heading === 'number' && !isNaN(heading)) {
-        if (deliveryMarker._icon) {
-          deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
-        }
+      if (
+        typeof heading === "number" &&
+        !isNaN(heading) &&
+        deliveryMarker._icon
+      ) {
+        deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
       }
     } else {
       deliveryMarker = L.marker(latLng, {
@@ -39,7 +46,12 @@ export function updateDeliveryMarkerOnMap(location) {
           iconAnchor: [35, 55],
         }),
       }).addTo(map);
-      if (typeof heading === 'number' && !isNaN(heading) && deliveryMarker._icon) {
+      // Aplica rotação inicial se disponível
+      if (
+        typeof heading === "number" &&
+        !isNaN(heading) &&
+        deliveryMarker._icon
+      ) {
         deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
       }
     }
@@ -66,6 +78,7 @@ export function updateClientMarkerOnMap(coords) {
       }).addTo(map);
     }
   } else {
+    // Se coords for null, remove o marcador
     if (clientMarker) {
       map.removeLayer(clientMarker);
       clientMarker = null;
@@ -77,6 +90,8 @@ export function updateClientMarkerOnMap(coords) {
  * Ajusta o zoom do mapa para mostrar tanto o entregador quanto o cliente.
  */
 export function fitMapToBounds(deliveryLocation, clientCoords) {
+  if (!map) return; // Segurança extra
+
   if (deliveryLocation && clientCoords) {
     const deliveryLatLng = [
       deliveryLocation.latitude,
@@ -94,9 +109,9 @@ export function fitMapToBounds(deliveryLocation, clientCoords) {
  * Desenha a geometria de uma rota no mapa.
  */
 export function drawRouteOnMap(geometry) {
-  if (routeLayer) {
-    map.removeLayer(routeLayer);
-  }
+  // Sempre limpa a rota anterior antes de desenhar a nova
+  clearRouteFromMap();
+
   if (geometry) {
     routeLayer = L.geoJSON(geometry, {
       style: { color: "#007bff", weight: 5 },
@@ -104,19 +119,16 @@ export function drawRouteOnMap(geometry) {
   }
 }
 
-/**
- * Limpa a rota desenhada do mapa.
- */
 export function clearRouteFromMap() {
-  if (routeLayer) {
+  if (routeLayer && map) {
     map.removeLayer(routeLayer);
-    routeLayer = null;
   }
+  routeLayer = null;
 }
 
 /**
  * Adiciona marcadores de início e fim da rota (função que estava faltando).
- */
+
 export function addRouteMarkers(startCoords, endCoords) {
   // A lógica de marcadores já é tratada por updateDeliveryMarkerOnMap e updateClientMarkerOnMap
   // Esta função pode ser usada para lógicas adicionais se necessário.
@@ -133,33 +145,21 @@ export function startNavigation(getStartCoords, endCoords, onRouteUpdate) {
 
   const calculateAndDraw = async () => {
     const currentStartCoords = getStartCoords();
-    if (!currentStartCoords) {
-      console.warn(
-        "Não foi possível obter a localização do entregador para recalcular a rota."
-      );
-      return;
-    }
+    if (!currentStartCoords) return;
+
     const routeDetails = await getRouteDetails(currentStartCoords, endCoords);
 
-    clearRouteFromMap();
-
+    // Nota: drawRouteOnMap já chama clearRouteFromMap internamente
     if (routeDetails) {
       drawRouteOnMap(routeDetails.geometry);
-
-      // Chama o callback com os detalhes para que a UI e o Firebase possam ser atualizados
-      if (onRouteUpdate) {
-        onRouteUpdate(routeDetails);
-      }
+      if (onRouteUpdate) onRouteUpdate(routeDetails);
     } else {
-      // Informa que não foi possível obter a rota
-      if (onRouteUpdate) {
-        onRouteUpdate(routeDetails); // Passa o objeto com o erro
-      }
+      if (onRouteUpdate) onRouteUpdate(routeDetails);
     }
   };
 
-  calculateAndDraw(); // Executa imediatamente
-  routeRecalculationInterval = setInterval(calculateAndDraw, 15000); // E depois a cada 15 segundos
+  calculateAndDraw();
+  routeRecalculationInterval = setInterval(calculateAndDraw, 15000);
 }
 
 /**
@@ -167,7 +167,6 @@ export function startNavigation(getStartCoords, endCoords, onRouteUpdate) {
  */
 export function stopNavigation() {
   clearOrderFromMap(); // Use the new comprehensive clear function
-  // The interval and route layer are now handled by clearOrderFromMap
 }
 
 /**
@@ -194,24 +193,19 @@ export function invalidateMapSize() {
  * Limpa todos os elementos relacionados a um pedido do mapa (rota, marcador do cliente)
  * e para o intervalo de recalculo da rota. O marcador do entregador permanece.
  */
-export function clearOrderFromMap() {
-    // Remove a rota se existir
-    if (routeLayer) {
-        routeLayer.remove();
-        routeLayer = null;
-    }
+export function clearMap() { // Renamed from clearOrderFromMap
+  // 1. Remove a Rota
+  clearRouteFromMap();
 
-    // Remove marcador do cliente se existir
-    if (clientMarker) {
-        clientMarker.remove();
-        clientMarker = null;
-    }
+  // 2. Remove o Marcador do Cliente
+  if (clientMarker && map) {
+    map.removeLayer(clientMarker);
+  }
+  clientMarker = null;
 
-    // Limpa o intervalo de recalculo da rota
-    if (routeRecalculationInterval) {
-        clearInterval(routeRecalculationInterval);
-        routeRecalculationInterval = null;
-    }
-
-    console.log("Map: clearOrderFromMap called. Route and client markers removed.");
+  // 3. Para o intervalo de recálculo
+  if (routeRecalculationInterval) {
+    clearInterval(routeRecalculationInterval);
+    routeRecalculationInterval = null;
+  }
 }

@@ -49,7 +49,7 @@ export async function getRouteDetails(startCoords, endCoords) {
 /**
  * Calcula a distância entre duas coordenadas usando a fórmula de Haversine.
  */
-export function calcularDistancia(lat1, lon1, lat2, lon2) {
+export function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Raio da Terra em km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -72,7 +72,7 @@ export function calcularDistancia(lat1, lon1, lat2, lon2) {
 export function calculateSpeed(newLoc, oldLoc) {
   if (!oldLoc || !newLoc || !newLoc.timestamp || !oldLoc.timestamp) return 0;
 
-  const dist = calcularDistancia(
+  const dist = calculateDistance(
     oldLoc.latitude,
     oldLoc.longitude,
     newLoc.latitude,

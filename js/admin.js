@@ -1,10 +1,11 @@
 import {
   listenToPedidos,
-  listenToEntregadorLocation, // Não esqueça de importar isso
+  listenToEntregadorLocation,
   createNewOrder,
   updateOrderStatus,
   clearDeliveredOrders,
-  resetAllActiveDeliveries, // Importa a nova função
+  resetAllActiveDeliveries,
+  clearAllOrders, // Importa a nova função para limpar todos os pedidos
 } from "./firebase.js";
 import { parseWhatsappMessage } from "./utils.js"; // Certifique-se de que este arquivo existe
 import { loadComponents } from "./componentLoader.js";
@@ -50,6 +51,10 @@ window.addEventListener("load", () => {
         if (confirm("Tem certeza que deseja resetar TODAS as entregas ativas?"))
           resetAllActiveDeliveries();
       }, // Conecta a função ao UI
+      () => {
+        if (confirm("Tem certeza que deseja remover TODOS os pedidos? Esta ação é irreversível!"))
+          clearAllOrders();
+      }, // Novo callback para limpar todos os pedidos
       handleNewOrderSubmit,
       handleReadMessageSubmit,
       handleCepInput
@@ -165,30 +170,47 @@ window.addEventListener("load", () => {
     if (numeroField) numeroField.value = "";
     if (complementoField) complementoField.value = "";
 
-    if (cep.length < 8) {
-      console.log("CEP incompleto.");
-      return;
+        if (cep.length < 8) {
+
+          return;
+
+        }
+
+    
+
+        if (cep.length === 8) {
+
+          try {
+
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+
+            const data = await res.json();
+
+    
+
+            if (!data.erro) {
+
+              ruaField.value = data.logradouro;
+
+              bairroField.value = data.bairro;
+
+              if (numeroField) numeroField.focus();
+
+            } else {
+
+              // Optionally, provide user feedback in the UI instead of console.log
+
+            }
+
+          } catch (err) {
+
+            console.error("Erro ao buscar CEP:", err);
+
+          }
+
+        }
     }
-
-    if (cep.length === 8) {
-
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await res.json();
-
-      if (!data.erro) {
-        ruaField.value = data.logradouro;
-        bairroField.value = data.bairro;
-        if (numeroField) numeroField.focus();
-      } else {
-        console.log("CEP não encontrado.");
-      }
-    } catch (err) {
-      console.error("Erro ao buscar CEP:", err);
-    }
-  }
-
-  async function printAllEmPreparoLabels() {
+    async function printAllEmPreparoLabels() {
     listenToPedidos((pedidos) => {
       let printedCount = 0;
       for (const id in pedidos) {

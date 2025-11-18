@@ -54,6 +54,7 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
     { id: "pendente", title: "Pendente" },
     { id: "em_preparo", title: "Em Preparo" },
     { id: "feito", title: "Feito" },
+    { id: "pronto_para_entrega", title: "Pronto para Entrega" },
   ];
 
   statuses.forEach((statusInfo) => {
@@ -102,4 +103,47 @@ export function fillOrderForm(data) {
 
 export function printLabel(pedido, pedidoId) {
   genericPrintLabel(pedido, pedidoId);
+}
+
+export function updateDeliveryPersonStatus(status) {
+  const statusEl = document.getElementById("delivery-person-status");
+  if (statusEl) {
+    statusEl.textContent = status;
+  }
+}
+
+export function updateConfeiteiraMapInfo(order, deliveryData, speed) {
+  const infoEl = document.getElementById("delivery-info-confeiteira");
+  if (!infoEl) return;
+
+  const speedText = typeof speed === "number" ? `${speed} km/h` : "...";
+  const distanceText =
+    typeof deliveryData.distancia === "number" || !isNaN(deliveryData.distancia)
+      ? `${deliveryData.distancia} km`
+      : "...";
+  const timeText =
+    typeof deliveryData.tempoEstimado === "number" ||
+    !isNaN(deliveryData.tempoEstimado)
+      ? `${deliveryData.tempoEstimado} min`
+      : "...";
+
+  infoEl.innerHTML = `
+    <h4>Entrega em Andamento</h4>
+    <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
+    <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
+    <div class="delivery-realtime-info">
+      <p>🚗 <strong>Velocidade:</strong> ${speedText}</p>
+      <p>📏 <strong>Distância Restante:</strong> ${distanceText}</p>
+      <p>⏱️ <strong>Tempo Estimado:</strong> ${timeText}</p>
+    </div>
+  `;
+  infoEl.style.display = "block";
+}
+
+export function clearConfeiteiraMapInfo() {
+  const infoEl = document.getElementById("delivery-info-confeiteira");
+  if (infoEl) {
+    infoEl.style.display = "none";
+    infoEl.innerHTML = "";
+  }
 }

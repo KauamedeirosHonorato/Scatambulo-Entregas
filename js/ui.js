@@ -4,7 +4,8 @@ export function setupEventListeners(
   onPrintAll,
   onReadMessage,
   onClearDelivered,
-  onResetActiveDeliveries, // Novo callback
+  onResetActiveDeliveries,
+  onClearAllOrders, // Novo callback para limpar todos os pedidos
   onNewOrderSubmit,
   onReadMessageSubmit,
   onCepInput
@@ -25,6 +26,7 @@ export function setupEventListeners(
   const resetDeliveriesBtn = document.getElementById(
     "reset-active-deliveries-button"
   ); // Novo botão
+  const clearAllOrdersBtn = document.getElementById("clear-all-orders-button"); // Novo botão para limpar todos os pedidos
 
   logoutButton.addEventListener("click", onLogout);
   newOrderBtn.addEventListener(
@@ -40,6 +42,8 @@ export function setupEventListeners(
     clearDeliveredBtn.addEventListener("click", onClearDelivered);
   if (resetDeliveriesBtn)
     resetDeliveriesBtn.addEventListener("click", onResetActiveDeliveries); // Adiciona o listener
+  if (clearAllOrdersBtn)
+    clearAllOrdersBtn.addEventListener("click", onClearAllOrders); // Adiciona o listener para limpar todos os pedidos
 
   closeButtons.forEach((button) => {
     button.addEventListener("click", () => {

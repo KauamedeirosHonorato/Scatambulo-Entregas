@@ -8,6 +8,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Adiciona a biblioteca de mapas Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
 </head>
 <body>
     <header>
@@ -27,6 +34,15 @@
             <div id="kanban-board">
                 <!-- Colunas e pedidos serão gerados pelo JS -->
             </div>
+        </section>
+
+        <section id="delivery-map-section">
+            <h2>Acompanhamento de Entrega</h2>
+            <div id="map-container">
+                <div id="map"></div>
+            </div>
+            <p id="delivery-person-status">Aguardando localização do entregador...</p>
+            <div id="delivery-info-confeiteira" style="display: none;"></div>
         </section>
     </main>
     

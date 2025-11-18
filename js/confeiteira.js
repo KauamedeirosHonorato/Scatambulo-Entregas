@@ -1,227 +1,202 @@
 import {
   listenToPedidos,
+  listenToEntregadorLocation,
   createNewOrder,
   updateOrderStatus,
 } from "./firebase.js";
 import { parseWhatsappMessage } from "./utils.js";
 import { loadComponents } from "./componentLoader.js";
-// Removed: import * as MapLogic from "./map-logic.js";
+import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui-confeiteira.js";
 
-// Configurações e Constantes
-const CONSTANTS = {
-  AUDIO_NEW_ORDER: "audio/NotificacaoPedidoNovo.mp3",
-  AUDIO_DELIVERY_COMPLETE: "audio/NotificacaoPedidoEntregue.mp3",
-  PAGES: {
-    LOGIN: "index.html",
-    PANEL: "confeiteira.html"
-  },
-  CEP_API_URL: "https://viacep.com.br/ws/"
-};
-
-// Estado Global da Aplicação
-const state = {
-  currentUser: null,
-  newOrderSound: null,
-  deliveryCompleteSound: null,
-  knownOrderIds: new Set(),
-  knownDeliveredOrderIds: new Set(),
-  isFirstLoad: true,
-};
-
-document.addEventListener("DOMContentLoaded", initApp);
-
-function initApp() {
-  // 1. Verificação de Autenticação
-  try {
-    state.currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (!state.currentUser || state.currentUser.panel !== CONSTANTS.PAGES.PANEL) {
-      window.location.href = CONSTANTS.PAGES.LOGIN;
-      return;
-    }
-  } catch (e) {
-    console.error("Erro ao ler usuário:", e);
-    window.location.href = CONSTANTS.PAGES.LOGIN;
+document.addEventListener("DOMContentLoaded", () => {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  if (!currentUser || currentUser.panel !== "confeiteira.html") {
+    window.location.href = "index.html";
     return;
   }
 
-  // 2. Inicialização de Sons
-  state.newOrderSound = new Audio(CONSTANTS.AUDIO_NEW_ORDER);
-  state.deliveryCompleteSound = new Audio(CONSTANTS.AUDIO_DELIVERY_COMPLETE);
+  const newOrderSound = new Audio("audio/NotificacaoPedidoNovo.mp3");
+  const deliveryCompleteSound = new Audio(
+    "audio/NotificacaoPedidoEntregue.mp3"
+  );
+  let knownOrderIds = new Set();
+  let knownDeliveredOrderIds = new Set();
+  let isFirstLoad = true;
 
-  // 3. Carregamento de Componentes e Configuração Inicial
   loadComponents(
     "#modal-container",
     ["components/modal-new-order.html", "components/modal-read-message.html"],
     () => {
-      // Removed: MapLogic.initializeMapWithLocation("map");
+      MapLogic.initializeMapWithLocation("map");
       setupUIEventListeners();
       listenToFirebaseChanges();
     }
   );
-}
 
-function setupUIEventListeners() {
-  UI.setupEventListeners(
-    handleLogout,
-    handleNewOrderSubmit,
-    handleReadMessageSubmit,
-    handleCepBlur
-  );
-}
-
-function handleLogout() {
-  localStorage.removeItem("currentUser");
-  window.location.href = CONSTANTS.PAGES.LOGIN;
-}
+  function setupUIEventListeners() {
+    UI.setupEventListeners(
+      () => {
+        localStorage.removeItem("currentUser");
+        window.location.href = "index.html";
+      },
+      handleNewOrderSubmit,
+      handleReadMessageSubmit,
+      handleCepBlur
+    );
+  }
 
   function listenToFirebaseChanges() {
+    // 1. Ouvir Pedidos
     listenToPedidos((pedidos) => {
+      processNotifications(pedidos);
+
+      // Kanban
       const visibleStatuses = ["pendente", "em_preparo", "feito"];
-      const currentPendingOrderIds = new Set();
-      const currentDeliveredOrderIds = new Set();
-  
-      for (const pedidoId in pedidos) {
-        if (pedidos[pedidoId].status === "pendente") {
-          currentPendingOrderIds.add(pedidoId);
-          if (!state.isFirstLoad && !state.knownOrderIds.has(pedidoId)) {
-            state.newOrderSound.play().catch(console.warn);
-          }
-        }
-        if (pedidos[pedidoId].status === "entregue") {
-          currentDeliveredOrderIds.add(pedidoId);
-          if (!state.isFirstLoad && !state.knownDeliveredOrderIds.has(pedidoId)) {
-            state.deliveryCompleteSound.play().catch(console.warn);
-          }
-        }
-      }
-  
-      state.knownOrderIds = currentPendingOrderIds;
-      state.knownDeliveredOrderIds = currentDeliveredOrderIds;
-      state.isFirstLoad = false;
-  
-      // Filtra os pedidos para mostrar apenas os relevantes para a confeiteira
       const confeiteiraPedidos = Object.fromEntries(
-        Object.entries(pedidos).filter(([, pedido]) =>
-          visibleStatuses.includes(pedido.status)
+        Object.entries(pedidos).filter(([, p]) =>
+          visibleStatuses.includes(p.status)
         )
       );
       UI.renderBoard(confeiteiraPedidos, updateOrderStatus, UI.printLabel);
-      // Removed: MapLogic.processActiveDelivery(pedidos).then(updateMapInfo);
+
+      // Atualizar Mapa via MapLogic
+      MapLogic.processActiveDelivery(pedidos).then(() => {
+        updateOverlayInfo();
+      });
     });
-  
-    // Removed: listenToEntregadorLocation((location) => {
-    // Removed:   MapLogic.updateEntregadorLocation(location);
-    // Removed:   if (!location) {
-    // Removed:     UI.updateDeliveryPersonStatus("Aguardando localização do entregador...");
-    // Removed:     return;
-    // Removed:   }
-    // Removed:   UI.updateDeliveryPersonStatus(
-    // Removed:     `Entregador localizado em: ${location.latitude.toFixed(
-    // Removed:       4
-    // Removed:     )}, ${location.longitude.toFixed(4)}`
-    // Removed:   );
-    // Removed:   updateMapInfo();
-    // Removed: });
+
+    // 2. Ouvir Localização
+    listenToEntregadorLocation((location) => {
+      MapLogic.updateEntregadorLocation(location);
+      if (location) {
+        UI.updateDeliveryPersonStatus("Entregador online");
+      } else {
+        UI.updateDeliveryPersonStatus("Aguardando localização...");
+      }
+      updateOverlayInfo();
+    });
   }
-  // Removed: function updateMapInfo() {
-  // Removed:   const activeDeliveryOrder = MapLogic.getActiveDelivery();
-  // Removed:   const entregadorLocation = MapLogic.getEntregadorLocation();
-  // Removed:
-  // Removed:   if (!activeDeliveryOrder || !entregadorLocation) {
-  // Removed:     UI.clearConfeiteiraMapInfo();
-  // Removed:     return;
-  // Removed:   }
-  // Removed:
-  // Removed:   const entregaData = activeDeliveryOrder.entrega;
-  // Removed:   if (!entregaData) {
-  // Removed:     UI.clearConfeiteiraMapInfo();
-  // Removed:     return;
-  // Removed:   }
-  // Removed:
-  // Removed:   const currentSpeed = calculateSpeed(
-  // Removed:     entregadorLocation,
-  // Removed:     entregaData.lastEntregadorCoords
-  // Removed:   );
-  // Removed:   UI.updateConfeiteiraMapInfo(
-  // Removed:     activeDeliveryOrder,
-  // Removed:     entregaData,
-  // Removed:     currentSpeed
-  // Removed:   );
-  // Removed: }
+
+  function updateOverlayInfo() {
+    const activeDelivery = MapLogic.getActiveDelivery();
+    const location = MapLogic.getEntregadorLocation();
+
+    if (!activeDelivery || !location || !activeDelivery.entrega) {
+      UI.clearConfeiteiraMapInfo();
+      return;
+    }
+
+    const entregaData = activeDelivery.entrega;
+    const currentSpeed = entregaData.velocidade || 0;
+    UI.updateConfeiteiraMapInfo(activeDelivery, entregaData, currentSpeed);
+  }
+
+  // --- Helpers de Notificação e Formulário ---
+  function processNotifications(pedidos) {
+    if (isFirstLoad) {
+      // Na primeira carga, apenas popula os sets sem tocar sons
+      knownOrderIds = new Set(
+        Object.keys(pedidos).filter((id) => pedidos[id].status === "pendente")
+      );
+      knownDeliveredOrderIds = new Set(
+        Object.keys(pedidos).filter((id) => pedidos[id].status === "entregue")
+      );
+      isFirstLoad = false;
+      return;
+    }
+
+    // Processa notificações para novos pedidos em status específicos
+    const newPendingOrders = Object.keys(pedidos).filter(
+      (id) => pedidos[id].status === "pendente" && !knownOrderIds.has(id)
+    );
+    if (newPendingOrders.length > 0) {
+      newOrderSound.play().catch(console.warn);
+      knownOrderIds = new Set(
+        Object.keys(pedidos).filter((id) => pedidos[id].status === "pendente")
+      );
+    }
+
+    const newDeliveredOrders = Object.keys(pedidos).filter(
+      (id) =>
+        pedidos[id].status === "entregue" && !knownDeliveredOrderIds.has(id)
+    );
+    if (newDeliveredOrders.length > 0) {
+      deliveryCompleteSound.play().catch(console.warn);
+      knownDeliveredOrderIds = new Set(
+        Object.keys(pedidos).filter((id) => pedidos[id].status === "entregue")
+      );
+    }
+  }
+
   function handleNewOrderSubmit(e) {
     e.preventDefault();
     const form = e.target;
-    
-    const nomeBolo = form.querySelector("#cakeName").value;
-    const nomeCliente = form.querySelector("#clientName").value;
-    const clientEmail = form.querySelector("#clientEmail").value;
-    const cep = form.querySelector("#cep").value;
-    const rua = form.querySelector("#rua").value;
-    const bairro = form.querySelector("#bairro").value;
-    const numero = form.querySelector("#numero").value;
-    const complemento = form.querySelector("#complemento").value;
-    const whatsapp = form.querySelector("#whatsapp").value;
-    const endereco = `${rua}, ${numero}, ${bairro}, CEP: ${cep}`;
-  
-    createNewOrder({
-      nomeCliente,
-      clientEmail,
-      endereco,
-      nomeBolo,
-      cep,
-      rua,
-      bairro,
-      numero,
-      complemento,
-      whatsapp,
-    });
+    const data = {
+      nomeBolo: form.querySelector("#cakeName").value,
+      nomeCliente: form.querySelector("#clientName").value,
+      clientEmail: form.querySelector("#clientEmail").value,
+      cep: form.querySelector("#cep").value,
+      rua: form.querySelector("#rua").value,
+      bairro: form.querySelector("#bairro").value,
+      numero: form.querySelector("#numero").value,
+      complemento: form.querySelector("#complemento").value,
+      whatsapp: form.querySelector("#whatsapp").value,
+    };
+    data.endereco = `${data.rua}, ${data.numero}, ${data.bairro}, CEP: ${data.cep}`;
+    createNewOrder(data);
     form.reset();
     document.getElementById("new-order-modal").style.display = "none";
   }
-  
+
   function handleReadMessageSubmit(e) {
     e.preventDefault();
     const messageText = document.getElementById("message-text").value;
-    if (!messageText) return; // Guard clause
-  
     const parsedData = parseWhatsappMessage(messageText);
-    if (!parsedData) {
-      console.warn("Mensagem do WhatsApp não pôde ser parseada.");
-      return; // Guard clause
-    }
-  
+    if (!parsedData) return;
+
     const orderData = {
       clientName: parsedData.cliente.nome,
       cakeName: parsedData.itens.length > 0 ? parsedData.itens[0].nome : "",
       whatsapp: parsedData.cliente.telefone,
       rua: parsedData.cliente.enderecoRaw,
     };
-  
     UI.fillOrderForm(orderData);
-  
     document.getElementById("read-message-modal").style.display = "none";
     document.getElementById("new-order-modal").style.display = "block";
   }
-  
+
   async function handleCepBlur(e) {
     const cep = e.target.value.replace(/\D/g, "");
-    if (cep.length !== 8) return; // Guard clause
-  
-    try {
-      const response = await fetch(`${CONSTANTS.CEP_API_URL}${cep}/json/`);
-      if (!response.ok) { // Guard clause for network errors
-        console.error("Erro na requisição CEP:", response.statusText);
-        return;
-      }
-      const data = await response.json();
-      if (data.erro) { // Guard clause for CEP not found
-        console.warn("CEP não encontrado.");
-        return;
-      }
-      document.getElementById("rua").value = data.logradouro;
-      document.getElementById("bairro").value = data.bairro;
-    } catch (error) {
-      console.error("Erro ao buscar CEP:", error);
+    const ruaField = document.getElementById("rua");
+    const bairroField = document.getElementById("bairro");
+    const numeroField = document.getElementById("numero");
+    const complementoField = document.getElementById("complemento");
+
+    // Clear previous address data
+    ruaField.value = "";
+    bairroField.value = "";
+    if (numeroField) numeroField.value = "";
+    if (complementoField) complementoField.value = "";
+
+    if (cep.length !== 8) {
+      console.log("CEP inválido: deve conter 8 dígitos.");
+      return;
     }
-  }});
+
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+
+      if (!data.erro) {
+        ruaField.value = data.logradouro;
+        bairroField.value = data.bairro;
+        if (numeroField) numeroField.focus();
+      } else {
+        console.log("CEP não encontrado.");
+      }
+    } catch (err) {
+      console.error("Erro ao buscar CEP:", err);
+    }
+  }
+});
