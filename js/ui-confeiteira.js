@@ -1,50 +1,65 @@
 import {
   printLabel as genericPrintLabel,
+  setupEventListeners as genericSetupEventListeners,
   createOrderCard as genericCreateOrderCard,
 } from "./ui.js";
 
 export function setupEventListeners(
   onLogout,
+  onNewOrder,
+  onReadMessage,
   onNewOrderSubmit,
   onReadMessageSubmit,
   onCepBlur
 ) {
-  const logoutButton = document.getElementById("logout-button");
-  const newOrderModal = document.getElementById("new-order-modal");
-  const readMessageModal = document.getElementById("read-message-modal");
-  const newOrderBtn = document.getElementById("new-order-button");
-  const readMessageBtn = document.getElementById("read-message-button");
-  const closeButtons = document.querySelectorAll(".close-button");
-  const readMessageForm = document.getElementById("read-message-form");
-  const newOrderForm = document.getElementById("new-order-form");
-  const cepField = document.getElementById("cep");
+  // Configuração do Menu Hambúrguer
+  setupHamburgerMenu();
 
-  logoutButton.addEventListener("click", onLogout);
-  newOrderBtn.addEventListener(
-    "click",
-    () => (newOrderModal.style.display = "block")
+  // Chama a função genérica, passando os callbacks corretos.
+  // As funções que não se aplicam à confeiteira (ex: onPrintAll) são passadas como null.
+  genericSetupEventListeners(
+    onLogout,
+    onNewOrder,
+    null, // onPrintAll
+    onReadMessage,
+    null, // onClearDelivered
+    null, // onResetActiveDeliveries
+    null, // onClearAllOrders
+    onNewOrderSubmit,
+    onReadMessageSubmit,
+    (e) => onCepBlur(e) // Garante que o evento seja passado
   );
-  readMessageBtn.addEventListener(
-    "click",
-    () => (readMessageModal.style.display = "block")
-  );
+}
+function setupHamburgerMenu() {
+  const hamburger = document.querySelector(".hamburger-menu");
+  const mobileNav = document.querySelector(".mobile-nav");
+  const desktopNav = document.querySelector(".desktop-nav");
 
-  closeButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      newOrderModal.style.display = "none";
-      readMessageModal.style.display = "none";
-    });
+  if (!hamburger || !mobileNav || !desktopNav) return;
+
+  hamburger.addEventListener("click", () => {
+    mobileNav.classList.toggle("open");
+    hamburger.classList.toggle("open");
   });
 
-  window.addEventListener("click", (event) => {
-    if (event.target === newOrderModal) newOrderModal.style.display = "none";
-    if (event.target === readMessageModal)
-      readMessageModal.style.display = "none";
-  });
+  // Função para mover os botões
+  const moveNavItems = () => {
+    if (window.innerWidth <= 768) {
+      // Move para o menu mobile se não estiverem lá
+      while (desktopNav.firstChild) {
+        mobileNav.appendChild(desktopNav.firstChild);
+      }
+    } else {
+      // Move de volta para o menu desktop
+      while (mobileNav.firstChild) {
+        desktopNav.appendChild(mobileNav.firstChild);
+      }
+      mobileNav.classList.remove("open"); // Garante que o menu mobile feche
+    }
+  };
 
-  cepField.addEventListener("blur", onCepBlur);
-  newOrderForm.addEventListener("submit", onNewOrderSubmit);
-  readMessageForm.addEventListener("submit", onReadMessageSubmit);
+  window.addEventListener("resize", moveNavItems);
+  moveNavItems();
 }
 
 export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
@@ -128,15 +143,24 @@ export function updateConfeiteiraMapInfo(order, deliveryData, speed) {
       : "...";
 
   infoEl.innerHTML = `
-    <h4>Entrega em Andamento</h4>
-    <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
-    <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
-    <div class="delivery-realtime-info">
-      <p>🚗 <strong>Velocidade:</strong> ${speedText}</p>
-      <p>📏 <strong>Distância Restante:</strong> ${distanceText}</p>
-      <p>⏱️ <strong>Tempo Estimado:</strong> ${timeText}</p>
-    </div>
-  `;
+      <h4>Entrega em Andamento</h4>
+      <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
+      <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
+      <div class="delivery-realtime-info">
+        <div class="info-item">
+          <div class="value">${speedText}</div>
+          <div class="label">🚗 Velocidade</div>
+        </div>
+        <div class="info-item">
+          <div class="value">${distanceText}</div>
+          <div class="label">📏 Distância</div>
+        </div>
+        <div class="info-item">
+          <div class="value">${timeText}</div>
+          <div class="label">⏱️ Tempo Estimado</div>
+        </div>
+      </div>
+    `;
   infoEl.style.display = "block";
 }
 

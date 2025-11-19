@@ -50,20 +50,22 @@ function createOrderCard(orderId, order, onDeliver, onStartNavigation) {
   card.className = "order-card";
   card.id = orderId;
 
-  if (order.status === 'em_entrega') {
-    card.classList.add('in-route'); // Add in-route class for styling
+  if (order.status === "em_entrega") {
+    card.classList.add("in-route"); // Add in-route class for styling
+  } else if (order.status === "pronto_para_entrega") {
+    card.classList.add("ready-for-delivery");
   }
 
   card.innerHTML = `
             <div class="order-card-header">
-                <h4>${order.nomeBolo}</h4>
+                <h4>${order.nomeCliente}</h4>
                 <span class="order-id">#${orderId.toUpperCase()}</span>
             </div>
-            <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
+            <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
             <p><strong>Endereço:</strong> ${order.endereco}</p>
             <div class="route-info" id="route-info-${orderId}"></div>
             <div class="order-actions">
-                <button class="btn-sucesso deliver-button">Entregar</button>
+                <button class="btn-sucesso deliver-button">Confirmar Entrega</button>
                 <button class="btn-secondary route-button">Iniciar Entrega</button>
             </div>
         `;
@@ -72,35 +74,60 @@ function createOrderCard(orderId, order, onDeliver, onStartNavigation) {
   const routeButton = card.querySelector(".route-button");
 
   deliverButton.addEventListener("click", () => onDeliver(orderId));
-  routeButton.addEventListener("click", () => onStartNavigation(orderId, order));
+  routeButton.addEventListener("click", () =>
+    onStartNavigation(orderId, order)
+  );
 
-  if (order.status === 'pronto_para_entrega') {
-    deliverButton.style.display = 'none';
-  } else if (order.status === 'em_entrega') {
-    routeButton.style.display = 'none';
+  if (order.status === "pronto_para_entrega") {
+    deliverButton.style.display = "none";
+  } else if (order.status === "em_entrega") {
+    routeButton.style.display = "none";
   }
 
   return card;
 }
 
-export function renderDeliveryOrders(readyOrders, inRouteOrders, onDeliver, onStartNavigation) {
-  const readyForDeliveryList = document.getElementById("ready-for-delivery-list");
+export function renderDeliveryOrders(
+  readyOrders,
+  inRouteOrders,
+  onDeliver,
+  onStartNavigation
+) {
+  const readyForDeliveryList = document.getElementById(
+    "ready-for-delivery-list"
+  );
+  const readyForDeliveryContainer = document.getElementById(
+    "ready-for-delivery-container"
+  );
   const inRouteList = document.getElementById("in-route-list");
 
   if (!readyForDeliveryList || !inRouteList) {
-    console.error("Um ou mais elementos da lista de pedidos não foram encontrados no DOM.");
+    console.error(
+      "Um ou mais elementos da lista de pedidos não foram encontrados no DOM."
+    );
     return;
   }
 
   // Render "Prontos para Entrega"
   readyForDeliveryList.innerHTML = ""; // Limpa a lista
   if (Object.keys(readyOrders).length === 0) {
-    readyForDeliveryList.innerHTML = "<p>Nenhum pedido pronto para entrega no momento.</p>";
+    readyForDeliveryList.innerHTML =
+      "<p>Nenhum pedido pronto para entrega no momento.</p>";
   } else {
     for (const [orderId, order] of Object.entries(readyOrders)) {
-      const card = createOrderCard(orderId, order, onDeliver, onStartNavigation);
+      const card = createOrderCard(
+        orderId,
+        order,
+        onDeliver,
+        onStartNavigation
+      );
       readyForDeliveryList.appendChild(card);
     }
+  }
+  // Esconde o container inteiro se não houver pedidos prontos
+  if (readyForDeliveryContainer) {
+    readyForDeliveryContainer.style.display =
+      Object.keys(readyOrders).length > 0 ? "block" : "none";
   }
 
   // Render "Em Rota"
@@ -109,7 +136,12 @@ export function renderDeliveryOrders(readyOrders, inRouteOrders, onDeliver, onSt
     inRouteList.innerHTML = "<p>Nenhum pedido em rota no momento.</p>";
   } else {
     for (const [orderId, order] of Object.entries(inRouteOrders)) {
-      const card = createOrderCard(orderId, order, onDeliver, onStartNavigation);
+      const card = createOrderCard(
+        orderId,
+        order,
+        onDeliver,
+        onStartNavigation
+      );
       inRouteList.appendChild(card);
     }
   }
@@ -169,24 +201,30 @@ export function showConfirmDeliveryModal(show) {
     "confirm-delivery-modal"
   );
   if (confirmDeliveryModal) {
-    confirmDeliveryModal.style.display = show ? "block" : "none";
+    if (show) {
+      confirmDeliveryModal.classList.add("active");
+    } else {
+      confirmDeliveryModal.classList.remove("active");
+    }
   }
 }
 
 export function showDynamicIsland(show, order) {
   const dynamicIsland = document.getElementById("dynamic-island");
-  const dynamicIslandContent = document.getElementById(
-    "dynamic-island-content"
-  );
-  if (!dynamicIsland || !dynamicIslandContent) return;
+  const clientNameEl = document.getElementById("dynamic-island-client");
+  const addressEl = document.getElementById("dynamic-island-address");
+
+  if (!dynamicIsland || !clientNameEl || !addressEl) return;
 
   if (show && order) {
-    dynamicIslandContent.innerHTML = `<p><strong>Cliente:</strong> ${order.nomeCliente}</p>
-      <p>
-        <strong>Endereço:</strong> ${order.endereco}</p>`;
-    dynamicIsland.style.display = "flex";
+    clientNameEl.textContent = order.nomeCliente;
+    addressEl.textContent = order.endereco;
+    dynamicIsland.classList.add("active");
   } else {
-    dynamicIsland.style.display = "none";
+    // Limpa o texto ao esconder para não mostrar dados antigos rapidamente
+    clientNameEl.textContent = "";
+    addressEl.textContent = "";
+    dynamicIsland.classList.remove("active");
   }
 }
 

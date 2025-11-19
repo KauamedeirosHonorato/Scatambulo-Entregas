@@ -117,6 +117,10 @@ header {
   margin: 0;
 }
 
+.desktop-nav {
+  display: flex; /* Garante que os botões fiquem lado a lado */
+}
+
 /* === MENU HAMBÚRGUER (MÓVEL - Elegante) === */
 .hamburger-menu {
   display: none;
@@ -219,6 +223,16 @@ header {
   border: 1px solid rgba(244, 67, 54, 0.2);
   border-radius: 8px;
   text-align: center;
+}
+
+/* === MEDIA QUERIES PARA RESPONSIVIDADE === */
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none; /* Esconde os botões do desktop */
+  }
+  .hamburger-menu {
+    display: block; /* Mostra o menu hambúrguer */
+  }
 }
 
 /* === BOTÕES === */
@@ -497,45 +511,50 @@ header {
 }
 
 /* === MODAL === */
-.modal-novo-pedido, .modal-read-message { /* Aplica estilos a ambos os modais */
-    position: fixed; /* fica acima de tudo */
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;     /* centraliza horizontal */
-    align-items: center;         /* centraliza vertical */
-    z-index: 9999;
-    /* Oculto por padrão, será exibido via JS */
-    visibility: hidden;
-    opacity: 0;
-    transition: visibility 0s, opacity 0.3s ease-in-out;
+.modal-novo-pedido,
+.modal-read-message {
+  /* Aplica estilos a ambos os modais */
+  position: fixed; /* fica acima de tudo */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center; /* centraliza horizontal */
+  align-items: center; /* centraliza vertical */
+  z-index: 9999;
+  /* Oculto por padrão, será exibido via JS */
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s, opacity 0.3s ease-in-out;
 }
 
-.modal-novo-pedido.active, .modal-read-message.active {
-    visibility: visible;
-    opacity: 1;
+.modal-novo-pedido.active,
+.modal-read-message.active {
+  visibility: visible;
+  opacity: 1;
 }
 
-.modal-novo-pedido .modal-content, .modal-read-message .modal-content {
-    position: relative; /* Adicionado para posicionar o botão de fechar */
-    width: 90%;
-    max-width: 400px;   /* limite bonito */
-    background: var(--cor-principal);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    border: 2px solid var(--cor-destaque); /* Mantém a borda original */
-    max-height: 90vh; /* Altura máxima para evitar que o modal seja maior que a tela */
-    overflow-y: auto; /* Adiciona rolagem se o conteúdo for muito grande */
-    transform: translateY(-20px); /* Começa um pouco acima */
-    transition: transform 0.3s ease-in-out;
+.modal-novo-pedido .modal-content,
+.modal-read-message .modal-content {
+  position: relative; /* Adicionado para posicionar o botão de fechar */
+  width: 90%;
+  max-width: 400px; /* limite bonito */
+  background: var(--cor-principal);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--cor-destaque); /* Mantém a borda original */
+  max-height: 90vh; /* Altura máxima para evitar que o modal seja maior que a tela */
+  overflow-y: auto; /* Adiciona rolagem se o conteúdo for muito grande */
+  transform: translateY(-20px); /* Começa um pouco acima */
+  transition: transform 0.3s ease-in-out;
 }
 
-.modal-novo-pedido.active .modal-content, .modal-read-message.active .modal-content {
-    transform: translateY(0); /* Desliza para a posição final */
+.modal-novo-pedido.active .modal-content,
+.modal-read-message.active .modal-content {
+  transform: translateY(0); /* Desliza para a posição final */
 }
 
 .modal-content-centered {
@@ -608,4 +627,195 @@ header {
 .modal-novo-pedido .modal-content button[type="submit"]:hover,
 .modal-read-message .modal-content button[type="submit"]:hover {
   background-color: #c5a231;
+}
+
+/* === MODAL ESTILO ILHA DINÂMICA (CONFIRMAÇÃO DE ENTREGA) === */
+.modal-dynamic-island {
+  position: fixed;
+  top: 20px; /* Posicionado no topo */
+  left: 50%;
+  transform: translate(-50%, -150%); /* Começa fora da tela, acima */
+  width: 90%;
+  max-width: 340px; /* Deixando o modal um pouco menor */
+  z-index: 10000;
+  background-color: rgba(
+    245,
+    245,
+    245,
+    0.85
+  ); /* Adicionado efeito de vidro translúcido */
+  border-radius: 24px; /* Bordas bem arredondadas */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px); /* Efeito de vidro fosco (opcional) */
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* Animação elástica */
+  visibility: hidden; /* Escondido por padrão */
+}
+
+.modal-dynamic-island.active {
+  transform: translate(-50%, 0); /* Desliza para a posição final */
+  visibility: visible;
+}
+
+/* Overlay para escurecer o fundo e dar foco ao modal */
+.modal-dynamic-island.active::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  opacity: 1;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+.modal-dynamic-island::before {
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modal-dynamic-island .modal-content {
+  padding: 20px;
+  text-align: center;
+}
+
+.modal-dynamic-island .modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-family: "Poppins", sans-serif;
+}
+
+.modal-dynamic-island .modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* === ILHA DINÂMICA (ENTREGA ATIVA) === */
+/* Estilo aprimorado com base na sua sugestão */
+.dynamic-island {
+  position: fixed;
+  /* Garante que não fique em cima da barra de gestos do iPhone */
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translate(-50%, 150%); /* Começa escondido */
+  width: 95%;
+  max-width: 450px; /* Reduzido para um visual mais compacto */
+
+  /* Fundo com leve transparência para efeito moderno */
+  background-color: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px); /* Efeito de desfoque no fundo */
+  -webkit-backdrop-filter: blur(10px);
+
+  color: var(--cor-branco, #fff);
+
+  border-radius: 24px; /* Bordas mais sutis */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Borda sutil */
+
+  padding: 10px 15px; /* Preenchimento reduzido */
+  z-index: 10001;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px; /* Espaçamento interno reduzido */
+
+  /* Animação elástica suave */
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.4s ease;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.dynamic-island.active {
+  transform: translate(-50%, 0); /* Desliza para a posição final */
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Conteúdo de Texto */
+.dynamic-island-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Permite que o container encolha abaixo do seu conteúdo mínimo */
+  flex-grow: 1; /* Permite que o container cresça para ocupar o espaço */
+}
+
+.dynamic-island-content p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.3;
+  font-family: sans-serif;
+}
+
+.dynamic-island-content p strong {
+  color: var(--cor-destaque, #ffd700);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.dynamic-island-content .address-info {
+  font-size: 11px;
+  opacity: 0.7; /* Texto secundário mais suave */
+  white-space: nowrap; /* Impede a quebra de linha */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* A largura máxima será controlada pelo container flex */
+}
+
+.dynamic-island-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0; /* Impede que os botões encolham */
+}
+
+/* Ajuste para os botões dentro da Ilha Dinâmica */
+.dynamic-island-actions .btn-island {
+  padding: 8px 16px;
+  border-radius: 20px; /* Bordas arredondadas para combinar com a ilha */
+  font-size: 12px;
+  font-weight: 700;
+  border-width: 1px; /* Garante uma borda sutil e consistente */
+}
+
+/* Ícone animado de status (Bolinha pulsando) */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #4caf50; /* Verde online */
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+/* Ajuste para telas muito pequenas (ex: iPhone SE) */
+@media (max-width: 360px) {
+  .dynamic-island {
+    flex-direction: column; /* Empilha o conteúdo e os botões */
+    align-items: flex-start; /* Alinha tudo à esquerda */
+    gap: 12px; /* Reduz o espaçamento entre as seções */
+  }
+  .dynamic-island-actions {
+    width: 100%; /* Faz os botões ocuparem a largura total */
+  }
 }

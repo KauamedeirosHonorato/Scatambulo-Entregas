@@ -92,7 +92,10 @@ export function calculateSpeed(newLoc, oldLoc) {
  */
 export function parseWhatsappMessage(text) {
   const normalizedText = text.replace(/\r/g, "").trim();
-  const lines = normalizedText.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = normalizedText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 
   const phone = extractPhoneNumber(normalizedText);
   const name = extractClientName(normalizedText, lines);
@@ -101,13 +104,15 @@ export function parseWhatsappMessage(text) {
 
   return {
     cliente: { nome: name, telefone: phone, enderecoRaw: address },
-    itens,
+    items,
     raw: text,
   };
 }
 
 function extractPhoneNumber(text) {
-  const phoneMatch = text.match(/(\+?\d{2}\s?)?(\(?\d{2}\)?\s?)?9?\d{4}-?\d{4}/);
+  const phoneMatch = text.match(
+    /(\+?\d{2}\s?)?(\(?\d{2}\)?\s?)?9?\d{4}-?\d{4}/
+  );
   return phoneMatch ? phoneMatch[0] : null;
 }
 
@@ -125,7 +130,7 @@ function extractAddress(text) {
 
 function extractItems(text, lines) {
   let items = [];
-  
+
   // Tenta pegar itens com "x" ou "-"
   lines.forEach((l) => {
     const m = l.match(/^(\d+)\s?[x×]\s?(.+)/i) || l.match(/^-\s*(.+)/);
@@ -143,10 +148,14 @@ function extractItems(text, lines) {
       itensBlock.split(/[,\n;]/).forEach((part) => {
         const m = part.trim().match(/^(\d+)?\s*(.+)/);
         if (m && m[2])
-          items.push({ nome: m[2].trim(), qty: m[1] ? parseInt(m[1]) : 1, price: 0 });
+          items.push({
+            nome: m[2].trim(),
+            qty: m[1] ? parseInt(m[1]) : 1,
+            price: 0,
+          });
       });
     }
   }
-  
+
   return items;
 }

@@ -1,54 +1,78 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel Admin - Scatambulo</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-</head>
-<body>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
     <header>
-        <div class="header-container">
-            <h1>Painel da Ângela</h1>
-            <div>
-                <button id="new-order-button" class="btn-primary">Novo Pedido</button>
-                <button id="print-all-em-preparo-button" class="btn-secondary">Imprimir Etiquetas (Em Preparo)</button>
-                <button id="read-message-button" class="btn-primary">Ler Mensagem</button>
-                <button id="reset-active-deliveries-button" class="btn-danger">Resetar Entregas</button>
-                <button id="clear-delivered-button" class="btn-danger">Zerar Entregues</button>
-                <button id="clear-all-orders-button" class="btn-danger">Zerar Todos os Pedidos</button>
-                <button id="logout-button" class="btn-secondary">Sair</button>
-            </div>
+      <div class="header-container">
+        <h1>Painel da Ângela</h1>
+        <div class="desktop-nav">
+          <button id="new-order-button" class="btn-primary">Novo Pedido</button>
+          <button id="print-all-em-preparo-button" class="btn-secondary">
+            Imprimir Etiquetas (Em Preparo)
+          </button>
+          <button id="read-message-button" class="btn-primary">
+            Ler Mensagem
+          </button>
+          <button id="reset-active-deliveries-button" class="btn-danger">
+            Resetar Entregas
+          </button>
+          <button id="clear-delivered-button" class="btn-danger">
+            Zerar Entregues
+          </button>
+          <button id="logout-button" class="btn-secondary">Sair</button>
         </div>
+        <button class="hamburger-menu">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </button>
+      </div>
     </header>
+    <nav class="mobile-nav"></nav>
 
     <main class="container">
-        <div id="map-section">
-            <h2>Acompanhamento de Entrega</h2>
-            <div id="map-container">
-                <div id="map"></div>
-                <div id="map-overlay-top">
-                    <div id="admin-eta-display" class="map-eta-display"></div>
-                    <div id="admin-speed-display" class="map-info-icon"></div>
-                    <div id="admin-active-order-display" class="map-info-text"></div>
-                </div>
-            </div>
+      <div id="map-section">
+        <h2>Acompanhamento em Tempo Real</h2>
+        <div id="map-container">
+          <div id="map"></div>
+          <div id="map-overlay-top">
+            <div id="admin-eta-display" class="map-eta-display"></div>
+            <div id="admin-speed-display" class="map-info-icon"></div>
+            <div id="admin-active-order-display" class="map-info-text"></div>
+          </div>
         </div>
+      </div>
 
-        <div id="orders-section">
-            <h2>Pedidos</h2>
-            <div id="kanban-board">
-            </div>
-        </div>
+      <div id="orders-section">
+        <h2>Pedidos</h2>
+        <div id="kanban-board"></div>
+      </div>
     </main>
 
     <div id="modal-container"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
     <script type="module" src="js/admin.js"></script>
-</body>
+  </body>
 </html>

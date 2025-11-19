@@ -6,7 +6,8 @@ let routeLayer;
 let clientMarker; // Marcador do cliente
 let routeRecalculationInterval = null;
 
-export function initializeMap(elementId) { // Renamed from initMap
+export function initializeMap(elementId) {
+  // Renamed from initMap
   // Evita reinicializar o mapa se ele já existe (causa comum de bugs visuais)
   if (map) {
     return map;
@@ -166,7 +167,7 @@ export function startNavigation(getStartCoords, endCoords, onRouteUpdate) {
  * Para a navegação, limpando o intervalo de atualização e a rota do mapa.
  */
 export function stopNavigation() {
-  clearOrderFromMap(); // Use the new comprehensive clear function
+  clearMap(); // Use the new comprehensive clear function
 }
 
 /**
@@ -193,7 +194,8 @@ export function invalidateMapSize() {
  * Limpa todos os elementos relacionados a um pedido do mapa (rota, marcador do cliente)
  * e para o intervalo de recalculo da rota. O marcador do entregador permanece.
  */
-export function clearMap() { // Renamed from clearOrderFromMap
+export function clearMap() {
+  // Renamed from clearOrderFromMap
   // 1. Remove a Rota
   clearRouteFromMap();
 

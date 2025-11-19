@@ -35,12 +35,20 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   function setupUIEventListeners() {
+    const newOrderModal = document.getElementById("new-order-modal");
+    const readMessageModal = document.getElementById("read-message-modal");
+
     UI.setupEventListeners(
       () => {
         localStorage.removeItem("currentUser");
         window.location.href = "index.html";
       },
-      handleNewOrderSubmit,
+      () => {
+        newOrderModal.classList.add('active');
+      }, // onNewOrder
+      () => {
+        readMessageModal.classList.add('active');
+      }, // onReadMessage
       handleReadMessageSubmit,
       handleCepBlur
     );
@@ -52,7 +60,12 @@ document.addEventListener("DOMContentLoaded", () => {
       processNotifications(pedidos);
 
       // Kanban
-      const visibleStatuses = ["pendente", "em_preparo", "feito"];
+      const visibleStatuses = [
+        "pendente",
+        "em_preparo",
+        "feito",
+        "pronto_para_entrega",
+      ];
       const confeiteiraPedidos = Object.fromEntries(
         Object.entries(pedidos).filter(([, p]) =>
           visibleStatuses.includes(p.status)
@@ -146,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
     data.endereco = `${data.rua}, ${data.numero}, ${data.bairro}, CEP: ${data.cep}`;
     createNewOrder(data);
     form.reset();
-    document.getElementById("new-order-modal").style.display = "none";
+    document.getElementById("new-order-modal").classList.remove('active');
   }
 
   function handleReadMessageSubmit(e) {
@@ -162,8 +175,8 @@ document.addEventListener("DOMContentLoaded", () => {
       rua: parsedData.cliente.enderecoRaw,
     };
     UI.fillOrderForm(orderData);
-    document.getElementById("read-message-modal").style.display = "none";
-    document.getElementById("new-order-modal").style.display = "block";
+    document.getElementById("read-message-modal").classList.remove('active');
+    document.getElementById("new-order-modal").classList.add('active');
   }
 
   async function handleCepBlur(e) {

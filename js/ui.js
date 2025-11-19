@@ -10,6 +10,10 @@ export function setupEventListeners(
   onReadMessageSubmit,
   onCepInput
 ) {
+  // Configuração do Menu Hambúrguer
+  setupHamburgerMenu();
+
+  // Configuração dos Listeners de Eventos
   const logoutButton = document.getElementById("logout-button");
   const newOrderModal = document.getElementById("new-order-modal");
   const readMessageModal = document.getElementById("read-message-modal");
@@ -29,14 +33,11 @@ export function setupEventListeners(
   const clearAllOrdersBtn = document.getElementById("clear-all-orders-button"); // Novo botão para limpar todos os pedidos
 
   logoutButton.addEventListener("click", onLogout);
-  newOrderBtn.addEventListener(
-    "click",
-    () => (newOrderModal.style.display = "block")
-  );
+  if (newOrderBtn) newOrderBtn.addEventListener("click", () => onNewOrder(newOrderModal));
   printAllEmPreparoBtn.addEventListener("click", onPrintAll);
   readMessageBtn.addEventListener(
     "click",
-    () => (readMessageModal.style.display = "block")
+    () => (readMessageModal.classList.add('active'))
   );
   if (clearDeliveredBtn)
     clearDeliveredBtn.addEventListener("click", onClearDelivered);
@@ -47,15 +48,15 @@ export function setupEventListeners(
 
   closeButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      newOrderModal.style.display = "none";
-      readMessageModal.style.display = "none";
+      newOrderModal.classList.remove('active');
+      readMessageModal.classList.remove('active');
     });
   });
 
   window.addEventListener("click", (event) => {
-    if (event.target === newOrderModal) newOrderModal.style.display = "none";
+    if (event.target === newOrderModal) newOrderModal.classList.remove('active');
     if (event.target === readMessageModal)
-      readMessageModal.style.display = "none";
+      readMessageModal.classList.remove('active');
   });
 
   if (cepField && onCepInput) cepField.addEventListener("input", onCepInput);
@@ -63,6 +64,39 @@ export function setupEventListeners(
     newOrderForm.addEventListener("submit", onNewOrderSubmit);
   if (readMessageForm && onReadMessageSubmit)
     readMessageForm.addEventListener("submit", onReadMessageSubmit);
+}
+
+function setupHamburgerMenu() {
+  const hamburger = document.querySelector(".hamburger-menu");
+  const mobileNav = document.querySelector(".mobile-nav");
+  const desktopNav = document.querySelector(".desktop-nav");
+
+  if (!hamburger || !mobileNav || !desktopNav) return;
+
+  hamburger.addEventListener("click", () => {
+    mobileNav.classList.toggle("open");
+    hamburger.classList.toggle("open");
+  });
+
+  // Função para mover os botões
+  const moveNavItems = () => {
+    if (window.innerWidth <= 768) {
+      // Move para o menu mobile se não estiverem lá
+      while (desktopNav.firstChild) {
+        mobileNav.appendChild(desktopNav.firstChild);
+      }
+    } else {
+      // Move de volta para o menu desktop
+      while (mobileNav.firstChild) {
+        desktopNav.appendChild(mobileNav.firstChild);
+      }
+      mobileNav.classList.remove("open"); // Garante que o menu mobile feche
+    }
+  };
+
+  // Executa na carga e no redimensionamento da janela
+  window.addEventListener("resize", moveNavItems);
+  moveNavItems(); // Executa uma vez na carga inicial
 }
 
 export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
@@ -187,7 +221,10 @@ export function createOrderCard(
 
   card.innerHTML = `<div class="order-card-header">
                       <h4>${pedido.nomeBolo || "Bolo"}</h4>
-                      <span class="order-id">#${pedidoId.toUpperCase()}</span>
+                      <div class="order-id-container">
+                        <span class="order-id" title="Clique para copiar">#${pedidoId.toUpperCase()}</span>
+                        <span class="copy-feedback">Copiado!</span>
+                      </div>
                     </div>
                     <p>${pedido.nomeCliente}</p>
                     <p>${pedido.endereco}</p>
@@ -208,6 +245,24 @@ export function createOrderCard(
         if (actionInfo.action === "print") onPrintLabel(pedido, pedidoId);
       };
       actions.appendChild(button);
+    });
+  }
+
+  // Adiciona a lógica de copiar ao clicar no ID
+  const orderIdContainer = card.querySelector(".order-id-container");
+  if (orderIdContainer) {
+    const orderIdSpan = orderIdContainer.querySelector(".order-id");
+    const copyFeedbackSpan = orderIdContainer.querySelector(".copy-feedback");
+
+    orderIdSpan.addEventListener("click", (e) => {
+      e.stopPropagation(); // Impede que outros eventos de clique no card sejam disparados
+      const codeToCopy = pedidoId.toUpperCase();
+      navigator.clipboard.writeText(codeToCopy).then(() => {
+        copyFeedbackSpan.style.opacity = "1";
+        setTimeout(() => {
+          copyFeedbackSpan.style.opacity = "0";
+        }, 1500);
+      });
     });
   }
 
@@ -237,22 +292,26 @@ export function updateAdminMapInfo(order, deliveryData, speed) {
       : "...";
 
   infoEl.innerHTML = `
-    <h4>Entrega em Andamento</h4>
-    <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
-    <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
-    <div class="delivery-realtime-info">
-      <p>🚗 <strong>Velocidade:</strong> ${speedText}</p>
-      <p>📏 <strong>Distância Restante:</strong> ${distanceText}</p>
-      <p>⏱️ <strong>Tempo Estimado:</strong> ${timeText}</p>
-    </div>
-  `;
+      <h4>Entrega em Andamento</h4>
+      <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
+      <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
+      <div class="delivery-realtime-info">
+        <div class="info-item">
+          <div class="value">${speedText}</div>
+          <div class="label">🚗 Velocidade</div>
+        </div>
+        <div class="info-item">
+          <div class="value">${distanceText}</div>
+          <div class="label">📏 Distância</div>
+        </div>
+        <div class="info-item">
+          <div class="value">${timeText}</div>
+          <div class="label">⏱️ Tempo Estimado</div>
+        </div>
+      </div>
+    `;
   infoEl.style.display = "block";
 }
-
-
-
-
-
 
 export function highlightClosestOrder(closestOrder) {
   const readyOrdersColumn = document.querySelector(

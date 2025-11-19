@@ -25,25 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let hasArrived = false;
 
   // ======= 3. Inicializa Mapas e UI =======
-  UI.setupEventListeners(
-    () => {
-      localStorage.removeItem("currentUser");
-      window.location.href = "index.html";
-    },
-    () => {
-      // Botão "Sim, Entregar" do modal
-      if (orderIdToConfirm) {
-        handleFinishDelivery(orderIdToConfirm);
-      }
-    },
-    () => UI.showConfirmDeliveryModal(false),
-    () => {
-      // Botão "Finalizar" da ilha dinâmica
-      if (activeDelivery) UI.showConfirmDeliveryModal(true);
-    },
-    handleCancelNavigation,
-    handleToggleFollowMe
-  );
 
   MapLogic.initializeMapWithLocation("map");
   checkGeolocationPermission();
@@ -149,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function listenToFirebaseOrders() {
     onValue(ref(db, "pedidos/"), (snapshot) => {
       const pedidos = snapshot.val() || {};
-      
+
       const readyOrders = Object.fromEntries(
         Object.entries(pedidos).filter(
           ([id, p]) => p.status === "pronto_para_entrega"
@@ -157,9 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       const inRouteOrders = Object.fromEntries(
-        Object.entries(pedidos).filter(
-          ([id, p]) => p.status === "em_entrega"
-        )
+        Object.entries(pedidos).filter(([id, p]) => p.status === "em_entrega")
       );
 
       const newReadyOrders = Object.keys(readyOrders).filter(
@@ -185,6 +164,9 @@ document.addEventListener("DOMContentLoaded", () => {
         startNavigation
       );
     });
+
+    // Adicionado para verificar e retomar a entrega ativa no carregamento da página
+    resumeActiveDelivery();
   }
   // ======= 6. Navegação =======
   async function startNavigation(orderId, order) {
@@ -228,6 +210,21 @@ document.addEventListener("DOMContentLoaded", () => {
       geocodeResult,
       handleRouteUpdate
     );
+  }
+
+  // NOVO: Retoma a navegação se uma entrega já estiver ativa ao carregar a página
+  async function resumeActiveDelivery() {
+    const snapshot = await get(ref(db, "pedidos/"));
+    const pedidos = snapshot.val() || {};
+    const activeOrderEntry = Object.entries(pedidos).find(
+      ([, p]) => p.status === "em_entrega"
+    );
+
+    if (activeOrderEntry) {
+      const [orderId, orderData] = activeOrderEntry;
+      console.log(`Retomando navegação para o pedido: ${orderId}`);
+      await startNavigation(orderId, orderData);
+    }
   }
 
   // ======= 7. Finalizar e Parar Navegação =======
@@ -332,4 +329,43 @@ document.addEventListener("DOMContentLoaded", () => {
       alert(`Pedido ${pedidoId} entregue com sucesso!`);
     }
   }
+
+  // ======= 10. Event Listeners da UI =======
+  // Seletores dos elementos
+  const logoutButton = document.getElementById("logout-button");
+  const confirmDeliveryBtn = document.getElementById("confirm-delivery-btn");
+  const cancelDeliveryModalBtn = document.getElementById("cancel-delivery-btn");
+  const closeModalButton = document.querySelector(
+    "#confirm-delivery-modal .close-button"
+  );
+  const finishFromIslandBtn = document.getElementById(
+    "dynamic-island-finish-btn"
+  );
+  const cancelFromIslandBtn = document.getElementById(
+    "dynamic-island-cancel-btn"
+  );
+  const followMeButton = document.getElementById("follow-me-button");
+
+  // Anexando os eventos
+  logoutButton.addEventListener("click", () => {
+    localStorage.removeItem("currentUser");
+    window.location.href = "index.html";
+  });
+
+  confirmDeliveryBtn.addEventListener("click", () => {
+    if (orderIdToConfirm) handleFinishDelivery(orderIdToConfirm);
+  });
+
+  cancelDeliveryModalBtn.addEventListener("click", () =>
+    UI.showConfirmDeliveryModal(false)
+  );
+  closeModalButton.addEventListener("click", () =>
+    UI.showConfirmDeliveryModal(false)
+  );
+
+  finishFromIslandBtn.addEventListener("click", () => {
+    if (activeDelivery) UI.showConfirmDeliveryModal(true);
+  });
+  cancelFromIslandBtn.addEventListener("click", handleCancelNavigation);
+  followMeButton.addEventListener("click", handleToggleFollowMe);
 });

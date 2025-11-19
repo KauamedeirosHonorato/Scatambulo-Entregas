@@ -61,7 +61,7 @@ export function createNewOrder(orderData) {
     const orderPayload = {
         ...orderData,
         id: orderId,
-        status: "novo",
+        status: "pendente",
         createdAt: Date.now(),
     };
 
