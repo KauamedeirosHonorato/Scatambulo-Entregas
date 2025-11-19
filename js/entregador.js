@@ -85,6 +85,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     UI.updateSpeedDisplay(speed || 0);
     UI.updateLocationStatus("Localização ativa.");
+
+    if (!initialLocationSet) {
+      resumeActiveDelivery();
+      initialLocationSet = true;
+    }
   }
 
   /**
@@ -119,7 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateMapViewState() {
     if (!initialLocationSet) {
       Map.fitMapToBounds(entregadorLocation, null);
-      initialLocationSet = true;
     }
     if (isFollowingDeliveryPerson) {
       Map.panMapTo(entregadorLocation);
@@ -164,9 +168,6 @@ document.addEventListener("DOMContentLoaded", () => {
         startNavigation
       );
     });
-
-    // Adicionado para verificar e retomar a entrega ativa no carregamento da página
-    resumeActiveDelivery();
   }
   // ======= 6. Navegação =======
   async function startNavigation(orderId, order) {
