@@ -104,7 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
       timestamp: Date.now(),
       heading: heading || 0,
     };
-    MapLogic.updateEntregadorLocation(entregadorLocation);
   }
 
   function updateFirebaseState(latitude, longitude) {
