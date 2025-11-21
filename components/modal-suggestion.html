@@ -1,0 +1,16 @@
+<!-- components/modal-suggestion.html -->
+<div id="suggestion-modal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-content">
+        <button class="close-button" id="suggestion-modal-close-btn">&times;</button>
+        <h4>Próxima Entrega Sugerida</h4>
+        <p>Existe um pedido próximo ao seu destino atual:</p>
+        <div class="suggestion-details">
+            <p><strong>Cliente:</strong> <span id="suggestion-client-name"></span></p>
+            <p><strong>Endereço:</strong> <span id="suggestion-address"></span></p>
+            <p><strong>Distância:</strong> <span id="suggestion-distance"></span> km</p>
+        </div>
+        <div class="modal-actions">
+            <button id="suggestion-modal-accept-btn" class="btn btn-primary">Ver no Mapa</button>
+        </div>
+    </div>
+</div>
