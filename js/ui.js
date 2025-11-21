@@ -15,7 +15,7 @@ export function setupEventListeners(
 
   // Configuração dos Listeners de Eventos
   const logoutButton = document.getElementById("logout-button");
-  const newOrderModal = document.getElementById("new-order-modal");
+  const newOrderModal = document.getElementById("novo-pedido-modal"); // CORREÇÃO: ID correto
   const readMessageModal = document.getElementById("read-message-modal");
   const newOrderBtn = document.getElementById("new-order-button");
   const printAllEmPreparoBtn = document.getElementById(
@@ -24,7 +24,7 @@ export function setupEventListeners(
   const readMessageBtn = document.getElementById("read-message-button");
   const closeButtons = document.querySelectorAll(".close-button");
   const readMessageForm = document.getElementById("read-message-form");
-  const newOrderForm = document.getElementById("new-order-form");
+  const newOrderForm = document.getElementById("novo-pedido-form"); // CORREÇÃO: ID correto
   const cepField = document.getElementById("cep");
   const clearDeliveredBtn = document.getElementById("clear-delivered-button");
   const resetDeliveriesBtn = document.getElementById(
@@ -33,12 +33,16 @@ export function setupEventListeners(
   const clearAllOrdersBtn = document.getElementById("clear-all-orders-button"); // Novo botão para limpar todos os pedidos
 
   logoutButton.addEventListener("click", onLogout);
-  if (newOrderBtn) newOrderBtn.addEventListener("click", () => onNewOrder(newOrderModal));
-  printAllEmPreparoBtn.addEventListener("click", onPrintAll);
-  readMessageBtn.addEventListener(
-    "click",
-    () => (readMessageModal.classList.add('active'))
-  );
+  if (newOrderBtn && newOrderModal)
+    newOrderBtn.addEventListener("click", () =>
+      newOrderModal.classList.add("active")
+    );
+  if (printAllEmPreparoBtn)
+    printAllEmPreparoBtn.addEventListener("click", onPrintAll);
+  if (readMessageBtn && readMessageModal)
+    readMessageBtn.addEventListener("click", () =>
+      readMessageModal.classList.add("active")
+    );
   if (clearDeliveredBtn)
     clearDeliveredBtn.addEventListener("click", onClearDelivered);
   if (resetDeliveriesBtn)
@@ -48,15 +52,19 @@ export function setupEventListeners(
 
   closeButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      newOrderModal.classList.remove('active');
-      readMessageModal.classList.remove('active');
+      // Encontra o modal pai mais próximo e o fecha
+      const modalToClose = button.closest(
+        ".modal-novo-pedido, .modal-backdrop"
+      );
+      if (modalToClose) modalToClose.classList.remove("active");
     });
   });
 
   window.addEventListener("click", (event) => {
-    if (event.target === newOrderModal) newOrderModal.classList.remove('active');
+    if (event.target === newOrderModal)
+      newOrderModal.classList.remove("active");
     if (event.target === readMessageModal)
-      readMessageModal.classList.remove('active');
+      readMessageModal.classList.remove("active");
   });
 
   if (cepField && onCepInput) cepField.addEventListener("input", onCepInput);
@@ -258,9 +266,9 @@ export function createOrderCard(
       e.stopPropagation(); // Impede que outros eventos de clique no card sejam disparados
       const codeToCopy = pedidoId.toUpperCase();
       navigator.clipboard.writeText(codeToCopy).then(() => {
-        copyFeedbackSpan.style.opacity = "1";
+        copyFeedbackSpan.classList.add("visible");
         setTimeout(() => {
-          copyFeedbackSpan.style.opacity = "0";
+          copyFeedbackSpan.classList.remove("visible");
         }, 1500);
       });
     });
@@ -338,21 +346,37 @@ export function highlightClosestOrder(closestOrder) {
 }
 
 export function fillOrderForm(data) {
+  // Mapeia os nomes de dados para os IDs dos campos do formulário
   const fields = {
-    cakeName: document.getElementById("cakeName"),
-    clientName: document.getElementById("clientName"),
+    nomeBolo: document.getElementById("nome-bolo"),
+    nomeCliente: document.getElementById("nome-cliente"),
     cep: document.getElementById("cep"),
     rua: document.getElementById("rua"),
     bairro: document.getElementById("bairro"),
     numero: document.getElementById("numero"),
     complemento: document.getElementById("complemento"),
     whatsapp: document.getElementById("whatsapp"),
+    emailCliente: document.getElementById("email-cliente"),
   };
-  for (const key in fields) {
+  for (const key of Object.keys(fields)) {
     if (Object.prototype.hasOwnProperty.call(fields, key) && data[key]) {
       fields[key].value = data[key];
     }
   }
+}
+
+/**
+ * Preenche os campos de endereço do formulário com base nos dados do ViaCEP.
+ * @param {object} addressData - Objeto com os dados do endereço (logradouro, bairro).
+ */
+export function fillAddressForm(addressData) {
+  const ruaField = document.getElementById("rua");
+  const bairroField = document.getElementById("bairro");
+  const numeroField = document.getElementById("numero");
+
+  if (ruaField) ruaField.value = addressData.logradouro || "";
+  if (bairroField) bairroField.value = addressData.bairro || "";
+  if (numeroField) numeroField.focus(); // Move o foco para o campo de número
 }
 
 export function printLabel(pedido, pedidoId) {
@@ -380,4 +404,140 @@ export function printLabel(pedido, pedidoId) {
   printWindow.document.write("</body></html>");
   printWindow.document.close();
   printWindow.print();
+}
+
+/**
+ * Exibe uma notificação toast na tela.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {'success' | 'error' | 'info'} type - O tipo de notificação.
+ */
+export function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) {
+    console.error("Toast container not found!");
+    return;
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+
+  const icons = {
+    success: "✅",
+    error: "❌",
+    info: "ℹ️",
+  };
+
+  // Adiciona o conteúdo
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type]}</span>
+    <span class="toast-message">${message}</span>
+  `;
+
+  container.prepend(toast); // Alterado para prepend para que a nova notificação apareça no topo
+
+  // Remove o toast automaticamente apenas se não for um erro
+  if (type !== "error") {
+    setTimeout(() => toast.remove(), 5000); // Aumentei para 5 segundos
+  }
+}
+
+/**
+ * Exibe um modal de confirmação.
+ * @param {string} message - A mensagem a ser exibida no modal.
+ * @param {() => void} onConfirm - Callback a ser executado se o usuário confirmar.
+ * @param {string} [confirmText='Confirmar'] - Texto do botão de confirmação.
+ * @param {'btn-danger' | 'btn-sucesso' | 'btn-primary'} [confirmClass='btn-danger'] - Classe do botão de confirmação.
+ */
+export function showConfirmModal(
+  message,
+  onConfirm,
+  confirmText = "Confirmar",
+  confirmClass = "btn-danger"
+) {
+  const modal = document.getElementById("generic-confirm-modal");
+  const messageEl = document.getElementById("generic-confirm-modal-body");
+  const confirmBtn = document.getElementById("generic-confirm-modal-confirm-btn");
+  const cancelBtn = document.getElementById("generic-confirm-modal-cancel-btn");
+
+  if (!modal || !messageEl || !confirmBtn || !cancelBtn) {
+    console.error("Elementos do modal de confirmação genérico não encontrados!");
+    return;
+  }
+
+  messageEl.textContent = message;
+  confirmBtn.textContent = confirmText;
+  confirmBtn.className = `btn ${confirmClass}`; // Reseta e aplica a nova classe
+
+  // Remove listeners antigos para evitar duplicação
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+  const newCancelBtn = cancelBtn.cloneNode(true);
+  cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+  newConfirmBtn.onclick = () => {
+    modal.classList.remove("active");
+    onConfirm();
+  };
+  newCancelBtn.onclick = () => modal.classList.remove("active");
+
+  modal.classList.add("active");
+}
+
+/**
+ * Atualiza o texto do status da localização.
+ * @param {string} status - A mensagem de status a ser exibida.
+ */
+export function updateLocationStatus(status) {
+  const locationStatus = document.getElementById("location-status");
+  if (locationStatus) locationStatus.textContent = status;
+}
+
+/**
+ * Mostra um banner de erro persistente com ação opcional.
+ * @param {string} message
+ * @param {string} [actionText]
+ * @param {() => void} [actionCallback]
+ */
+export function showPersistentError(message, actionText, actionCallback) {
+  let existing = document.getElementById("persistent-error");
+  if (existing) existing.remove();
+
+  const banner = document.createElement("div");
+  banner.id = "persistent-error";
+  banner.className = "persistent-error";
+  banner.innerHTML = `
+    <div class="persistent-error-content">
+      <span class="persistent-error-message">${message}</span>
+      <div class="persistent-error-actions">
+        ${
+          actionText
+            ? `<button id="persistent-error-action" class="btn-primary">${actionText}</button>`
+            : ""
+        }
+        <button id="persistent-error-close" class="btn-secondary">Fechar</button>
+      </div>
+    </div>
+  `;
+
+  document.body.prepend(banner);
+
+  const closeBtn = document.getElementById("persistent-error-close");
+  if (closeBtn) closeBtn.addEventListener("click", () => banner.remove());
+
+  if (actionText && actionCallback) {
+    const actionBtn = document.getElementById("persistent-error-action");
+    if (actionBtn)
+      actionBtn.addEventListener("click", () => {
+        try {
+          actionCallback();
+        } finally {
+          banner.remove();
+        }
+      });
+  }
+}
+
+export function hidePersistentError() {
+  const existing = document.getElementById("persistent-error");
+  if (existing) existing.remove();
 }
