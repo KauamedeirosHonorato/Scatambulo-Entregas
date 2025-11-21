@@ -4,75 +4,191 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel Admin - Scatambulo</title>
+
     <link
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
       rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
     />
     <link rel="stylesheet" href="css/style.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap"
-      rel="stylesheet"
-    />
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
   </head>
   <body>
     <header>
       <div class="header-container">
         <h1>Painel da Ângela</h1>
         <div class="desktop-nav">
-          <button id="new-order-button" class="btn-primary">Novo Pedido</button>
+          <button id="new-order-button" class="btn-primary">
+            <i class="ph ph-plus-circle"></i> Novo Pedido
+          </button>
           <button id="print-all-em-preparo-button" class="btn-secondary">
-            Imprimir Etiquetas (Em Preparo)
+            <i class="ph ph-printer"></i> Imprimir Etiquetas
           </button>
           <button id="read-message-button" class="btn-primary">
-            Ler Mensagem
+            <i class="ph ph-chat-text"></i> Ler Mensagem
           </button>
-          <button id="reset-active-deliveries-button" class="btn-danger">
-            Resetar Entregas
+          <button id="logout-button" class="btn-secondary">
+            <i class="ph ph-sign-out"></i> Sair
           </button>
-          <button id="clear-delivered-button" class="btn-danger">
-            Zerar Entregues
-          </button>
-          <button id="logout-button" class="btn-secondary">Sair</button>
         </div>
-        <button class="hamburger-menu">
+
+        <button class="hamburger-menu" aria-label="Menu">
           <span class="bar"></span>
           <span class="bar"></span>
           <span class="bar"></span>
         </button>
       </div>
     </header>
-    <nav class="mobile-nav"></nav>
+
+    <nav class="mobile-nav">
+      <div class="divider"></div>
+    </nav>
 
     <main class="container">
-      <div id="map-section">
-        <h2>Acompanhamento em Tempo Real</h2>
-        <div id="map-container">
+      <section id="admin-actions-section" style="margin-bottom: 20px">
+        <h2 class="section-subtitle">Ações de Manutenção</h2>
+        <div class="ios-form-group" style="padding: 10px">
+          <button
+            id="clear-delivered-button"
+            class="btn-admin-action clear-delivered"
+          >
+            <i class="ph ph-archive" style="font-size: 20px"></i> Limpar
+            Entregues
+          </button>
+          <div class="divider"></div>
+          <button
+            id="reset-active-deliveries-button"
+            class="btn-admin-action reset-deliveries"
+          >
+            <i class="ph ph-x-circle" style="font-size: 20px"></i> Resetar
+            Entregas Ativas
+          </button>
+          <div class="divider"></div>
+          <button
+            id="clear-all-orders-button"
+            class="btn-admin-action clear-all-orders"
+          >
+            <i class="ph ph-trash" style="font-size: 20px"></i> Limpar TODOS os
+            Pedidos (CUIDADO)
+          </button>
+        </div>
+      </section>
+
+      <section id="map-section">
+        <h2><i class="ph ph-map-pin"></i> Rastreamento Entregador</h2>
+        <div id="map-container" aria-label="Mapa de acompanhamento">
           <div id="map"></div>
-          <div id="map-overlay-top">
-            <div id="admin-eta-display" class="map-eta-display"></div>
-            <div id="admin-speed-display" class="map-info-icon"></div>
-            <div id="admin-active-order-display" class="map-info-text"></div>
+
+          <div id="map-overlay-top" class="map-overlay-top-entregador">
+            <div class="map-info-item map-info-item-border-right">
+              <div id="distance-display" class="map-info-value">-- km</div>
+              <div class="map-info-label">Distância</div>
+            </div>
+            <div class="map-info-item">
+              <div id="eta-display" class="map-info-value">-- min</div>
+              <div class="map-info-label">ETA</div>
+            </div>
+            <div class="map-info-item map-info-item-border-left">
+              <div id="speed-display" class="map-info-value">-- km/h</div>
+              <div class="map-info-label">Veloc.</div>
+            </div>
+          </div>
+
+          <!-- HUD de Navegação (Seguir / Satélite / 3D) -->
+          <div id="nav-hud" class="nav-hud-admin">
+            <div class="hud-controls">
+              <button
+                id="follow-entregador-button"
+                class="btn-secondary"
+                title="Seguir Entregador"
+              >
+                <i class="ph ph-compass"></i>
+              </button>
+              <button
+                id="satellite-toggle"
+                class="btn-secondary"
+                title="Modo Satélite"
+              >
+                <i class="ph ph-globe"></i>
+              </button>
+              <button
+                id="toggle-3d"
+                class="btn-secondary"
+                title="Visualização 3D"
+              >
+                <i class="ph ph-cube"></i>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div id="orders-section">
-        <h2>Pedidos</h2>
-        <div id="kanban-board"></div>
-      </div>
+      <section id="orders-section" style="margin-top: 30px">
+        <h2><i class="ph ph-list-checks"></i> Pedidos</h2>
+        <!-- Os pedidos serão renderizados aqui em grupos por status -->
+        <div id="orders-by-status-container"></div>
+      </section>
     </main>
 
     <div id="modal-container"></div>
+    <div id="toast-container"></div>
 
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
+    <style>
+      .order-id-copy {
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+        text-underline-offset: 3px;
+        color: var(--ios-link);
+      }
+      .order-id-copy.copied {
+        color: var(--success-color);
+        text-decoration: none;
+        background-color: #e0f8e0; /* Fundo verde claro */
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 500;
+        transition: background-color 0.2s ease-in-out;
+      }
+    </style>
+
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script type="module" src="js/componentLoader.js"></script>
     <script type="module" src="js/admin.js"></script>
+
+    <script>
+      // Adiciona a funcionalidade de copiar o código do pedido ao clicar
+      document.addEventListener("DOMContentLoaded", () => {
+        const ordersContainer = document.getElementById(
+          "orders-by-status-container"
+        );
+
+        if (ordersContainer) {
+          ordersContainer.addEventListener("click", (event) => {
+            const target = event.target.closest(".order-id-copy");
+            if (!target) return;
+
+            const orderId = target.dataset.orderId;
+            navigator.clipboard
+              .writeText(orderId)
+              .then(() => {
+                // Exibe a mensagem "Copiado"
+                const originalText = target.innerHTML;
+                target.innerHTML = `Copiado!`;
+                target.classList.add("copied");
+
+                // Volta ao texto original após 2 segundos
+                setTimeout(() => {
+                  target.innerHTML = originalText;
+                  target.classList.remove("copied");
+                }, 2000);
+              })
+              .catch((err) => {
+                console.error("Falha ao copiar o código do pedido: ", err);
+              });
+          });
+        }
+      });
+    </script>
   </body>
 </html>

@@ -1,13 +1,37 @@
-<!-- Modal para Ler Mensagem -->
-<div id="read-message-modal" class="modal-novo-pedido modal-read-message">
+<!-- components/modal-read-message.html -->
+<div
+  id="read-message-modal"
+  class="modal-novo-pedido"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="read-message-titulo"
+>
   <div class="modal-content">
-    <span class="close-button">&times;</span>
-    <h2>Extrair Pedido de Mensagem</h2>
-    <form id="read-message-form">
-      <label for="message-text">Cole a mensagem do WhatsApp aqui:</label>
-      <textarea id="message-text" name="message-text" rows="10" class="form-textarea" placeholder="Cole a mensagem completa do WhatsApp aqui.&#10;Exemplo: 'Novo Pedido - Bolo de Chocolate, Cliente: João Silva, Endereço: Rua Exemplo, 123, Bairro: Centro, CEP: 12345-678, WhatsApp: +5511987654321'"></textarea>
-      <small style="display: block; margin-top: -10px; margin-bottom: 15px; color: #666;">Cole a mensagem do cliente. Após extrair, os dados preencherão o formulário de Novo Pedido.</small>
-      <button type="submit" class="btn-primary">Extrair Dados</button>
+    <div class="modal-header">
+      <h3 id="read-message-titulo">Ler Mensagem</h3>
+      <button
+        type="button"
+        class="close-button"
+        aria-label="Fechar"
+        onclick="this.closest('.modal-novo-pedido').classList.remove('active')"
+      >
+        &times;
+      </button>
+    </div>
+    <form id="read-message-form" novalidate>
+      <textarea
+        id="message-text"
+        placeholder="Cole a mensagem do WhatsApp aqui..."
+        rows="10"
+        required
+      ></textarea>
+      <button
+        type="submit"
+        class="btn-primary"
+        style="width: 100%; margin-top: 16px"
+      >
+        Processar Mensagem
+      </button>
     </form>
   </div>
 </div>

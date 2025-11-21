@@ -1,3 +1,6 @@
+import { createNewOrder } from "./firebase.js";
+import { parseWhatsappMessage } from "./utils.js";
+
 export function setupEventListeners(
   onLogout,
   onNewOrder,
@@ -5,9 +8,9 @@ export function setupEventListeners(
   onReadMessage,
   onClearDelivered,
   onResetActiveDeliveries,
-  onClearAllOrders, // Novo callback para limpar todos os pedidos
-  onNewOrderSubmit,
-  onReadMessageSubmit,
+  onClearAllOrders,
+  onNewOrderSubmit, // Movido para o final para consistência
+  onReadMessageSubmit, // Movido para o final
   onCepInput
 ) {
   // Configuração do Menu Hambúrguer
@@ -30,25 +33,35 @@ export function setupEventListeners(
   const resetDeliveriesBtn = document.getElementById(
     "reset-active-deliveries-button"
   ); // Novo botão
-  const clearAllOrdersBtn = document.getElementById("clear-all-orders-button"); // Novo botão para limpar todos os pedidos
+  const clearAllBtn = document.getElementById("clear-all-orders-button");
 
   logoutButton.addEventListener("click", onLogout);
-  if (newOrderBtn && newOrderModal)
+  if (newOrderBtn && onNewOrder) {
+    // Use the callback for the button click
+    newOrderBtn.addEventListener("click", onNewOrder);
+  } else if (newOrderBtn && newOrderModal) {
+    // Fallback if no specific callback is provided
     newOrderBtn.addEventListener("click", () =>
       newOrderModal.classList.add("active")
     );
+  }
   if (printAllEmPreparoBtn)
     printAllEmPreparoBtn.addEventListener("click", onPrintAll);
-  if (readMessageBtn && readMessageModal)
+  if (readMessageBtn && onReadMessage) {
+    // Use the callback for the button click
+    readMessageBtn.addEventListener("click", onReadMessage);
+  } else if (readMessageBtn && readMessageModal) {
+    // Fallback
     readMessageBtn.addEventListener("click", () =>
       readMessageModal.classList.add("active")
     );
+  }
   if (clearDeliveredBtn)
     clearDeliveredBtn.addEventListener("click", onClearDelivered);
-  if (resetDeliveriesBtn)
+  if (resetDeliveriesBtn && onResetActiveDeliveries)
     resetDeliveriesBtn.addEventListener("click", onResetActiveDeliveries); // Adiciona o listener
-  if (clearAllOrdersBtn)
-    clearAllOrdersBtn.addEventListener("click", onClearAllOrders); // Adiciona o listener para limpar todos os pedidos
+  if (clearAllBtn && onClearAllOrders)
+    clearAllBtn.addEventListener("click", onClearAllOrders);
 
   closeButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -67,11 +80,92 @@ export function setupEventListeners(
       readMessageModal.classList.remove("active");
   });
 
-  if (cepField && onCepInput) cepField.addEventListener("input", onCepInput);
+  // CORREÇÃO: Usar 'blur' para o CEP para evitar chamadas excessivas à API
+  if (cepField && onCepInput) {
+    cepField.addEventListener("blur", onCepInput);
+  }
   if (newOrderForm && onNewOrderSubmit)
     newOrderForm.addEventListener("submit", onNewOrderSubmit);
   if (readMessageForm && onReadMessageSubmit)
     readMessageForm.addEventListener("submit", onReadMessageSubmit);
+}
+
+/**
+ * Handler genérico para o formulário de novo pedido.
+ * @param {Event} e - O evento de submit.
+ */
+export function handleNewOrderSubmit(e) {
+  e.preventDefault();
+
+  const itemEl = document.getElementById("item");
+  if (!itemEl) {
+    console.error("Erro: O campo de item (ID 'item') não foi encontrado.");
+    showToast("Erro de formulário: Campo 'Item' ausente.", "error");
+    return;
+  }
+
+  const orderData = {
+    nomeBolo: itemEl.value,
+    nomeCliente: document.getElementById("cliente-nome").value, // ID correto
+    emailCliente: document.getElementById("email-cliente")?.value || "",
+    whatsapp: document.getElementById("telefone").value,
+    cep: document.getElementById("cep").value,
+    rua: document.getElementById("rua").value,
+    numero: document.getElementById("numero").value,
+    bairro: document.getElementById("bairro").value,
+    cidade: document.getElementById("cidade")?.value || "",
+    complemento: document.getElementById("complemento").value,
+  };
+
+  orderData.endereco = `${orderData.rua}, ${orderData.numero}, ${orderData.bairro} - ${orderData.cep}`;
+
+  createNewOrder(orderData)
+    .then(() => {
+      showToast("Novo pedido criado com sucesso!", "success");
+      e.target.reset();
+      document.getElementById("novo-pedido-modal").classList.remove("active");
+    })
+    .catch((err) => {
+      console.error("Erro ao criar novo pedido:", err);
+      showToast("Falha ao criar o pedido. Tente novamente.", "error");
+    });
+}
+
+/**
+ * Handler genérico para o formulário de leitura de mensagem.
+ * @param {Event} e - O evento de submit.
+ */
+export function handleReadMessageSubmit(e) {
+  e.preventDefault();
+  const messageText = document.getElementById("message-text").value;
+  const parsedData = parseWhatsappMessage(messageText);
+
+  if (!parsedData || !parsedData.cliente.enderecoRaw) {
+    showToast("Não foi possível extrair dados da mensagem.", "error");
+    return;
+  }
+
+  fillOrderForm(parsedData);
+  document.getElementById("read-message-modal").classList.remove("active");
+  document.getElementById("novo-pedido-modal").classList.add("active");
+}
+
+/**
+ * Handler genérico para o input de CEP.
+ * @param {Event} e - O evento de blur.
+ */
+export async function handleCepInput(e) {
+  const cep = e.target.value.replace(/\D/g, "");
+  if (cep.length !== 8) return;
+
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await res.json();
+    if (!data.erro) fillAddressForm(data);
+  } catch (err) {
+    console.error("Erro ao buscar CEP:", err);
+    showToast("Erro ao buscar CEP.", "error");
+  }
 }
 
 function setupHamburgerMenu() {
@@ -81,9 +175,22 @@ function setupHamburgerMenu() {
 
   if (!hamburger || !mobileNav || !desktopNav) return;
 
-  hamburger.addEventListener("click", () => {
+  // Abre/fecha o menu ao clicar no botão
+  hamburger.addEventListener("click", (e) => {
+    e.stopPropagation(); // Impede que o evento de clique se propague para o document
     mobileNav.classList.toggle("open");
     hamburger.classList.toggle("open");
+  });
+
+  // Fecha o menu se clicar fora dele
+  document.addEventListener("click", (e) => {
+    if (mobileNav.classList.contains("open")) {
+      // Verifica se o clique foi fora do menu e também não foi no próprio botão hambúrguer
+      if (!mobileNav.contains(e.target) && !hamburger.contains(e.target)) {
+        mobileNav.classList.remove("open");
+        hamburger.classList.remove("open");
+      }
+    }
   });
 
   // Função para mover os botões
@@ -99,6 +206,7 @@ function setupHamburgerMenu() {
         desktopNav.appendChild(mobileNav.firstChild);
       }
       mobileNav.classList.remove("open"); // Garante que o menu mobile feche
+      hamburger.classList.remove("open"); // Garante que o ícone volte ao normal
     }
   };
 
@@ -108,7 +216,14 @@ function setupHamburgerMenu() {
 }
 
 export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
-  const kanbanBoard = document.getElementById("kanban-board");
+  const adminContainer = document.getElementById("orders-by-status-container");
+  // Se o container de admin existir, renderiza as tabelas agrupadas por status
+  if (adminContainer) {
+    renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel);
+    return;
+  }
+
+  const kanbanBoard = document.getElementById("kanban-board"); // Fallback para Kanban (Confeiteira)
   kanbanBoard.innerHTML = "";
   const statuses = [
     { id: "pendente", title: "Pendente" },
@@ -143,6 +258,150 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
   });
 }
 
+function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel) {
+  const container = document.getElementById("orders-by-status-container");
+  container.innerHTML = "";
+
+  const pedidosPorStatus = {
+    pendente: [],
+    em_preparo: [],
+    feito: [],
+    pronto_para_entrega: [],
+    em_entrega: [],
+    entregue: [],
+    cancelado: [],
+  };
+
+  Object.entries(pedidos).forEach(([id, pedido]) => {
+    const status = pedido.status || "pendente";
+    if (pedidosPorStatus[status]) {
+      pedidosPorStatus[status].push([id, pedido]);
+    }
+  });
+
+  const statusOrder = [
+    { id: "pendente", title: "Pendentes" },
+    { id: "em_preparo", title: "Em Preparo" },
+    { id: "feito", title: "Feitos" },
+    { id: "pronto_para_entrega", title: "Prontos para Entrega" },
+    { id: "em_entrega", title: "Em Rota" },
+    { id: "entregue", title: "Entregues" },
+    { id: "cancelado", title: "Cancelados" },
+  ];
+
+  statusOrder.forEach((statusInfo) => {
+    const groupPedidos = pedidosPorStatus[statusInfo.id];
+
+    // Não renderiza a seção se não houver pedidos nesse status
+    if (groupPedidos.length === 0) return;
+
+    // Ordena os pedidos dentro do grupo por timestamp
+    groupPedidos.sort(
+      ([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0)
+    );
+
+    const groupWrapper = document.createElement("div");
+    groupWrapper.className = "status-group-wrapper";
+
+    groupWrapper.innerHTML = `
+      <h3>
+        <span class="status-pill status-${statusInfo.id}" style="margin-right: 10px;">${statusInfo.title}</span>
+      </h3>
+      <div class="orders-table-wrapper">
+        <div class="orders-table-header">
+          <span>ID</span>
+          <span>Cliente</span>
+          <span>Item</span>
+          <span>Status</span>
+          <span>Ações</span>
+        </div>
+        <div id="orders-list-${statusInfo.id}"></div>
+      </div>
+    `;
+
+    const listContainer = groupWrapper.querySelector(
+      `#orders-list-${statusInfo.id}`
+    );
+    groupPedidos.forEach(([id, pedido]) => {
+      const row = createOrderTableRow(id, pedido, onStatusUpdate, onPrintLabel);
+      listContainer.appendChild(row);
+    });
+
+    container.appendChild(groupWrapper);
+  });
+}
+
+/**
+ * Cria uma linha (row) para a tabela de pedidos.
+ */
+function createOrderTableRow(pedidoId, pedido, onStatusUpdate, onPrintLabel) {
+  const row = document.createElement("div");
+  row.className = "order-row";
+  row.id = `pedido-${pedidoId}`;
+
+  const statusText = (pedido.status || "pendente").replace(/_/g, " ");
+
+  row.innerHTML = `
+      <div class="order-data-item">
+        <span class="label">ID</span>
+        <span class="order-id-copy" data-order-id="${pedidoId}" title="Clique para copiar">
+          #${pedidoId.substring(0, 5).toUpperCase()}
+        </span>
+      </div>
+      <div class="order-data-item">
+        <span class="label">Cliente</span>
+        ${pedido.nomeCliente || "N/A"}
+      </div>
+      <div class="order-data-item">
+        <span class="label">Item</span>
+        ${
+          pedido.nomeBolo ||
+          (pedido.items && pedido.items[0] ? pedido.items[0].nome : "N/A")
+        }
+      </div>
+      <div class="order-data-item status-data">
+        <span class="label">Status</span>
+        <span class="status-pill status-${
+          pedido.status || "pendente"
+        }">${statusText}</span>
+      </div>
+      <div class="order-data-item">
+        <div class="order-actions-mini">
+          <!-- Botões de ação serão adicionados aqui -->
+        </div>
+      </div>
+    `;
+
+  const actionsContainer = row.querySelector(".order-actions-mini");
+
+  // Botão de Imprimir
+  const printBtn = document.createElement("button");
+  printBtn.className = "action-icon-btn";
+  printBtn.title = "Imprimir Etiqueta";
+  printBtn.innerHTML = '<i class="ph ph-printer"></i>';
+  printBtn.onclick = () => onPrintLabel(pedido, pedidoId);
+  actionsContainer.appendChild(printBtn);
+
+  // Botão de Próximo Status (se houver)
+  const nextAction = getNextAction(pedido.status);
+  if (nextAction) {
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "action-text-btn primary"; // Nova classe para o botão com texto
+    nextBtn.title = nextAction.text;
+    nextBtn.innerHTML = `<i class="ph ${nextAction.icon}"></i> <span>${nextAction.text}</span>`; // Adiciona o texto
+    nextBtn.onclick = () => onStatusUpdate(pedidoId, nextAction.newStatus);
+    actionsContainer.appendChild(nextBtn);
+  }
+
+  return row;
+}
+
+function getNextAction(status) {
+  const actions = statusActions.get(status);
+  // Retorna a primeira ação que muda o status
+  return actions ? actions.find((a) => a.newStatus) : null;
+}
+
 const statusActions = new Map([
   [
     "pendente",
@@ -151,6 +410,7 @@ const statusActions = new Map([
         text: "Iniciar Preparo",
         className: "btn-secondary",
         newStatus: "em_preparo",
+        icon: "ph-fire",
       },
     ],
   ],
@@ -161,6 +421,7 @@ const statusActions = new Map([
         text: "Marcar como Feito",
         className: "btn-secondary",
         newStatus: "feito",
+        icon: "ph-check-circle",
       },
       {
         text: "Imprimir Etiqueta",
@@ -176,6 +437,7 @@ const statusActions = new Map([
         text: "Pronto para Entrega",
         className: "btn-primary",
         newStatus: "pronto_para_entrega",
+        icon: "ph-package",
       },
     ],
   ],
@@ -186,6 +448,7 @@ const statusActions = new Map([
         text: "Marcar como Entregue",
         className: "btn-sucesso",
         newStatus: "entregue",
+        icon: "ph-moped",
       },
     ],
   ],
@@ -348,14 +611,14 @@ export function highlightClosestOrder(closestOrder) {
 export function fillOrderForm(data) {
   // Mapeia os nomes de dados para os IDs dos campos do formulário
   const fields = {
-    nomeBolo: document.getElementById("nome-bolo"),
-    nomeCliente: document.getElementById("nome-cliente"),
+    nomeBolo: document.getElementById("item"), // CORREÇÃO: ID correto é 'item'
+    nomeCliente: document.getElementById("cliente-nome"), // CORREÇÃO: ID correto é 'cliente-nome'
     cep: document.getElementById("cep"),
     rua: document.getElementById("rua"),
     bairro: document.getElementById("bairro"),
     numero: document.getElementById("numero"),
     complemento: document.getElementById("complemento"),
-    whatsapp: document.getElementById("whatsapp"),
+    whatsapp: document.getElementById("telefone"), // CORREÇÃO: ID correto é 'telefone'
     emailCliente: document.getElementById("email-cliente"),
   };
   for (const key of Object.keys(fields)) {
@@ -370,25 +633,37 @@ export function fillOrderForm(data) {
  * @param {object} addressData - Objeto com os dados do endereço (logradouro, bairro).
  */
 export function fillAddressForm(addressData) {
+  const cepField = document.getElementById("cep");
   const ruaField = document.getElementById("rua");
   const bairroField = document.getElementById("bairro");
   const numeroField = document.getElementById("numero");
 
   if (ruaField) ruaField.value = addressData.logradouro || "";
+  if (cepField) cepField.value = addressData.cep || "";
   if (bairroField) bairroField.value = addressData.bairro || "";
   if (numeroField) numeroField.focus(); // Move o foco para o campo de número
 }
 
 export function printLabel(pedido, pedidoId) {
-  const shortId = pedidoId ? pedidoId.substring(0, 5).toUpperCase() : "N/A";
+  const fullId = pedidoId ? pedidoId.toUpperCase() : "N/A";
   const printContent = `
-    <div style="font-family: 'Poppins', sans-serif; padding: 20px; border: 1px solid #ccc; width: 300px; box-sizing: border-box;">
-      <h3 style="text-align: center; margin-bottom: 15px;">Pedido Scatambulo #${shortId}</h3>
-      <p><strong>Bolo:</strong> ${pedido.nomeBolo || "Não informado"}</p>
-      <p><strong>Cliente:</strong> ${pedido.nomeCliente || "Não informado"}</p>
-      <p><strong>Endereço:</strong> ${pedido.endereco || "Não informado"}</p>
-      <p><strong>WhatsApp:</strong> ${pedido.whatsapp || "Não informado"}</p>
-      <p style="margin-top: 20px; text-align: center; font-size: 0.8em;">Obrigado pela preferência!</p>
+    <div style="font-family: 'Poppins', sans-serif; padding: 20px; border: 2px solid #d4af37; width: 350px; box-sizing: border-box; border-radius: 10px;">
+      <h3 style="text-align: center; margin-top: 0; margin-bottom: 20px; color: #d4af37;">Detalhes do Pedido</h3>
+      <p><strong>Cliente:</strong> ${pedido.nomeCliente || "N/A"}</p>
+      <p><strong>Bolo:</strong> ${pedido.nomeBolo || "N/A"}</p>
+      <p><strong>Cód. Rastreio:</strong> ${fullId}</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+      <p><strong>Endereço de Entrega:</strong></p>
+      <div style="padding-left: 15px;">
+        <p><strong>Rua:</strong> ${pedido.rua || "N/A"}, ${
+    pedido.numero || "S/N"
+  }</p>
+        <p><strong>Bairro:</strong> ${pedido.bairro || "N/A"}</p>
+        <p><strong>Cidade:</strong> ${pedido.cidade || "N/A"}</p>
+        <p><strong>CEP:</strong> ${pedido.cep || "N/A"}</p>
+      </div>
+      <p style="margin-top: 25px; text-align: center; font-size: 0.9em; font-style: italic;">Feito com carinho para adoçar o seu dia!</p>
+      <p style="margin-top: 5px; text-align: center; font-weight: 600;">Angela Scatambulo Agradece</p>
     </div>
   `;
 
@@ -456,11 +731,15 @@ export function showConfirmModal(
 ) {
   const modal = document.getElementById("generic-confirm-modal");
   const messageEl = document.getElementById("generic-confirm-modal-body");
-  const confirmBtn = document.getElementById("generic-confirm-modal-confirm-btn");
+  const confirmBtn = document.getElementById(
+    "generic-confirm-modal-confirm-btn"
+  );
   const cancelBtn = document.getElementById("generic-confirm-modal-cancel-btn");
 
   if (!modal || !messageEl || !confirmBtn || !cancelBtn) {
-    console.error("Elementos do modal de confirmação genérico não encontrados!");
+    console.error(
+      "Elementos do modal de confirmação genérico não encontrados!"
+    );
     return;
   }
 

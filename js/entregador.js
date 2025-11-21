@@ -10,7 +10,7 @@ import {
   showConfirmModal,
   showPersistentError, // showConfirmModal será substituído por uma implementação local
   hidePersistentError,
-} from "./ui.js"; // Importa showToast, updateLocationStatus, showConfirmModal e novos helpers
+} from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
 
 window.addEventListener("load", () => {
@@ -37,16 +37,19 @@ window.addEventListener("load", () => {
   let knownReadyOrderIds = new Set();
 
   // ======= 3. Inicialização =======
+  initializeApp();
+
   async function initializeApp() {
-    map = await Map.initializeMap("map");
-    // Espera o carregamento dos componentes (modais) antes de continuar
-    await loadComponents("#modal-container", ["components/modal-suggestion.html"]);
+    map = await Map.initializeMap("map", undefined, undefined, true); // Start in satellite mode
 
     setupMapEventListeners();
-    setupModalEventListeners();
     checkGeolocationPermission();
     listenToFirebaseOrders();
     setupUIEventListeners();
+
+    // Espera o carregamento dos componentes (modais) antes de continuar
+    await loadComponents("#modal-container"); // Re-add this call
+    setupModalEventListeners(); // <--- MOVIDO: Agora é chamado APÓS o carregamento dos modais
 
     UI.setFollowMeButtonState(isFollowingDeliveryPerson);
     Map.setFollowMode(isFollowingDeliveryPerson);
@@ -73,15 +76,17 @@ window.addEventListener("load", () => {
       "cancel-delivery-final-btn"
     );
 
-    if (confirmDeliveryBtn) {
-      confirmDeliveryBtn.addEventListener("click", () => {
-        if (orderIdToConfirm) handleFinishDelivery(orderIdToConfirm);
-      });
-    }
-    if (cancelDeliveryBtn)
-      cancelDeliveryBtn.addEventListener("click", () =>
-        UI.showConfirmDeliveryModal(false)
+    // Ação de confirmar a entrega
+    if (confirmDeliveryBtn)
+      confirmDeliveryBtn.addEventListener("click", handleFinishDelivery);
+
+    // Ação de cancelar (apenas fecha o modal)
+    if (cancelDeliveryBtn) {
+      cancelDeliveryBtn.addEventListener(
+        "click",
+        () => UI.showConfirmDeliveryModal(false) // Chama a função para esconder o modal
       );
+    }
   }
 
   function setupUIEventListeners() {
@@ -107,12 +112,26 @@ window.addEventListener("load", () => {
         localStorage.removeItem("currentUser");
         window.location.href = "index.html";
       },
-      handleToggleFollowMe // Passando apenas os callbacks necessários
+      null, // onNewOrder (não aplicável para entregador)
+      null, // onPrintAll (não aplicável para entregador)
+      null, // onReadMessage (não aplicável para entregador)
+      null, // onClearDelivered (não aplicável para entregador)
+      null, // onResetActiveDeliveries (não aplicável para entregador)
+      null, // onClearAllOrders (não aplicável para entregador)
+      null, // onNewOrderSubmit (não aplicável para entregador)
+      null // onReadMessageSubmit (não aplicável para entregador)
     );
 
     // Local HUD buttons (follow, satellite, 3D) — ensure follow button wired
     const followBtn = document.getElementById("follow-me-button");
     if (followBtn) followBtn.addEventListener("click", handleToggleFollowMe);
+    else {
+      const followBtnMobile = document.getElementById(
+        "follow-me-button-mobile"
+      );
+      if (followBtnMobile)
+        followBtnMobile.addEventListener("click", handleToggleFollowMe);
+    }
 
     // HUD controls (follow, satellite, 3D)
     const satBtn = document.getElementById("satellite-toggle");
@@ -154,8 +173,8 @@ window.addEventListener("load", () => {
   function startWatchingLocation() {
     const watchOptions = {
       enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
+      timeout: 20000, // Aumentado para 20 segundos para mais tolerância
+      maximumAge: 5000, // Permite usar uma localização de até 5s atrás
     };
     navigator.geolocation.watchPosition(
       handleLocationUpdate,
@@ -180,8 +199,8 @@ window.addEventListener("load", () => {
       activeDelivery ? activeDelivery.destinationCoords : null
     );
     updateFirebaseState(entregadorLocation);
-    // Atualiza a câmera se o modo seguir estiver ativo
-    if (Map.isFollowMode && Map.isFollowMode()) {
+    // Atualiza a câmera se o modo seguir estiver ativo (corrected to function call)
+    if (Map.isFollowMode()) {
       Map.updateCameraForLocation(entregadorLocation);
     } else {
       updateMapViewState();
@@ -190,8 +209,14 @@ window.addEventListener("load", () => {
 
   function handleLocationError(error) {
     console.error("Erro de geolocalização:", error.code, error.message);
-    updateLocationStatus("Erro ao obter localização.", "error");
-    showToast("Erro ao obter localização.", "error");
+    let userMessage = "Erro ao obter localização.";
+    if (error.code === 3) {
+      // TIMEOUT
+      userMessage = "Sinal de GPS fraco. Tente em um local com céu aberto.";
+    }
+
+    updateLocationStatus(userMessage, "error");
+    showToast(userMessage, "error");
   }
 
   function updateFirebaseState(location) {
@@ -255,6 +280,7 @@ window.addEventListener("load", () => {
   }
 
   async function startNavigation(orderId, order) {
+    Map.resetProximityAlert(); // Resetar o alerta de proximidade para uma nova entrega
     if (hasArrived) hasArrived = false;
     if (!entregadorLocation) {
       showToast("Aguardando sua localização para iniciar a rota.", "info");
@@ -265,23 +291,16 @@ window.addEventListener("load", () => {
       return;
     }
 
-    // Se o pedido não tem um campo `endereco`, tenta montar a partir dos campos separados
+    // Monta o endereço completo a partir dos campos do pedido para garantir consistência
     let enderecoParaGeocodar = order.endereco;
-    if (!enderecoParaGeocodar) {
-      const parts = [];
+    if (!enderecoParaGeocodar || enderecoParaGeocodar.length < 10) {
+      const parts = []; // Monta o endereço a partir das partes para garantir
       if (order.rua) parts.push(order.rua);
       if (order.numero) parts.push(order.numero);
       if (order.bairro) parts.push(order.bairro);
       if (order.cep) parts.push(`CEP: ${order.cep}`);
       enderecoParaGeocodar = parts.join(", ");
     }
-
-    console.log(
-      "startNavigation: endereco a geocodificar=",
-      enderecoParaGeocodar,
-      "order=",
-      order
-    );
 
     // Limpa qualquer erro persistente anterior
     hidePersistentError();
@@ -317,7 +336,9 @@ window.addEventListener("load", () => {
           let minDistance = Infinity;
 
           for (const [otherOrderId, otherOrder] of otherReadyOrders) {
-            const otherGeocodeResult = await geocodeAddress(otherOrder.endereco);
+            const otherGeocodeResult = await geocodeAddress(
+              otherOrder.endereco
+            );
             if (otherGeocodeResult && !otherGeocodeResult.error) {
               const distance = calculateDistance(
                 currentOrderDestination.lat,
@@ -342,13 +363,12 @@ window.addEventListener("load", () => {
             UI.showSuggestionModal(closestOrder, (suggestedOrderId) => {
               const card = document.getElementById(`order-${suggestedOrderId}`);
               if (card) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                card.classList.add('highlight');
-                setTimeout(() => card.classList.remove('highlight'), 2000);
+                card.scrollIntoView({ behavior: "smooth", block: "center" });
+                card.classList.add("highlight");
+                setTimeout(() => card.classList.remove("highlight"), 2000);
               }
             });
           }
-
         }
       } catch (err) {
         console.error("Erro ao calcular o próximo pedido mais próximo:", err);
@@ -377,8 +397,7 @@ window.addEventListener("load", () => {
 
     // Define a rota usando o novo plugin e solicita OSRM para desenhar a linha azul
     if (entregadorLocation) {
-      Map.setRoute(entregadorLocation, geocodeResult);
-      const route = await Map.requestRoute(entregadorLocation, geocodeResult);
+      const route = await Map.setRoute(entregadorLocation, geocodeResult); // Use returned route
       if (route) {
         const distanceKm = (route.distance / 1000).toFixed(1);
         const durationMin = Math.round(route.duration / 60);
@@ -432,6 +451,7 @@ window.addEventListener("load", () => {
   }
 
   function stopNavigation() {
+    Map.resetProximityAlert(); // Resetar o alerta de proximidade ao parar a navegação
     // Use a more aggressive clear to remove quaisquer rotas fantasmas
     if (Map.forceClearAllRoutes) {
       try {
@@ -475,8 +495,9 @@ window.addEventListener("load", () => {
   }
 
   async function handleFinishDelivery(orderId) {
-    if (!orderId) return;
-    await updateStatus(orderId, "entregue");
+    // O orderId é pego da variável global `orderIdToConfirm`
+    if (!orderIdToConfirm) return;
+    await updateStatus(orderIdToConfirm, "entregue");
     UI.showConfirmDeliveryModal(false);
     stopNavigation();
   }
@@ -502,8 +523,6 @@ window.addEventListener("load", () => {
       showToast("A entrega foi cancelada.", "info");
     }
   }
-
-
 
   // ======= 7. Lógica de Pedidos (Firebase) =======
   function listenToFirebaseOrders() {
@@ -615,7 +634,4 @@ window.addEventListener("load", () => {
       );
     }
   }
-
-  // Inicia a aplicação
-  initializeApp();
 });

@@ -1,6 +1,10 @@
+/**
+ * js/rastreio.js - Lógica para Rastreamento de Pedido pelo Cliente
+ */
 import { db, ref, onValue } from "./firebase.js";
 import { geocodeAddress } from "./utils.js";
 import * as Map from "./map.js";
+import { showToast } from "./ui.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const orderCodeInput = document.getElementById("order-code-input");
@@ -9,14 +13,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const orderDetailsSection = document.getElementById("order-details-section");
   const mapContainer = document.getElementById("map-container");
 
-  let activeOrderListener = null; // Para parar de ouvir o pedido anterior
-  let entregadorListener = null; // Para parar de ouvir o entregador anterior
+  let activeOrderListener = null;
+  let entregadorListener = null;
   let mapInitialized = false;
 
   trackOrderButton.addEventListener("click", trackOrder);
   orderCodeInput.addEventListener("keyup", (e) => {
     if (e.key === "Enter") trackOrder();
   });
+
+  // Inicializa o mapa com o ponto central da cidade
+  Map.initializeMap("rastreio-map", [-51.9333, -23.4243], 12, true).then(() => {
+    mapInitialized = true;
+  });
+
+  function showMessage(message, isError = false) {
+    trackingMessage.textContent = message;
+    trackingMessage.style.color = isError
+      ? "var(--ios-red)"
+      : "var(--ios-blue)";
+    trackingMessage.style.display = "block";
+  }
+
+  function hideDetails() {
+    orderDetailsSection.style.display = "none";
+    mapContainer.style.display = "none";
+    trackingMessage.style.display = "none";
+  }
 
   function trackOrder() {
     const orderId = orderCodeInput.value.trim().toLowerCase();
@@ -25,9 +48,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Limpa listeners antigos antes de criar novos
+    // Limpa listeners antigos
     if (activeOrderListener) activeOrderListener();
     if (entregadorListener) entregadorListener();
+    Map.clearMap();
+    hideDetails();
+    showMessage("Rastreando pedido...", false);
 
     const orderRef = ref(db, `pedidos/${orderId}`);
     activeOrderListener = onValue(
@@ -37,79 +63,94 @@ document.addEventListener("DOMContentLoaded", () => {
           const orderData = snapshot.val();
           displayOrderDetails(orderId, orderData);
         } else {
-          showMessage("Pedido não encontrado.", true);
-          orderDetailsSection.style.display = "none";
+          showMessage(
+            `Pedido #${orderId.toUpperCase()} não encontrado. Verifique o código.`,
+            true
+          );
+          hideDetails();
         }
       },
       (error) => {
-        console.error(error);
-        showMessage("Erro ao buscar o pedido.", true);
+        console.error("Erro ao ler dados do pedido:", error);
+        showMessage("Erro de conexão ao rastrear o pedido.", true);
+        hideDetails();
       }
     );
   }
 
-  function showMessage(msg, isError = false) {
-    trackingMessage.textContent = msg;
-    trackingMessage.style.color = isError ? "var(--danger-color)" : "#333";
-  }
-
-  function displayOrderDetails(orderId, order) {
-    showMessage(""); // Limpa mensagens de erro
+  function displayOrderDetails(id, order) {
     orderDetailsSection.style.display = "block";
+    trackingMessage.style.display = "none";
 
+    // Preenche os dados do pedido
     document.getElementById(
       "order-id-display"
-    ).textContent = `#${orderId.toUpperCase()}`;
-    document.getElementById("cake-name").textContent = order.nomeBolo;
-    document.getElementById("client-name").textContent = order.nomeCliente;
+    ).textContent = `#${id.toUpperCase()}`;
+    document.getElementById("order-cake-name").textContent =
+      order.item ||
+      (order.items && order.items.length > 0 ? order.items[0].nome : "N/A");
+    document.getElementById("order-client-name").textContent =
+      order.nomeCliente || "N/A";
 
-    updateStatusTimeline(order.status);
+    // Atualiza a barra de status visual
+    updateStatusFlow(order.status);
 
+    // Lógica para o mapa (só exibe e rastreia se estiver em entrega)
     if (order.status === "em_entrega") {
-      showMap();
-      listenToEntregador(order);
+      mapContainer.style.display = "block";
+      startEntregadorListener(order);
     } else {
       mapContainer.style.display = "none";
+      if (entregadorListener) entregadorListener(); // Para o listener se sair do status "em_entrega"
+      Map.clearMap(); // Garante que o mapa esteja limpo
     }
   }
 
-  function updateStatusTimeline(currentStatus) {
-    const statuses = [
-      "em_preparo",
-      "pronto_para_entrega",
-      "em_entrega",
-      "entregue",
-    ];
-    const currentIndex = statuses.indexOf(currentStatus);
+  function getStatusText(status) {
+    switch (status) {
+      case "pendente":
+        return "Aguardando Confirmação";
+      case "em_preparo":
+        return "Em Preparo pela Confeiteira";
+      case "pronto_para_entrega":
+        return "Pronto para a Rota";
+      case "em_entrega":
+        return "A Caminho!";
+      case "entregue":
+        return "Entregue com Sucesso!";
+      default:
+        return "Status Desconhecido";
+    }
+  }
 
-    document.querySelectorAll(".status-step").forEach((step, index) => {
-      step.classList.remove("active", "completed");
-      if (index < currentIndex) {
-        step.classList.add("completed");
-      } else if (index === currentIndex && currentStatus === "entregue") {
-        // Se for o último status (entregue), marca como completo também
-        step.classList.add("completed");
-      } else if (index === currentIndex) {
+  function updateStatusFlow(currentStatus) {
+    const steps = document.querySelectorAll(".status-step");
+    let activateNext = true;
+
+    steps.forEach((step) => {
+      const statusId = step.dataset.status;
+
+      // Se já passou pelo status atual (ou é ele), ativa
+      if (activateNext) {
         step.classList.add("active");
+      } else {
+        step.classList.remove("active");
+      }
+
+      // O próximo passo deve ser desativado após o status atual
+      if (statusId === currentStatus) {
+        activateNext = false;
       }
     });
   }
 
-  function showMap() {
-    mapContainer.style.display = "block";
-    if (!mapInitialized) {
-      Map.initializeMap("map");
-      mapInitialized = true;
-    }
-    // Força o mapa a se redimensionar corretamente dentro do modal
-    setTimeout(() => Map.invalidateMapSize(), 100);
-  }
-
-  async function listenToEntregador(order) {
-    // Limpa listener antigo
+  async function startEntregadorListener(order) {
+    // Para listener anterior, se houver
     if (entregadorListener) entregadorListener();
 
     const entregadorRef = ref(db, "localizacao/entregador");
+
+    // Obter coordenadas do cliente apenas uma vez
     const clientCoords = await geocodeAddress(order.endereco);
 
     if (clientCoords.error) {
@@ -128,36 +169,28 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateMap(entregadorLocation, clientCoords, order) {
     if (!mapInitialized) return;
 
-    // Limpa marcadores e rotas antigas
+    // 1. Limpa tudo (marcadores e rotas)
     Map.clearMap();
 
-    // Adiciona marcador do cliente
-    Map.updateClientMarkerOnMap(clientCoords, {
-      title: "Seu Endereço",
-      isDraggable: false,
-    });
+    // 2. Adiciona marcador do cliente
+    Map.updateClientMarkerOnMap(clientCoords);
 
-    // Adiciona marcador do entregador
+    // 3. Adiciona marcador do entregador
     if (entregadorLocation) {
-      Map.updateDeliveryMarkerOnMap(entregadorLocation, {
-        title: "Entregador",
-      });
+      Map.updateDeliveryMarkerOnMap(entregadorLocation, clientCoords);
     }
 
-    // Desenha a rota se existir no pedido
+    // 4. Desenha a rota se existir no pedido (dados do Admin/Entregador)
     if (order.entrega && order.entrega.geometria) {
-      Map.drawRouteOnMap(order.entrega.geometria);
+      Map.drawMainRoute(order.entrega.geometria);
     }
 
-    // Ajusta o zoom do mapa para mostrar ambos os pontos
+    // 5. Ajusta o zoom do mapa
     if (entregadorLocation && clientCoords) {
       Map.fitMapToBounds(entregadorLocation, clientCoords);
-    } else {
+    } else if (clientCoords) {
       // Se não tiver localização do entregador, foca no cliente
-      Map.panMapTo(
-        { latitude: clientCoords.lat, longitude: clientCoords.lon },
-        15
-      );
+      Map.fitMapToBounds(clientCoords, clientCoords, 14);
     }
   }
 });

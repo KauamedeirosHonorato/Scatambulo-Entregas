@@ -1,27 +1,49 @@
-document.addEventListener('DOMContentLoaded', () => {
-  // --- AVISO DE SEGURANÇA ---
-  // Manter senhas no código do frontend não é seguro.
-  // Considere usar o Firebase Authentication para um login seguro.
+/**
+ * js/login.js - Lógica de Login e Redirecionamento
+ */
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.body.classList.add("login-page");
+
   const userPanels = {
     angela: "admin.html",
     entregador: "entregador.html",
     sofia: "confeiteira.html",
   };
+  const loginContainer = document.querySelector(".login-content");
 
-  // Simula a verificação de senha que aconteceria em um backend seguro.
+  // Simula a verificação de senha com credenciais fixas
   const passwordMap = {
     angela: "0124",
     entregador: "0126",
     sofia: "0125",
   };
+
   const loginButton = document.getElementById("login-button");
-  const usernameInput = document.getElementById("username");
+  const emailInput = document.getElementById("username");
   const passwordInput = document.getElementById("password");
   const loginError = document.getElementById("login-error");
+  const togglePasswordBtn = document.getElementById(
+    "toggle-password-visibility"
+  );
 
-  // Função para tentar logar ao pressionar Enter
-  const attemptLogin = () => {
-    const username = usernameInput.value.toLowerCase().trim();
+  // Verifica se já existe um usuário logado e redireciona
+  const loggedInUser = localStorage.getItem("currentUser");
+  if (loggedInUser) {
+    try {
+      const user = JSON.parse(loggedInUser);
+      if (user && user.panel) {
+        window.location.href = user.panel;
+      }
+    } catch (e) {
+      console.error("Erro ao parsear currentUser:", e);
+      localStorage.removeItem("currentUser");
+    }
+  }
+
+  const attemptLogin = (e) => {
+    e.preventDefault(); // Impede o envio padrão do formulário
+    const username = emailInput.value.toLowerCase().trim();
     const password = passwordInput.value;
 
     if (!username || !password) {
@@ -29,39 +51,39 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    loginError.textContent = "";
+
     const expectedPassword = passwordMap[username];
     const panel = userPanels[username];
 
     if (panel && expectedPassword === password) {
-      // Salva o usuário logado para persistir a sessão
+      // Login bem-sucedido
       localStorage.setItem("currentUser", JSON.stringify({ username, panel }));
-      loginError.textContent = "";
       window.location.href = panel;
     } else {
+      // Login falhou
       loginError.textContent = "Usuário ou senha inválidos.";
+      if (loginContainer) {
+        loginContainer.classList.add("shake");
+        setTimeout(() => loginContainer.classList.remove("shake"), 800);
+      }
     }
   };
 
-  loginButton.addEventListener("click", attemptLogin);
+  const loginForm = document.getElementById("login-form");
+  if (loginForm) loginForm.addEventListener("submit", attemptLogin);
 
-  passwordInput.addEventListener("keyup", (event) => {
-    if (event.key === "Enter") {
-      attemptLogin();
-    }
-  });
-
-  usernameInput.addEventListener("keyup", (event) => {
-    if (event.key === "Enter") {
-      attemptLogin();
-    }
-  });
-
-  // Verifica se já existe um usuário logado e redireciona
-  const loggedInUser = localStorage.getItem("currentUser");
-  if (loggedInUser) {
-    const user = JSON.parse(loggedInUser);
-    if (user && user.panel) {
-      window.location.href = user.panel;
-    }
+  if (togglePasswordBtn && passwordInput) {
+    togglePasswordBtn.addEventListener("click", () => {
+      const isPassword = passwordInput.type === "password";
+      passwordInput.type = isPassword ? "text" : "password";
+      const icon = togglePasswordBtn.querySelector("i");
+      icon.classList.toggle("ph-eye", !isPassword);
+      icon.classList.toggle("ph-eye-slash", isPassword);
+      togglePasswordBtn.setAttribute(
+        "aria-label",
+        isPassword ? "Ocultar senha" : "Mostrar senha"
+      );
+    });
   }
 });

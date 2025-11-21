@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rastrear Pedido - Scatambulo</title>
     <link
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
       rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -163,7 +161,10 @@
         <section id="order-details-section" style="display: none">
           <h3>
             Status do Pedido
-            <span id="order-id-display" style="font-weight: 300"></span>
+            <span
+              id="order-id-display"
+              style="font-weight: 300; color: var(--ios-text-sec)"
+            ></span>
           </h3>
           <div class="status-timeline">
             <div class="status-step" data-status="em_preparo">
@@ -201,23 +202,27 @@
           </div>
 
           <div class="order-info-card">
-            <p><strong>Bolo:</strong> <span id="cake-name"></span></p>
-            <p><strong>Cliente:</strong> <span id="client-name"></span></p>
+            <p><strong>Bolo:</strong> <span id="order-cake-name"></span></p>
+            <p>
+              <strong>Cliente:</strong> <span id="order-client-name"></span>
+            </p>
           </div>
 
           <!-- O mapa será exibido aqui quando o pedido estiver em rota -->
           <div id="map-container" style="display: none">
-            <div id="map"></div>
+            <div id="rastreio-map"></div>
           </div>
         </section>
       </div>
     </main>
 
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <!-- Importa o plugin MapLibre GL Directions como módulo e expõe globalmente -->
+    <script type="module">
+      import Directions from "https://unpkg.com/@maplibre/maplibre-gl-directions@0.7.1/dist/maplibre-gl-directions.js";
+      window.MapLibreGlDirections = Directions.default || Directions;
+    </script>
+
     <script type="module" src="js/rastreio.js"></script>
   </body>
 </html>

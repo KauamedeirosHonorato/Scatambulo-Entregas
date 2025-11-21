@@ -11,7 +11,9 @@ export function setupEventListeners(
   const logoutButton = document.getElementById("logout-button");
   const confirmDeliveryBtn = document.getElementById("confirm-delivery-btn");
   const cancelDeliveryBtn = document.getElementById("cancel-delivery-btn");
-  const closeModalBtn = document.querySelector("#confirm-delivery-modal .close-button");
+  const closeModalBtn = document.querySelector(
+    "#confirm-delivery-modal .close-button"
+  );
   const dynamicIslandFinishBtn = document.getElementById(
     "dynamic-island-finish-btn"
   );
@@ -246,7 +248,9 @@ export function updateDistanceDisplay(distance) {
 }
 
 export function showConfirmDeliveryModal(show) {
-  const confirmDeliveryModal = document.getElementById("confirm-delivery-modal");
+  const confirmDeliveryModal = document.getElementById(
+    "confirm-delivery-modal"
+  );
   if (confirmDeliveryModal) {
     if (show) {
       confirmDeliveryModal.classList.add("active");
@@ -314,23 +318,23 @@ export function updateButtonsForNavigation(isNavigating, activeOrderId) {
 }
 
 export function showSuggestionModal(orderData, onAccept) {
-  const modal = document.getElementById('suggestion-modal');
+  const modal = document.getElementById("suggestion-modal");
   if (!modal) {
-    console.error('O modal de sugestão não foi encontrado no DOM.');
+    console.error("O modal de sugestão não foi encontrado no DOM.");
     return;
   }
 
-  const clientNameEl = document.getElementById('suggestion-client-name');
-  const addressEl = document.getElementById('suggestion-address');
-  const distanceEl = document.getElementById('suggestion-distance');
-  const acceptBtn = document.getElementById('suggestion-modal-accept-btn');
-  const closeBtn = document.getElementById('suggestion-modal-close-btn');
+  const clientNameEl = document.getElementById("suggestion-client-name");
+  const addressEl = document.getElementById("suggestion-address");
+  const distanceEl = document.getElementById("suggestion-distance");
+  const acceptBtn = document.getElementById("suggestion-modal-accept-btn");
+  const closeBtn = document.getElementById("suggestion-modal-close-btn");
 
   // Função para esconder o modal e limpar listeners
   const hide = () => {
-    modal.classList.remove('active');
+    modal.classList.remove("active");
     // Remove o listener do backdrop para não acumular
-    modal.removeEventListener('click', backdropClickHandler);
+    modal.removeEventListener("click", backdropClickHandler);
   };
 
   const backdropClickHandler = (e) => {
@@ -347,25 +351,27 @@ export function showSuggestionModal(orderData, onAccept) {
     // Remove listeners antigos clonando os botões
     const newAcceptBtn = acceptBtn.cloneNode(true);
     acceptBtn.parentNode.replaceChild(newAcceptBtn, acceptBtn);
-    
+
     const newCloseBtn = closeBtn.cloneNode(true);
     closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
 
     // Adiciona novos listeners
-    newAcceptBtn.addEventListener('click', () => {
-      if (onAccept) onAccept(orderData.id);
-      hide();
-    }, { once: true });
+    newAcceptBtn.addEventListener(
+      "click",
+      () => {
+        if (onAccept) onAccept(orderData.id);
+        hide();
+      },
+      { once: true }
+    );
 
-    newCloseBtn.addEventListener('click', hide, { once: true });
-    
+    newCloseBtn.addEventListener("click", hide, { once: true });
+
     // Adiciona listener para fechar ao clicar fora
-    modal.addEventListener('click', backdropClickHandler);
+    modal.addEventListener("click", backdropClickHandler);
 
-    modal.classList.add('active');
+    modal.classList.add("active");
   } else {
     hide();
   }
 }
-
-

@@ -4,69 +4,64 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel Confeiteira - Scatambulo</title>
+
     <link rel="stylesheet" href="css/style.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Adiciona a biblioteca de mapas Leaflet.js -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
-    />
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
   </head>
   <body>
     <header>
       <div class="header-container">
-        <h1>Painel da Sofia</h1>
+        <h1>Painel da Sofia 🧁</h1>
         <div class="desktop-nav">
-          <button id="new-order-button" class="btn-primary">Novo Pedido</button>
-          <button id="read-message-button" class="btn-primary">
-            Ler Mensagem
+          <button id="new-order-button" class="btn-primary">
+            <i class="ph ph-plus-circle"></i> Novo Pedido
           </button>
-          <button id="logout-button" class="btn-secondary">Sair</button>
+          <button id="read-message-button" class="btn-primary">
+            <i class="ph ph-chat-text"></i> Ler Mensagem
+          </button>
+          <button id="logout-button" class="btn-secondary">
+            <i class="ph ph-sign-out"></i> Sair
+          </button>
         </div>
-        <button class="hamburger-menu">
+        <button class="hamburger-menu" aria-label="Menu">
           <span class="bar"></span>
           <span class="bar"></span>
           <span class="bar"></span>
         </button>
       </div>
     </header>
-    <nav class="mobile-nav"></nav>
-
+    <nav class="mobile-nav">
+      <div class="divider"></div>
+    </nav>
     <main class="container">
-      <section id="orders-section">
-        <h2>Painel de Pedidos</h2>
-        <div id="kanban-board">
-          <!-- Colunas e pedidos serão gerados pelo JS -->
+      <section id="delivery-status-section" style="margin-bottom: 20px">
+        <h2
+          style="font-size: 15px; color: var(--ios-text-sec); margin-left: 5px"
+        >
+          <i class="ph ph-person-simple-bike"></i> Status do Entregador
+        </h2>
+        <div
+          id="delivery-status-container"
+          class="order-info-card"
+          style="padding: 15px"
+        >
+          <p id="delivery-person-status" style="font-weight: 600">
+            Desconectado
+          </p>
         </div>
       </section>
 
-      <section id="map-section">
-        <h2>Acompanhamento de Entrega</h2>
-        <div id="map-container">
-          <div id="map"></div>
-        </div>
-        <p id="delivery-person-status">
-          Aguardando localização do entregador...
-        </p>
-        <div id="delivery-info-confeiteira" style="display: none"></div>
+      <section id="orders-section">
+        <h2><i class="ph ph-list-checks"></i> Pedidos</h2>
+        <div id="kanban-board"></div>
       </section>
     </main>
 
-    <!-- Contêiner para carregar os modais dinamicamente -->
     <div id="modal-container"></div>
+    <div id="toast-container"></div>
 
+    <script type="module" src="js/componentLoader.js"></script>
     <script type="module" src="js/confeiteira.js"></script>
   </body>
 </html>

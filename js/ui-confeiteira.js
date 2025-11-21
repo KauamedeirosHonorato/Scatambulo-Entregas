@@ -1,8 +1,18 @@
+/**
+ * js/ui-confeiteira.js - Funções de UI Específicas da Confeiteira
+ */
 import {
   printLabel as genericPrintLabel,
   setupEventListeners as genericSetupEventListeners,
-  createOrderCard as genericCreateOrderCard,
+  renderBoard as genericRenderBoard,
+  fillOrderForm as genericFillOrderForm,
+  fillAddressForm as genericFillAddressForm,
+  showToast,
 } from "./ui.js";
+
+// =========================================================================
+// 1. EVENT LISTENERS
+// =========================================================================
 
 export function setupEventListeners(
   onLogout,
@@ -12,11 +22,8 @@ export function setupEventListeners(
   onReadMessageSubmit,
   onCepBlur
 ) {
-  // Configuração do Menu Hambúrguer
-  setupHamburgerMenu();
-
-  // Chama a função genérica, passando os callbacks corretos.
-  // As funções que não se aplicam à confeiteira (ex: onPrintAll) são passadas como null.
+  // Reutiliza a função de setup global (ui.js), passando apenas os callbacks relevantes
+  // O printAll e as ações de limpeza de admin são passados como null, pois a Confeiteira não os tem.
   genericSetupEventListeners(
     onLogout,
     onNewOrder,
@@ -27,147 +34,84 @@ export function setupEventListeners(
     null, // onClearAllOrders
     onNewOrderSubmit,
     onReadMessageSubmit,
-    (e) => onCepBlur(e) // Garante que o evento seja passado
+    (e) => onCepBlur(e)
   );
 }
-function setupHamburgerMenu() {
-  const hamburger = document.querySelector(".hamburger-menu");
-  const mobileNav = document.querySelector(".mobile-nav");
-  const desktopNav = document.querySelector(".desktop-nav");
 
-  if (!hamburger || !mobileNav || !desktopNav) return;
+// =========================================================================
+// 2. RENDERIZAÇÃO
+// =========================================================================
 
-  hamburger.addEventListener("click", () => {
-    mobileNav.classList.toggle("open");
-    hamburger.classList.toggle("open");
-  });
-
-  // Função para mover os botões
-  const moveNavItems = () => {
-    if (window.innerWidth <= 768) {
-      // Move para o menu mobile se não estiverem lá
-      while (desktopNav.firstChild) {
-        mobileNav.appendChild(desktopNav.firstChild);
-      }
-    } else {
-      // Move de volta para o menu desktop
-      while (mobileNav.firstChild) {
-        desktopNav.appendChild(mobileNav.firstChild);
-      }
-      mobileNav.classList.remove("open"); // Garante que o menu mobile feche
-    }
-  };
-
-  window.addEventListener("resize", moveNavItems);
-  moveNavItems();
-}
-
+/**
+ * Renderiza o Kanban Board. Reutiliza a função genérica e passa `isAdmin = false`.
+ */
 export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
-  const kanbanBoard = document.getElementById("kanban-board");
-  kanbanBoard.innerHTML = "";
-  const statuses = [
-    { id: "pendente", title: "Pendente" },
-    { id: "em_preparo", title: "Em Preparo" },
-    { id: "feito", title: "Feito" },
-    { id: "pronto_para_entrega", title: "Pronto para Entrega" },
-  ];
-
-  statuses.forEach((statusInfo) => {
-    const column = document.createElement("div");
-    column.className = "kanban-column";
-    column.dataset.status = statusInfo.id;
-    column.innerHTML = `<h3>${statusInfo.title}</h3>`;
-    kanbanBoard.appendChild(column);
-  });
-
-  Object.entries(pedidos).forEach(([pedidoId, pedido]) => {
-    if (statuses.some((s) => s.id === pedido.status)) {
-      const column = kanbanBoard.querySelector(
-        `.kanban-column[data-status="${pedido.status}"]`
-      );
-      if (column) {
-        const card = genericCreateOrderCard(
-          pedidoId,
-          pedido,
-          onStatusUpdate,
-          onPrintLabel
-        );
-        column.appendChild(card);
-      }
-    }
-  });
+  // A confeiteira só vê 3 colunas (Pendente, Em Preparo, Pronto para Envio) e Entregue (apenas para referência)
+  genericRenderBoard(pedidos, onStatusUpdate, onPrintLabel, false);
 }
+
+/**
+ * Atualiza o indicador visual do status do entregador.
+ * @param {object | null} status - O objeto de status do Firebase ou null.
+ */
+export function updateDeliveryPersonStatus(status) {
+  const statusContainer = document.getElementById("delivery-status-container");
+  const statusTextEl = document.getElementById("delivery-person-status");
+
+  if (!statusContainer || !statusTextEl) return;
+
+  if (status && status.timestamp) {
+    const lastUpdate = new Date(status.timestamp);
+    const now = new Date();
+    const minutesAgo = Math.floor((now - lastUpdate) / 60000);
+
+    let statusText = "";
+    let statusClass = "";
+
+    if (minutesAgo < 5) {
+      statusText = `Online - Última atualização há ${minutesAgo} min`;
+      statusClass = "status-online";
+    } else if (minutesAgo < 60) {
+      statusText = `Inativo - Atualizado há ${minutesAgo} min`;
+      statusClass = "status-inactive";
+    } else {
+      statusText = "Offline (Mais de 1h)";
+      statusClass = "status-offline";
+    }
+
+    // Aplica o ícone e cor via estilo CSS e classes (simulando iOS)
+    if (statusClass === "status-online") {
+      statusTextEl.innerHTML = `<i class="ph-fill ph-moped" style="color: var(--ios-green);"></i> ${statusText}`;
+    } else if (statusClass === "status-inactive") {
+      statusTextEl.innerHTML = `<i class="ph-fill ph-clock" style="color: var(--ios-orange);"></i> ${statusText}`;
+    } else {
+      statusTextEl.innerHTML = `<i class="ph ph-person-simple-bike" style="color: var(--ios-text-sec);"></i> ${statusText}`;
+    }
+
+    statusContainer.classList.remove(
+      "status-online",
+      "status-inactive",
+      "status-offline"
+    );
+    statusContainer.classList.add(statusClass);
+  } else {
+    // Entregador desconectado ou sem dados
+    statusTextEl.innerHTML = `<i class="ph ph-person-simple-bike" style="color: var(--ios-text-sec);"></i> Desconectado`;
+    statusContainer.classList.remove("status-online", "status-inactive");
+    statusContainer.classList.add("status-offline");
+  }
+}
+
+// =========================================================================
+// 3. FUNÇÕES AUXILIARES
+// =========================================================================
 
 export function fillOrderForm(data) {
-  const fields = {
-    cakeName: document.getElementById("cakeName"),
-    clientName: document.getElementById("clientName"),
-    cep: document.getElementById("cep"),
-    rua: document.getElementById("rua"),
-    bairro: document.getElementById("bairro"),
-    numero: document.getElementById("numero"),
-    complemento: document.getElementById("complemento"),
-    whatsapp: document.getElementById("whatsapp"),
-  };
-  for (const key in fields) {
-    if (Object.prototype.hasOwnProperty.call(fields, key) && data[key]) {
-      fields[key].value = data[key];
-    }
-  }
+  genericFillOrderForm(data);
 }
-
+export function fillAddressForm(data) {
+  genericFillAddressForm(data);
+}
 export function printLabel(pedido, pedidoId) {
   genericPrintLabel(pedido, pedidoId);
-}
-
-export function updateDeliveryPersonStatus(status) {
-  const statusEl = document.getElementById("delivery-person-status");
-  if (statusEl) {
-    statusEl.textContent = status;
-  }
-}
-
-export function updateConfeiteiraMapInfo(order, deliveryData, speed) {
-  const infoEl = document.getElementById("delivery-info-confeiteira");
-  if (!infoEl) return;
-
-  const speedText = typeof speed === "number" ? `${speed} km/h` : "...";
-  const distanceText =
-    typeof deliveryData.distancia === "number" || !isNaN(deliveryData.distancia)
-      ? `${deliveryData.distancia} km`
-      : "...";
-  const timeText =
-    typeof deliveryData.tempoEstimado === "number" ||
-    !isNaN(deliveryData.tempoEstimado)
-      ? `${deliveryData.tempoEstimado} min`
-      : "...";
-
-  infoEl.innerHTML = `
-      <h4>Entrega em Andamento</h4>
-      <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
-      <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
-      <div class="delivery-realtime-info">
-        <div class="info-item">
-          <div class="value">${speedText}</div>
-          <div class="label">🚗 Velocidade</div>
-        </div>
-        <div class="info-item">
-          <div class="value">${distanceText}</div>
-          <div class="label">📏 Distância</div>
-        </div>
-        <div class="info-item">
-          <div class="value">${timeText}</div>
-          <div class="label">⏱️ Tempo Estimado</div>
-        </div>
-      </div>
-    `;
-  infoEl.style.display = "block";
-}
-
-export function clearConfeiteiraMapInfo() {
-  const infoEl = document.getElementById("delivery-info-confeiteira");
-  if (infoEl) {
-    infoEl.style.display = "none";
-    infoEl.innerHTML = "";
-  }
 }

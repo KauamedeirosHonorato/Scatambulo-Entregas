@@ -2,155 +2,150 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Painel Entregador - Scatambulo</title>
+
     <link
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
       rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
+    />
+    <link
+      href="https://unpkg.com/@maplibre/maplibre-gl-directions@0.7.1/dist/maplibre-gl-directions.css"
+      rel="stylesheet"
     />
     <link rel="stylesheet" href="css/style.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap"
-      rel="stylesheet"
-    />
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
   </head>
   <body>
     <header>
       <div class="header-container">
-        <h1>Painel do Entregador</h1>
-        <button
-          id="logout-button"
-          class="btn-secondary"
-          aria-label="Sair do painel do entregador"
-        >
-          Sair
+        <h1>Painel Entregador</h1>
+        <div class="desktop-nav">
+          <button
+            id="follow-me-button"
+            class="btn-secondary"
+            style="width: 44px; height: 44px; border-radius: 50%; padding: 0"
+          >
+            <i class="ph ph-navigation-arrow" style="font-size: 20px"></i>
+          </button>
+          <button id="logout-button" class="btn-secondary">
+            <i class="ph ph-sign-out"></i> Sair
+          </button>
+        </div>
+
+        <button class="hamburger-menu" aria-label="Menu">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
         </button>
       </div>
     </header>
 
-    <main class="container">
-      <div id="map-section">
-        <h2>Sua Localização Atual</h2>
-        <div id="map-container">
-          <div id="map"></div>
-          <div id="map-overlay-top">
-            <button
-              id="follow-me-button"
-              class="map-control-button"
-              aria-label="Centralizar mapa na sua localização"
-            >
-              <img
-                src="img/icons/compass.png"
-                alt="Centralizar Mapa"
-                class="map-control-icon"
-              />
-            </button>
-            <div id="eta-display"></div>
-            <div id="speed-display" class="map-info-icon"></div>
-            <div id="distance-display" class="map-info-icon"></div>
-          </div>
-        </div>
-        <p id="location-status">
-          Aguardando permissão para acessar sua localização...
-        </p>
-        <div id="permission-actions">
-          <p id="navigation-status" class="info-text" style="display: none"></p>
-          <!-- Botão será adicionado via JS -->
-        </div>
-        <p class="info-text">
-          <strong>Dica para iPhone/iOS:</strong> Se a localização não funcionar,
-          vá em
-          <strong
-            >Ajustes > Privacidade e Segurança > Serviços de Localização</strong
-          >, encontre o Safari e permita o acesso à localização.
-        </p>
-      </div>
-    </main>
+    <nav class="mobile-nav">
+      <div class="divider"></div>
+    </nav>
 
-    <section
-      class="container delivery-orders-section"
-      id="delivery-orders-section"
-    >
-      <div class="delivery-status-section">
-        <h3>Prontos para Entrega</h3>
-        <div id="ready-for-delivery-list">
-          <!-- Pedidos prontos para entrega serão inseridos aqui -->
-        </div>
-      </div>
-
-      <div class="delivery-status-section">
-        <h3>Em Rota</h3>
-        <div id="in-route-list">
-          <!-- Pedidos em rota serão inseridos aqui -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Modal de Confirmação de Entrega -->
-    <div
-      id="confirm-delivery-modal"
-      class="modal-dynamic-island"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div class="modal-content">
-        <h3>Confirmar Entrega</h3>
-        <button
-          class="close-button"
-          aria-label="Fechar modal de confirmação de entrega"
-        >
-          &times;
-        </button>
-        <p>Você confirma que este pedido foi entregue ao cliente?</p>
-        <div class="modal-actions">
-          <button id="confirm-delivery-btn" class="btn-sucesso">
-            Sim, Entregar
-          </button>
-          <button id="cancel-delivery-btn" class="btn-secondary">
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ilha Dinâmica para Entrega Ativa -->
+    <!-- Dynamic Island -->
     <div id="dynamic-island" class="dynamic-island">
-      <div class="dynamic-island-content" id="dynamic-island-content">
-        <p>
-          <span class="status-dot"></span>
-          Cliente: <strong id="dynamic-island-client">Nome do Cliente</strong>
-        </p>
-        <span class="address-info" id="dynamic-island-address"
-          >Endereço do Pedido</span
-        >
+      <div class="island-icon">
+        <i class="ph-fill ph-moped"></i>
       </div>
-      <div class="dynamic-island-actions">
+      <div class="island-content">
+        <strong id="dynamic-island-client">Entregador</strong>
+        <span id="dynamic-island-address">Aguardando entrega</span>
+      </div>
+      <div class="island-actions dynamic-island-buttons">
         <button
           id="dynamic-island-cancel-btn"
-          class="btn-danger btn-island"
-          aria-label="Cancelar entrega"
+          class="btn-island-cancel"
+          title="Cancelar Navegação"
         >
-          Cancelar
+          <i class="ph ph-x"></i>
         </button>
         <button
           id="dynamic-island-finish-btn"
-          class="btn-sucesso btn-island"
-          aria-label="Finalizar entrega"
+          class="btn-island-finish"
+          title="Confirmar Entrega"
         >
-          Finalizar
+          <i class="ph ph-check"></i>
         </button>
       </div>
     </div>
 
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-    ></script>
+    <main class="container">
+      <section id="map-section">
+        <h2><i class="ph ph-map-pin"></i> Mapa de Entregas</h2>
+        <div id="map-container">
+          <div id="map"></div>
+
+          <div id="map-overlay-top" class="map-overlay-top-entregador">
+            <div class="map-info-item map-info-item-border-right">
+              <div id="distance-display" class="map-info-value">-- km</div>
+              <div class="map-info-label">Distância</div>
+            </div>
+            <div class="map-info-item">
+              <div id="eta-display" class="map-info-value">-- min</div>
+              <div class="map-info-label">ETA</div>
+            </div>
+            <div class="map-info-item map-info-item-border-left">
+              <div id="speed-display" class="map-info-value">-- km/h</div>
+              <div class="map-info-label">Veloc.</div>
+            </div>
+          </div>
+
+          <div id="nav-hud" class="nav-hud-entregador">
+            <div class="hud-controls">
+              <button
+                id="follow-me-button"
+                class="btn-secondary"
+                title="Seguir Entregador"
+                style="width: 44px; height: 44px; border-radius: 50%"
+              >
+                <i class="ph ph-compass"></i>
+              </button>
+              <button
+                id="satellite-toggle"
+                class="btn-secondary"
+                title="Modo Satélite"
+                style="width: 44px; height: 44px; border-radius: 50%"
+              >
+                <i class="ph ph-globe"></i>
+              </button>
+              <button
+                id="toggle-3d"
+                class="btn-secondary"
+                title="Visualização 3D"
+                style="width: 44px; height: 44px; border-radius: 50%"
+              >
+                <i class="ph ph-cube"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="orders-section" style="margin-top: 30px">
+        <div id="ready-for-delivery-container">
+          <h3><i class="ph ph-package"></i> Prontos para Entrega</h3>
+          <div id="ready-for-delivery-list"></div>
+        </div>
+
+        <h3 style="margin-top: 20px">
+          <i class="ph ph-moped"></i> Em Rota (Outros)
+        </h3>
+        <div id="in-route-list"></div>
+      </section>
+    </main>
+
+    <div id="modal-container"></div>
+    <div id="toast-container"></div>
+
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script type="module" src="js/componentLoader.js"></script>
     <script type="module" src="js/entregador.js"></script>
   </body>
 </html>

@@ -1,21 +1,32 @@
+/**
+ * js/confeiteira.js - Lógica Principal do Painel Confeiteira
+ */
 import {
+  db,
+  ref,
   listenToPedidos,
-  listenToEntregadorLocation,
-  createNewOrder,
   updateOrderStatus,
+  listenToEntregadorLocation,
 } from "./firebase.js";
-import { parseWhatsappMessage } from "./utils.js";
-import { loadComponents } from "./componentLoader.js";
-import * as MapLogic from "./map-logic.js";
 import * as UI from "./ui-confeiteira.js";
+import * as CommonUI from "./ui.js"; // Para showToast, showModal, etc.
+import { parseWhatsappMessage } from "./utils.js";
+import {
+  handleNewOrderSubmit,
+  handleReadMessageSubmit,
+  handleCepInput,
+} from "./ui.js";
+import { loadComponents } from "./componentLoader.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  // ======= 1. Validação de Usuário =======
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
   if (!currentUser || currentUser.panel !== "confeiteira.html") {
     window.location.href = "index.html";
     return;
   }
 
+  // ======= 2. Estado Global =======
   const newOrderSound = new Audio("audio/NotificacaoPedidoNovo.mp3");
   const deliveryCompleteSound = new Audio(
     "audio/NotificacaoPedidoEntregue.mp3"
@@ -24,91 +35,87 @@ document.addEventListener("DOMContentLoaded", () => {
   let knownDeliveredOrderIds = new Set();
   let isFirstLoad = true;
 
-  loadComponents(
-    "#modal-container",
-    ["components/modal-new-order.html", "components/modal-read-message.html"],
-    () => {
-      MapLogic.initializeMapWithLocation("map");
-      setupUIEventListeners();
-      listenToFirebaseChanges();
-    }
-  );
+  // ======= 3. Inicialização =======
+  initializeApp();
 
+  async function initializeApp() {
+    // 3.1. Carregar Modais e Componentes
+    await loadComponents("#modal-container");
+
+    // 3.2. Configurar Listeners de UI
+    setupUIEventListeners();
+
+    // 3.3. Iniciar Listeners do Firebase
+    listenToFirebaseChanges();
+  }
+
+  // ======= 4. Event Listeners UI =======
   function setupUIEventListeners() {
-    const newOrderModal = document.getElementById("new-order-modal");
-    const readMessageModal = document.getElementById("read-message-modal");
-
     UI.setupEventListeners(
       () => {
         localStorage.removeItem("currentUser");
         window.location.href = "index.html";
       },
+      // onNewOrder: Callback para o clique do botão "Novo Pedido"
       () => {
-        newOrderModal.classList.add('active');
-      }, // onNewOrder
+        handleNewOrder(); // Prepara o modal (limpa formulário)
+        document.getElementById("novo-pedido-modal").classList.add("active"); // Abre o modal
+      },
+      null, // onPrintAll (não aplicável para confeiteira)
+      // onReadMessage: Callback para o clique do botão "Ler Mensagem"
       () => {
-        readMessageModal.classList.add('active');
-      }, // onReadMessage
-      handleReadMessageSubmit,
-      handleCepBlur
+        handleReadMessage(); // Prepara o modal (limpa formulário)
+        document.getElementById("read-message-modal").classList.add("active"); // Abre o modal
+      },
+      handleNewOrderSubmit, // Handler genérico do ui.js
+      handleReadMessageSubmit, // Handler genérico do ui.js
+      handleCepInput
     );
   }
 
+  // ======= 5. Event Listeners Firebase =======
   function listenToFirebaseChanges() {
-    // 1. Ouvir Pedidos
-    listenToPedidos((pedidos) => {
-      processNotifications(pedidos);
+    listenToPedidos(handlePedidosUpdate, handleError);
+    listenToEntregadorLocation(UI.updateDeliveryPersonStatus, handleError);
+  }
 
-      // Kanban
-      const visibleStatuses = [
-        "pendente",
-        "em_preparo",
-        "feito",
-        "pronto_para_entrega",
-      ];
-      const confeiteiraPedidos = Object.fromEntries(
-        Object.entries(pedidos).filter(([, p]) =>
-          visibleStatuses.includes(p.status)
-        )
+  function handlePedidosUpdate(pedidos) {
+    // 5.1. Notificações
+    processNotifications(pedidos);
+
+    // 5.2. Renderizar Kanban
+    UI.renderBoard(pedidos, updatePedidoStatus, UI.printLabel);
+  }
+
+  function handleError(error) {
+    console.error("Firebase Error:", error);
+    CommonUI.showPersistentError(
+      "Erro de Conexão com o Firebase. Recarregue a página.",
+      "Recarregar",
+      () => window.location.reload()
+    );
+  }
+
+  // ======= 6. Ações de Pedido (Confeiteira) =======
+
+  async function updatePedidoStatus(pedidoId, newStatus) {
+    // A confeiteira não precisa de confirmação para seus status
+    try {
+      await updateOrderStatus(pedidoId, newStatus);
+      CommonUI.showToast(
+        `Pedido #${pedidoId
+          .substring(0, 5)
+          .toUpperCase()} atualizado para ${newStatus.replace("_", " ")}!`,
+        "success"
       );
-      UI.renderBoard(confeiteiraPedidos, updateOrderStatus, UI.printLabel);
-
-      // Atualizar Mapa via MapLogic
-      MapLogic.processActiveDelivery(pedidos).then(() => {
-        updateOverlayInfo();
-      });
-    });
-
-    // 2. Ouvir Localização
-    listenToEntregadorLocation((location) => {
-      MapLogic.updateEntregadorLocation(location);
-      if (location) {
-        UI.updateDeliveryPersonStatus("Entregador online");
-      } else {
-        UI.updateDeliveryPersonStatus("Aguardando localização...");
-      }
-      updateOverlayInfo();
-    });
-  }
-
-  function updateOverlayInfo() {
-    const activeDelivery = MapLogic.getActiveDelivery();
-    const location = MapLogic.getEntregadorLocation();
-
-    if (!activeDelivery || !location || !activeDelivery.entrega) {
-      UI.clearConfeiteiraMapInfo();
-      return;
+    } catch (e) {
+      console.error("Erro ao atualizar status:", e);
+      CommonUI.showToast("Erro ao atualizar status do pedido.", "error");
     }
-
-    const entregaData = activeDelivery.entrega;
-    const currentSpeed = entregaData.velocidade || 0;
-    UI.updateConfeiteiraMapInfo(activeDelivery, entregaData, currentSpeed);
   }
 
-  // --- Helpers de Notificação e Formulário ---
   function processNotifications(pedidos) {
     if (isFirstLoad) {
-      // Na primeira carga, apenas popula os sets sem tocar sons
       knownOrderIds = new Set(
         Object.keys(pedidos).filter((id) => pedidos[id].status === "pendente")
       );
@@ -119,97 +126,48 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Processa notificações para novos pedidos em status específicos
+    // Notificação de novos pedidos (pendentes)
     const newPendingOrders = Object.keys(pedidos).filter(
       (id) => pedidos[id].status === "pendente" && !knownOrderIds.has(id)
     );
     if (newPendingOrders.length > 0) {
       newOrderSound.play().catch(console.warn);
-      knownOrderIds = new Set(
-        Object.keys(pedidos).filter((id) => pedidos[id].status === "pendente")
-      );
+      newPendingOrders.forEach((id) => {
+        knownOrderIds.add(id);
+        CommonUI.showToast(
+          `Novo Pedido Pendente! #${id.substring(0, 5).toUpperCase()}`,
+          "info"
+        );
+      });
     }
 
+    // Notificação de pedidos entregues (para limpar o board visualmente)
     const newDeliveredOrders = Object.keys(pedidos).filter(
       (id) =>
         pedidos[id].status === "entregue" && !knownDeliveredOrderIds.has(id)
     );
     if (newDeliveredOrders.length > 0) {
       deliveryCompleteSound.play().catch(console.warn);
-      knownDeliveredOrderIds = new Set(
-        Object.keys(pedidos).filter((id) => pedidos[id].status === "entregue")
-      );
+      newDeliveredOrders.forEach((id) => {
+        knownDeliveredOrderIds.add(id);
+        CommonUI.showToast(
+          `Entrega Concluída! Pedido #${id.substring(0, 5).toUpperCase()}`,
+          "success"
+        );
+      });
     }
   }
 
-  function handleNewOrderSubmit(e) {
-    e.preventDefault();
-    const form = e.target;
-    const data = {
-      nomeBolo: form.querySelector("#cakeName").value,
-      nomeCliente: form.querySelector("#clientName").value,
-      clientEmail: form.querySelector("#clientEmail").value,
-      cep: form.querySelector("#cep").value,
-      rua: form.querySelector("#rua").value,
-      bairro: form.querySelector("#bairro").value,
-      numero: form.querySelector("#numero").value,
-      complemento: form.querySelector("#complemento").value,
-      whatsapp: form.querySelector("#whatsapp").value,
-    };
-    data.endereco = `${data.rua}, ${data.numero}, ${data.bairro}, CEP: ${data.cep}`;
-    createNewOrder(data);
-    form.reset();
-    document.getElementById("new-order-modal").classList.remove('active');
+  // ======= 7. Ações de Formulário =======
+
+  function handleNewOrder() {
+    // Ação ao abrir o modal (limpar o formulário)
+    document.getElementById("novo-pedido-form").reset();
+    document.getElementById("pedido-error").textContent = "";
   }
 
-  function handleReadMessageSubmit(e) {
-    e.preventDefault();
-    const messageText = document.getElementById("message-text").value;
-    const parsedData = parseWhatsappMessage(messageText);
-    if (!parsedData) return;
-
-    const orderData = {
-      clientName: parsedData.cliente.nome,
-      cakeName: parsedData.itens.length > 0 ? parsedData.itens[0].nome : "",
-      whatsapp: parsedData.cliente.telefone,
-      rua: parsedData.cliente.enderecoRaw,
-    };
-    UI.fillOrderForm(orderData);
-    document.getElementById("read-message-modal").classList.remove('active');
-    document.getElementById("new-order-modal").classList.add('active');
-  }
-
-  async function handleCepBlur(e) {
-    const cep = e.target.value.replace(/\D/g, "");
-    const ruaField = document.getElementById("rua");
-    const bairroField = document.getElementById("bairro");
-    const numeroField = document.getElementById("numero");
-    const complementoField = document.getElementById("complemento");
-
-    // Clear previous address data
-    ruaField.value = "";
-    bairroField.value = "";
-    if (numeroField) numeroField.value = "";
-    if (complementoField) complementoField.value = "";
-
-    if (cep.length !== 8) {
-      console.log("CEP inválido: deve conter 8 dígitos.");
-      return;
-    }
-
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await res.json();
-
-      if (!data.erro) {
-        ruaField.value = data.logradouro;
-        bairroField.value = data.bairro;
-        if (numeroField) numeroField.focus();
-      } else {
-        console.log("CEP não encontrado.");
-      }
-    } catch (err) {
-      console.error("Erro ao buscar CEP:", err);
-    }
+  function handleReadMessage() {
+    document.getElementById("read-message-form").reset();
+    document.getElementById("read-message-error").textContent = "";
   }
 });

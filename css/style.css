@@ -1,108 +1,297 @@
-/* === GERAL E VARIÁVEIS === */
 :root {
-  --cor-principal: #f5f5f5; /* Branco Pérola */
-  --cor-secundaria: #e0e0e0; /* Detalhes em cinza claro */
-  --cor-destaque: #d4af37; /* Dourado */
-  --cor-texto: #000000; /* Preto */
-  --cor-branco: #ffffff; /* Branco puro para texto/ícones em fundos escuros */
-  --cor-card: #f5f5f5; /* Branco Pérola */
-  --cor-sucesso: #4caf50;
-  --cor-aviso: #ffc107;
-  --cor-erro: #f44336;
-  --sombra: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --borda-radius: 12px;
+  /* === CORES GERAIS DO SISTEMA === */
+  --cor-principal: #f2f2f7; /* iOS System Gray 6 (Background padrão) */
+  --cor-secundaria: #e5e5ea; /* iOS System Gray 5 */
+  --cor-destaque: #d4af37; /* Dourado Marca */
+  --cor-texto: #1c1c1e; /* Preto Suave (Apple style) */
+  --cor-texto-secundario: #8e8e93; /* iOS System Gray */
+  --cor-branco: #ffffff;
+  --cor-card: #ffffff;
+  --cor-sucesso: #34c759; /* Verde iOS */
+  --cor-aviso: #ff9500; /* Laranja iOS */
+  --cor-erro: #ff3b30; /* Vermelho iOS */
+  --cor-info: #007aff; /* Azul iOS */
+  --sombra: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --sombra-suave: 0 4px 24px rgba(0, 0, 0, 0.04);
+  --borda-radius: 16px; /* Padrão App */
+  --borda-radius-ios: 12px; /* Padrão Input iOS */
+  /* Variáveis de Sistema (Safe Areas) */
+  --safe-top: env(safe-area-inset-top, 20px);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    "Poppins", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--cor-principal);
   color: var(--cor-texto);
   margin: 0;
   line-height: 1.6;
+  padding-bottom: calc(80px + var(--safe-bottom)); /* Espaço para nav mobile */
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 h1,
-h2 {
+h2,
+h3,
+h4 {
   font-family: "Playfair Display", serif;
   color: var(--cor-texto);
+  letter-spacing: -0.5px;
 }
+
+/* =========================================
+   TELA DE LOGIN (ESTILO IOS NATIVO)
+   ========================================= */
+
+/* Estilos do Body APENAS para a página de login */
+body.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Evita scroll na tela de login */
+  padding-bottom: 20px; /* Remove o padding do body geral */
+}
+
+.login-container {
+  flex: 1; /* Ocupa todo o espaço vertical disponível */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+}
+
+.login-content {
+  width: 100%;
+  max-width: 360px; /* Largura padrão de iPhone */
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Branding do Login */
+.brand-header {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.icon-logo {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #d4af37 0%, #f8e398 100%);
+  border-radius: 22px; /* Formato Squircle do iOS */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+}
+
+.icon-logo i {
+  font-size: 40px;
+  color: white;
+}
+
+.brand-header h1 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.brand-header .subtitle {
+  margin: 10px 0 0;
+
+  color: var(--cor-texto-secundario);
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Estilo de Formulário iOS (Grouped List) */
+.ios-form-group {
+  background-color: var(--cor-branco);
+  border: 1px solid #000000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--sombra-suave);
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 56px;
+  background: white;
+  width: 100%; /* Garante que ocupe toda a largura */
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.input-row:focus-within {
+  background-color: #f9f9f9;
+}
+
+.input-icon {
+  display: inline-flex; /* Alinha verticalmente */
+  align-items: center;
+  font-size: 24px;
+  color: #c7c7cc; /* Cor de ícone inativo iOS */
+  margin-right: 14px;
+  transition: color 0.3s ease;
+}
+
+/* Quando o campo está em foco, o ícone fica dourado */
+.input-row:focus-within .input-icon {
+  color: var(--cor-destaque);
+}
+
+.input-row input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 17px; /* Tamanho padrão legível iOS */
+  color: var(--cor-texto);
+  padding: 0;
+  height: 100%;
+  padding-right: 48px; /* Aumentado para garantir espaço para o ícone de olho */
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Adiciona uma sombra interna sutil quando o campo está focado */
+/* O background-color: white !important; é crucial para evitar o "azul" do autofill do navegador */
+.input-row input:focus {
+  box-shadow: inset 2px 0 0 var(--cor-destaque);
+}
+
+.input-row input::placeholder {
+  color: #c7c7cc;
+}
+
+/* Divisória fina entre inputs (Hairline) */
+.divider {
+  height: 1px;
+  background-color: #e5e5ea;
+  margin-left: 52px; /* Alinhado com o texto, pulando o ícone */
+}
+
+/* Botão de Mostrar/Ocultar Senha */
+.password-toggle-btn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: #c7c7cc;
+  display: flex;
+  font-size: 22px;
+  transition: color 0.2s;
+}
+.password-toggle-btn:hover {
+  color: var(--cor-texto-secundario);
+}
+
+/* Botão de Login iOS */
+#login-button {
+  background-color: var(--cor-destaque);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  height: 56px;
+  width: 100%;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.25);
+  transition: transform 0.1s, opacity 0.2s;
+  -webkit-user-select: none;
+  margin-top: 10px;
+}
+
+#login-button:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* Mensagem de Erro do Login */
+#login-error {
+  color: var(--cor-erro);
+  font-size: 13px;
+  text-align: center;
+  min-height: 20px;
+  margin: 8px 0; /* Ajustado para um espaçamento mais natural */
+  font-weight: 500;
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.login-footer a {
+  color: var(--cor-destaque);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.app-version {
+  position: absolute;
+  bottom: calc(20px + var(--safe-bottom));
+  color: #c7c7cc;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================
+   ESTILOS DA APLICAÇÃO PRINCIPAL
+   ========================================= */
 
 .container {
-  display: grid;
-  grid-template-columns: 1fr; /* Padrão de uma coluna para mobile-first */
-  gap: 20px;
-  padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
+  padding: 20px;
 }
 
-/* === LOGIN === */
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  text-align: center;
-}
-
-.login-box {
-  background: var(--cor-principal);
-  padding: 40px 50px;
-  border-radius: var(--borda-radius);
-  box-shadow: var(--sombra);
-  width: 100%;
-  max-width: 400px;
-}
-
-.login-box h1 {
-  margin-bottom: 0;
-}
-
-.login-box .subtitle {
-  margin-top: 5px;
-  margin-bottom: 30px;
-  color: var(--cor-secundaria);
-}
-
-.input-group {
-  margin-bottom: 20px;
-}
-
-.input-group input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--cor-secundaria);
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-#login-button {
-  width: 100%;
-  padding: 12px;
-  background-color: var(--cor-destaque);
-  color: var(--cor-branco);
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-#login-button:hover {
-  background-color: #9c7b5a;
-}
-
-.error-message {
-  color: var(--cor-erro);
-  margin-top: 15px;
-  height: 20px;
-}
-
-/* === HEADER === */
+/* === HEADER (App Style: Sticky + Glass) === */
 header {
-  background-color: var(--cor-principal);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  padding: 10px 20px;
+  background-color: rgba(245, 245, 245, 0.85);
+  backdrop-filter: blur(20px); /* Efeito de vidro */
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+  padding: 12px 20px;
+  padding-top: max(12px, var(--safe-top));
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .header-container {
@@ -114,708 +303,1160 @@ header {
 }
 
 .header-container h1 {
+  font-size: 1.4rem;
   margin: 0;
+  color: var(--cor-destaque);
 }
 
+/* === MENU (Desktop & Mobile) === */
 .desktop-nav {
-  display: flex; /* Garante que os botões fiquem lado a lado */
+  display: flex;
+  gap: 10px;
 }
 
-/* === MENU HAMBÚRGUER (MÓVEL - Elegante) === */
 .hamburger-menu {
   display: none;
   cursor: pointer;
   background: none;
   border: none;
   padding: 10px;
-  z-index: 3000; /* Acima do modal e do menu */
+  z-index: 3000;
 }
 
 .hamburger-menu .bar {
   display: block;
-  width: 28px;
-  height: 3px;
-  margin: 6px auto;
+  width: 26px;
+  height: 2.5px;
+  margin: 5px auto; /* Espaçamento entre as barras */
   background-color: var(--cor-texto);
   border-radius: 3px;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Animação do Hambúrguer para "X" */
+/* Animação X */
 .hamburger-menu.open .bar:nth-child(1) {
-  transform: translateY(9px) rotate(45deg);
-  background-color: var(--cor-destaque); /* Destaque quando aberto */
+  transform: translateY(7.5px) rotate(45deg);
+  background-color: var(--cor-destaque);
 }
-
 .hamburger-menu.open .bar:nth-child(2) {
   opacity: 0;
 }
-
 .hamburger-menu.open .bar:nth-child(3) {
-  transform: translateY(-9px) rotate(-45deg);
+  transform: translateY(-7.5px) rotate(-45deg);
   background-color: var(--cor-destaque);
 }
 
-/* O Menu em si */
+/* Menu Mobile Deslizante */
 .mobile-nav {
   position: fixed;
   top: 0;
-  right: -100%; /* Começa escondido */
-  width: 280px; /* Largura fixa mais elegante que 100% */
+  right: -100%;
+  width: 300px;
   height: 100vh;
-  background-color: var(--cor-principal);
-  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15); /* Sombra para separar do conteúdo */
-  z-index: 2999; /* Logo abaixo do botão hamburger */
-  transition: right 0.4s cubic-bezier(0.77, 0, 0.175, 1); /* Animação suave */
-  padding: 80px 20px 20px 20px;
+  background-color: #fff;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1); /* Sombra lateral */
+  z-index: 2999;
+  transition: right 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding: calc(60px + var(--safe-top)) 20px 40px 20px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  box-sizing: border-box;
+  gap: 10px;
 }
 
 .mobile-nav.open {
   right: 0;
 }
 
-/* Overlay escuro opcional atrás do menu (para não clicar no site atrás) */
 .mobile-nav.open::before {
   content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw; /* Largura total da tela */
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(2px);
-  z-index: -1; /* Fica atrás do menu, mas na frente do site */
-  transform: translateX(
-    -100%
-  ); /* Gambiarra técnica para o before cobrir a tela esquerda */
+  position: fixed; /* Overlay para o restante da tela */
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  z-index: -1;
+  transform: translateX(-100%); /* Cobre o resto da tela */
 }
 
-/* Estilo dos botões dentro do menu */
 .mobile-nav button {
   width: 100%;
-  padding: 15px;
-  text-align: left; /* Texto alinhado à esquerda fica mais elegante no menu */
-  padding-left: 20px;
-  background: transparent;
+  padding: 16px;
+  text-align: left; /* Alinha texto à esquerda */
+  background: #f5f5f5;
   border: none;
-  border-bottom: 1px solid var(--cor-secundaria);
-  border-radius: 0;
+  border-radius: 12px;
   color: var(--cor-texto);
   font-size: 16px;
-  transition: background 0.2s, color 0.2s;
+  font-weight: 500;
 }
 
-.mobile-nav button:hover {
-  background-color: rgba(212, 175, 55, 0.1); /* Dourado bem suave */
-  color: var(--cor-destaque);
-  padding-left: 25px; /* Pequeno movimento ao passar o mouse */
+.mobile-nav button:active {
+  background-color: #ececec; /* Feedback de clique */
+  transform: scale(0.98);
 }
 
-/* Botão Sair destacado */
 .mobile-nav #logout-button {
-  margin-top: auto; /* Empurra para o final da lista */
-  border-bottom: none;
+  margin-top: auto;
+  background-color: rgba(255, 59, 48, 0.1);
   color: var(--cor-erro);
-  border: 1px solid rgba(244, 67, 54, 0.2);
-  border-radius: 8px;
   text-align: center;
 }
 
-/* === MEDIA QUERIES PARA RESPONSIVIDADE === */
 @media (max-width: 768px) {
   .desktop-nav {
-    display: none; /* Esconde os botões do desktop */
+    display: none;
   }
   .hamburger-menu {
-    display: block; /* Mostra o menu hambúrguer */
+    display: block;
   }
 }
 
-/* === BOTÕES === */
+/* === BOTÕES GERAIS (Estilo Pílula e Toque) === */
 .btn-primary,
 .btn-secondary,
 .btn-sucesso,
 .btn-danger {
-  padding: 10px 20px;
   border: none;
-  border-radius: 8px;
-  border: 1px solid var(--cor-destaque);
-  cursor: pointer;
+  border-radius: 50px; /* Pílula */
+  padding: 12px 24px; /* Espaçamento interno */
+  min-height: 44px; /* Altura mínima Apple HIG */
   font-size: 15px;
   font-weight: 600;
-  margin: 5px; /* Adiciona um pequeno espaçamento para quebra de linha */
-  transition: all 0.3s;
-  background-color: var(--cor-destaque);
-  color: var(--cor-branco);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, opacity 0.2s;
+  margin: 0;
+}
+
+.btn-primary:active,
+.btn-secondary:active, /* Efeito de clique */
+.btn-sucesso:active,
+.btn-danger:active {
+  transform: scale(0.96);
+  opacity: 0.9;
 }
 
 .btn-primary {
   background-color: var(--cor-destaque);
   color: var(--cor-branco);
-  border-color: var(--cor-destaque);
-}
-
-.btn-primary:hover {
-  background-color: #c5a231;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25); /* Sombra dourada */
 }
 
 .btn-secondary {
-  background-color: transparent;
+  background-color: rgba(0, 0, 0, 0.05);
   color: var(--cor-texto);
-  border: 1px solid var(--cor-destaque);
+  border: none;
 }
-
-.btn-secondary:hover {
+/* Estado ativo para botões de controle (HUD) */
+.btn-secondary.active {
+  /* Botão ativo */
   background-color: var(--cor-destaque);
-  color: var(--cor-branco);
+  color: white;
 }
 
 .btn-sucesso {
   background-color: var(--cor-sucesso);
-  color: var(--cor-branco);
-}
-
-.btn-sucesso:hover {
-  background-color: #45a049;
+  color: white;
+  box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); /* Sombra verde */
 }
 
 .btn-danger {
-  background-color: transparent;
+  background-color: rgba(255, 59, 48, 0.1);
   color: var(--cor-erro);
 }
 
-.btn-danger:hover {
-  background-color: var(--cor-erro);
-  background-color: #d32f2f; /* Um tom de vermelho um pouco mais escuro */
-}
-
-/* === OVERLAYS DO MAPA === */
+/* === MAPA E HUD === */
 #map-container {
-  position: relative;
-  height: 400px; /* Garante que o container tenha a mesma altura do mapa */
-}
-
-#map-overlay-top {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#eta-display {
-  background-color: rgba(0, 0, 0, 0.75);
-  color: white;
-  padding: 8px 15px;
+  position: relative; /* Para posicionar overlays */
+  height: 60vh; /* Mais altura no mobile */
   border-radius: var(--borda-radius);
-  font-size: 20px;
-  font-weight: bold;
-  display: none; /* Oculto por padrão */
+  overflow: hidden;
   box-shadow: var(--sombra);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.map-eta-display {
-  background-color: rgba(0, 0, 0, 0.75);
-  color: white;
-  padding: 8px 15px;
-  border-radius: var(--borda-radius);
-  font-size: 20px;
-  font-weight: bold;
-  display: none; /* Oculto por padrão */
-  box-shadow: var(--sombra);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-#speed-display,
-#distance-display {
-  width: 50px;
-  height: 50px;
-  display: none; /* Oculto por padrão */
-}
-
-.map-info-icon {
-  background-color: rgba(0, 0, 0, 0.75);
-  color: white;
-  border-radius: 50%;
-  text-align: center;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  font-weight: bold;
-  border: 2px solid white;
-  box-shadow: var(--sombra);
-}
-
-.map-info-icon .unit {
-  font-size: 0.7em;
-  font-weight: normal;
-}
-
-.map-control-button {
-  background-color: rgba(0, 0, 0, 0.75);
-  border: 2px solid white;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  box-shadow: var(--sombra);
-  transition: background-color 0.3s ease;
-}
-
-.map-control-button:hover {
-  background-color: rgba(0, 0, 0, 0.9);
-}
-
-.map-control-button.active {
-  background-color: var(--cor-destaque);
-  border-color: var(--cor-destaque);
-}
-
-/* === PAINÉIS (ADMIN, CONFEITEIRA, ENTREGADOR) === */
-#map-section,
-#orders-section {
-  background: var(--cor-principal);
-  padding: 20px;
-  border-radius: var(--borda-radius);
-  box-shadow: var(--sombra);
-  margin-bottom: 20px;
 }
 
 #map {
-  height: 400px;
   width: 100%;
-  border-radius: var(--borda-radius);
+  height: 100%;
+}
+
+/* HUD Flutuante Estilo iPhone */
+#nav-hud,
+.map-hud-modal #nav-hud {
+  /* HUD para mapa */
+  background: rgba(240, 240, 240, 0.9);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  padding: 8px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+
+  /* Posicionamento */
+  position: absolute;
+  bottom: 20px;
+  right: 240px;
+  left: auto;
+  transform: none;
+  z-index: 1000;
+}
+
+/* Info Rows dentro do HUD */
+#nav-hud .hud-row {
+  background: transparent;
+  color: var(--cor-texto); /* Cor do texto no HUD */
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  gap: 12px;
+}
+
+#nav-hud .hud-controls {
+  display: flex;
+  gap: 8px;
+}
+
+/* Botões HUD Redondos */
+#nav-hud button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%; /* Botões redondos */
+  font-size: 10px; /* Ícones ou texto pequeno */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === ILHA DINÂMICA (App Like) === */
+/* General button styles for map HUD controls */
+.hud-controls button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-controls button i {
+  font-size: 24px; /* Default icon size for HUD buttons */
+}
+
+/* Dynamic Island specific styles */
+.dynamic-island .island-icon {
+  font-size: 20px;
+  color: var(--cor-aviso); /* Using --cor-aviso for yellow */
+}
+
+.dynamic-island-content {
+  flex-grow: 1; /* Permite que ocupe o espaço disponível */
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Centraliza o conteúdo verticalmente */
+  overflow: hidden; /* Esconde o texto que transborda */
+  white-space: nowrap; /* Mantém o texto em uma única linha */
+  text-overflow: ellipsis; /* Adiciona reticências para texto transbordante */
+  margin: 0 10px; /* Espaçamento horizontal entre o ícone e os botões */
+}
+
+.dynamic-island-content strong {
+  color: var(--cor-destaque);
+  font-size: 0.95rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dynamic-island-content span {
+  font-size: 0.8rem; /* Tamanho menor para o endereço */
+  color: rgba(
+    255,
+    255,
+    255,
+    0.7
+  ); /* Cor mais clara para informações secundárias */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dynamic-island .island-actions button {
+  padding: 0; /* Override default button padding */
+  width: 32px; /* Smaller size for island buttons */
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dynamic-island .island-actions button i {
+  font-size: 16px; /* Smaller icon size for island buttons */
+}
+
+.btn-island-cancel {
+  background-color: rgba(255, 59, 48, 0.15); /* Light red */
+  color: var(--cor-erro);
+  border: none;
+}
+
+.btn-island-finish {
+  background-color: rgba(52, 199, 89, 0.15); /* Light green */
+  color: var(--cor-sucesso);
+  border: none;
+}
+
+/* === MAP OVERLAYS (ADMIN & ENTREGADOR) === */
+.map-overlay-top-admin,
+.map-overlay-top-entregador {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  padding: 5px 10px;
+  box-shadow: var(--sombra-suave); /* Usar sombra suave definida */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 500; /* Garante que fique acima do mapa */
+}
+
+.map-overlay-top-admin .map-info-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.map-overlay-top-admin .map-info-icon {
+  font-size: 12px;
+  color: var(--cor-texto-secundario);
+}
+
+.map-overlay-top-entregador .map-info-item {
+  text-align: center;
+}
+
+.map-overlay-top-entregador .map-info-item-border-right {
+  padding-right: 10px;
+  border-right: 1px solid var(--cor-secundaria);
+}
+
+.map-overlay-top-entregador .map-info-item-border-left {
+  padding-left: 10px;
+  border-left: 1px solid var(--cor-secundaria);
+}
+
+.map-overlay-top-entregador .map-info-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cor-info); /* Azul iOS */
+}
+
+.map-overlay-top-entregador .map-info-label {
+  font-size: 10px;
+  color: var(--cor-texto-secundario);
+  text-transform: uppercase;
+}
+
+/* === MAP HUD CONTROLS === */
+/* Base styles for all map HUDs */
+#nav-hud {
+  /* Existing #nav-hud styles will apply */
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 500;
+}
+
+/* Specific positioning for Admin HUD */
+.nav-hud-admin {
+  bottom: 10px;
+  right: 10px;
+}
+
+/* Specific positioning for Entregador HUD */
+.nav-hud-entregador {
+  bottom: 20px;
+  right: 20px;
+}
+
+/* === ADMIN ACTIONS SECTION === */
+.section-subtitle {
+  font-size: 15px;
+  color: var(--cor-texto-secundario);
+  margin-left: 5px;
+  margin-bottom: 10px; /* Adicionado para espaçamento */
+}
+
+.btn-admin-action {
+  width: 100%;
+  height: 38px;
+  justify-content: start;
+  background: none;
+  font-weight: 400;
+  border: none; /* Garante que não haja borda padrão de botão */
+  border-radius: 0; /* Remove border-radius para botões tipo lista */
+  padding: 0 10px; /* Ajusta o padding conforme necessário */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-admin-action:hover {
+  background-color: var(--cor-secundaria);
+}
+
+.btn-admin-action i {
+  font-size: 20px;
+}
+
+/* Cores específicas para as ações de admin */
+.btn-admin-action.clear-delivered {
+  color: var(--cor-info);
+}
+
+.btn-admin-action.reset-deliveries,
+.btn-admin-action.clear-all-orders {
+  color: var(--cor-erro);
+}
+
+/* Remove estilos inline dos botões do HUD do mapa no admin.html */
+.nav-hud-admin .hud-controls button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+/* === CARDS DE PEDIDOS === */
+#orders-section h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.4rem; /* Tamanho do título da seção */
 }
 
 #kanban-board {
-  display: grid;
-  /*
-    Por padrão (mobile-first), o kanban terá 1 coluna.
-    As colunas são definidas em media queries para telas maiores.
-  */
-  grid-template-columns: 1fr;
-  gap: 20px;
-  margin-top: 10px;
-}
-
-.kanban-column {
-  background-color: var(--cor-principal);
-  padding: 15px;
-  border: 1px solid var(--cor-destaque);
-  border-radius: 8px;
-}
-
-.kanban-column h3 {
-  font-family: "Poppins", sans-serif;
-  font-weight: 600;
-  margin-top: 0;
-  border-bottom: 2px solid var(--cor-secundaria);
-  padding-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .order-card {
-  background-color: var(--cor-card);
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid var(--cor-destaque);
-  margin-bottom: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  cursor: pointer;
-  transition: border-left 0.3s ease;
+  background: var(--cor-card);
+  padding: 20px;
+  border-radius: 20px; /* Cantos arredondados */
+  border: none; /* Remove borda sólida, usa sombra */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s;
+  position: relative;
+  overflow: hidden;
 }
 
-.order-card h4 {
-  margin: 0 0 5px 0;
-  font-family: "Poppins", sans-serif;
+/* Barras coloridas laterais mais elegantes */
+.order-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0; /* Barra lateral colorida */
+  bottom: 0;
+  width: 6px;
+  background: #eee;
+}
+
+.order-card.in-route::before {
+  background: var(--cor-destaque);
+}
+.order-card.ready-for-delivery::before {
+  background: var(--cor-sucesso);
+}
+
+.order-card.highlight {
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 0 15px rgba(0, 123, 255, 0.7), 0 0 0 2px rgba(0, 123, 255, 0.5); /* Destaque azul */
+  transform: scale(1.02);
 }
 
 .order-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  padding-left: 12px; /* Espaço para a barra lateral */
 }
 
 .order-card-header h4 {
-  margin: 0;
+  font-size: 1.1rem;
+  margin-bottom: 4px; /* Espaçamento */
 }
 
 .order-id {
-  font-size: 0.9em;
-  font-weight: 600;
-  color: #777;
-  background-color: #e0e0e0;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  color: #8e8e93;
+  background: #f2f2f7;
   padding: 2px 6px;
-  border-radius: 4px;
-}
-.order-id-container {
-  position: relative;
-  display: inline-block;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.order-id-container .order-id {
+.copy-feedback {
+  background-color: var(--cor-sucesso);
+  color: var(--cor-texto); /* Cor do feedback de cópia */
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.copy-feedback.visible {
+  opacity: 1;
+}
+
+.order-actions {
+  margin-top: 15px;
+  padding-left: 12px; /* Espaçamento */
+  display: flex;
+  gap: 10px;
+}
+
+/* === MODAIS (NATIVE BOTTOM SHEETS) === */
+.modal-backdrop,
+.modal-novo-pedido {
+  position: fixed;
+  inset: 0; /* Ocupa toda a tela */
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+
+  /* Mobile First: Alinhado ao fundo */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-backdrop.active,
+.modal-novo-pedido.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background: #fff;
+  width: 100%;
+  max-width: 500px; /* Largura máxima */
+  border-radius: 24px 24px 0 0; /* Arredondado só em cima no mobile */
+  padding: 24px;
+  padding-bottom: calc(24px + var(--safe-bottom)); /* Safe Area */
+
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Animação de entrada */
+.modal-backdrop.active .modal-content,
+.modal-novo-pedido.active .modal-content {
+  transform: translateY(0);
+}
+
+/* Tablet/Desktop: Modal Centralizado */
+@media (min-width: 768px) {
+  .modal-backdrop,
+  .modal-novo-pedido {
+    align-items: center;
+  }
+  .modal-content {
+    border-radius: 24px;
+    padding-bottom: 24px;
+    transform: scale(0.95); /* Animação de entrada */
+    opacity: 0;
+  }
+  .modal-backdrop.active .modal-content,
+  .modal-novo-pedido.active .modal-content {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  .container {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  #map-container {
+    height: 500px;
+  }
+}
+
+/* === FORMULÁRIOS DENTRO DE MODAIS === */
+.modal-content .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Alinhamento */
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--cor-secundaria);
+}
+
+.modal-content .modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem; /* Tamanho do título do modal */
+  font-weight: 600;
+}
+
+.close-button {
+  background: #e5e5e5;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #8e8e8e; /* Cor do ícone de fechar */
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.order-id-container .order-id:hover {
-  background-color: #ccc;
+.close-button:hover {
+  background: #dcdcdc;
 }
 
-.copy-feedback {
+.modal-content .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px; /* Espaçamento entre itens do grid */
+  text-align: left;
+  grid-template-areas:
+    "bolo bolo"
+    "cliente cliente"
+    "email whatsapp"
+    "cep cep"
+    "rua rua"
+    "numero bairro"
+    "complemento complemento";
+}
+
+@media (min-width: 500px) {
+  .modal-content .form-grid {
+    grid-template-areas:
+      "bolo bolo"
+      "cliente cliente"
+      "email whatsapp"
+      "cep rua"
+      "numero bairro"
+      "complemento complemento";
+  }
+}
+
+.modal-content .input-group {
+  position: relative;
+  margin: 0;
+}
+
+/* Mapeamento das áreas do grid */
+.modal-content .input-group:nth-child(1) {
+  grid-area: bolo;
+}
+.modal-content .input-group:nth-child(2) {
+  grid-area: cliente;
+}
+.modal-content .input-group:nth-child(3) {
+  grid-area: email;
+}
+.modal-content .input-group:nth-child(4) {
+  grid-area: whatsapp;
+}
+.modal-content .input-group:nth-child(5) {
+  grid-area: cep;
+}
+.modal-content .input-group:nth-child(6) {
+  grid-area: rua;
+}
+.modal-content .input-group:nth-child(7) {
+  grid-area: numero;
+}
+.modal-content .input-group:nth-child(8) {
+  grid-area: bairro;
+}
+.modal-content .input-group:nth-child(9) {
+  grid-area: complemento;
+}
+
+/* Inputs dentro do modal (Estilo diferente do login) */
+.modal-content .input-group input {
+  width: 100%;
+  background-color: #f0f2f5;
+  border: 1px solid #f0f2f5;
+  border-radius: 8px;
+  padding: 20px 12px 8px 12px; /* Espaço para o label flutuante */
+  font-size: 16px;
+}
+
+.modal-content .input-group label {
   position: absolute;
-  top: -25px;
-  right: 0;
-  background-color: var(--cor-sucesso);
-  color: var(--cor-branco);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.8em;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none; /* Não interfere com o clique */
+  top: 15px; /* Posição inicial do label flutuante */
+  left: 12px;
+  font-size: 16px;
+  color: #8e8e93;
+  pointer-events: none;
+  transition: all 0.2s ease;
 }
 
-.order-card .distance {
+/* Animação do label flutuante */
+.modal-content .input-group input:focus + label,
+.modal-content .input-group input:not(:placeholder-shown) + label {
+  top: 6px; /* Posição final do label flutuante */
+  font-size: 11px;
   font-weight: 600;
   color: var(--cor-destaque);
 }
 
-.order-card.closest-delivery {
-  border-left: 5px solid var(--cor-sucesso);
+/* === MODAL DE SUGESTÃO (Estilo Dark) === */
+#suggestion-modal {
+  background-color: rgba(10, 10, 10, 0.85);
+  z-index: 10001; /* Acima de outros modais */
 }
 
-.order-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 10px;
-}
-
-.order-actions button {
-  margin: 0; /* Remove margens extras */
-  padding: 5px 10px;
-  font-size: 12px;
-}
-
-/* === MODAL === */
-.modal-novo-pedido,
-.modal-read-message {
-  /* Aplica estilos a ambos os modais */
-  position: fixed; /* fica acima de tudo */
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center; /* centraliza horizontal */
-  align-items: center; /* centraliza vertical */
-  z-index: 9999;
-  /* Oculto por padrão, será exibido via JS */
-  visibility: hidden;
-  opacity: 0;
-  transition: visibility 0s, opacity 0.3s ease-in-out;
-}
-
-.modal-novo-pedido.active,
-.modal-read-message.active {
-  visibility: visible;
-  opacity: 1;
-}
-
-.modal-novo-pedido .modal-content,
-.modal-read-message .modal-content {
-  position: relative; /* Adicionado para posicionar o botão de fechar */
-  width: 90%;
-  max-width: 400px; /* limite bonito */
-  background: var(--cor-principal);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  border: 2px solid var(--cor-destaque); /* Mantém a borda original */
-  max-height: 90vh; /* Altura máxima para evitar que o modal seja maior que a tela */
-  overflow-y: auto; /* Adiciona rolagem se o conteúdo for muito grande */
-  transform: translateY(-20px); /* Começa um pouco acima */
-  transition: transform 0.3s ease-in-out;
-}
-
-.modal-novo-pedido.active .modal-content,
-.modal-read-message.active .modal-content {
-  transform: translateY(0); /* Desliza para a posição final */
-}
-
-.modal-content-centered {
+#suggestion-modal .modal-content {
+  background-color: #1e1e1e;
+  color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   max-width: 400px;
-  text-align: center;
+  text-align: left;
 }
 
-.close-button {
-  color: var(--cor-texto); /* Mais visível */
-  font-size: 28px; /* Ligeiramente maior */
-  font-weight: bold;
-  position: absolute;
-  background-color: rgba(0, 0, 0, 0.05); /* Subtle background */
-  border: none;
-  top: 10px;
-  right: 10px; /* Closer to the corner */
-  width: 36px; /* Make it a square button */
-  height: 36px; /* Make it a square button */
-  border-radius: 50%; /* Circular shape */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
+#suggestion-modal .modal-header h3 {
+  color: #ffffff;
 }
 
-.close-button:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-  color: var(--cor-destaque);
+#suggestion-modal .modal-body {
+  color: #e0e0e0;
+  font-size: 0.95rem;
 }
 
-.close-button:active {
-  background-color: rgba(0, 0, 0, 0.15);
+#suggestion-modal .modal-body strong {
+  color: #ffffff;
 }
 
-.modal-novo-pedido .modal-content label,
-.modal-read-message .modal-content label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: bold;
-}
-
-.modal-novo-pedido .modal-content input[type="text"],
-.modal-novo-pedido .modal-content input[type="email"],
-.modal-novo-pedido .modal-content textarea,
-.modal-read-message .modal-content input[type="text"],
-.modal-read-message .modal-content input[type="email"],
-.modal-read-message .modal-content textarea {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 15px;
-  border: 1px solid var(--cor-secundaria);
+#suggestion-modal #suggestion-details {
+  background-color: #2f2f2f;
+  padding: 15px; /* Espaçamento */
   border-radius: 8px;
-  box-sizing: border-box; /* Garante que padding não aumente a largura */
+  margin-top: 15px;
+  border-left: 4px solid #007bff;
 }
 
-.modal-novo-pedido .modal-content button[type="submit"],
-.modal-read-message .modal-content button[type="submit"] {
-  width: 100%;
-  padding: 12px;
-  background-color: var(--cor-destaque);
-  color: var(--cor-branco);
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.3s;
+#suggestion-modal #suggestion-details p {
+  margin: 8px 0;
 }
 
-.modal-novo-pedido .modal-content button[type="submit"]:hover,
-.modal-read-message .modal-content button[type="submit"]:hover {
-  background-color: #c5a231;
-}
-
-/* === MODAL ESTILO ILHA DINÂMICA (CONFIRMAÇÃO DE ENTREGA) === */
-.modal-dynamic-island {
-  position: fixed;
-  top: 20px; /* Posicionado no topo */
-  left: 50%;
-  transform: translate(-50%, -150%); /* Começa fora da tela, acima */
-  width: 90%;
-  max-width: 340px; /* Deixando o modal um pouco menor */
-  z-index: 10000;
-  background-color: rgba(
-    245,
-    245,
-    245,
-    0.85
-  ); /* Adicionado efeito de vidro translúcido */
-  border-radius: 24px; /* Bordas bem arredondadas */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px); /* Efeito de vidro fosco (opcional) */
-  -webkit-backdrop-filter: blur(10px);
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* Animação elástica */
-  visibility: hidden; /* Escondido por padrão */
-}
-
-.modal-dynamic-island.active {
-  transform: translate(-50%, 0); /* Desliza para a posição final */
-  visibility: visible;
-}
-
-/* Overlay para escurecer o fundo e dar foco ao modal */
-.modal-dynamic-island.active::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  opacity: 1;
-  transition: opacity 0.4s ease;
-  z-index: -1;
-}
-
-.modal-dynamic-island::before {
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-}
-
-.modal-dynamic-island .modal-content {
-  padding: 20px;
-  text-align: center;
-}
-
-.modal-dynamic-island .modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  font-family: "Poppins", sans-serif;
-}
-
-.modal-dynamic-island .modal-actions {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
+#suggestion-modal .modal-footer {
+  border-top: 1px solid #333;
+  padding-top: 15px; /* Espaçamento */
   margin-top: 20px;
 }
 
-/* === ILHA DINÂMICA (ENTREGA ATIVA) === */
-/* Estilo aprimorado com base na sua sugestão */
+#suggestion-modal #suggestion-modal-accept-btn {
+  background-color: #007bff;
+  color: white;
+  width: 100%;
+  padding: 12px; /* Espaçamento */
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+#suggestion-modal #suggestion-modal-accept-btn:hover {
+  background-color: #0056b3;
+}
+
+#suggestion-modal .close-button {
+  color: #aaa; /* Cor do botão de fechar */
+  background: none;
+}
+
+#suggestion-modal .close-button:hover {
+  color: white;
+}
+
+/* === ILHA DINÂMICA (App Like) === */
 .dynamic-island {
-  position: fixed;
-  /* Garante que não fique em cima da barra de gestos do iPhone */
-  bottom: max(20px, env(safe-area-inset-bottom));
+  position: absolute;
+  top: 20px; /* Posição */
   left: 50%;
-  transform: translate(-50%, 150%); /* Começa escondido */
-  width: 95%;
-  max-width: 450px; /* Reduzido para um visual mais compacto */
-
-  /* Fundo com leve transparência para efeito moderno */
-  background-color: rgba(30, 30, 30, 0.95);
-  backdrop-filter: blur(10px); /* Efeito de desfoque no fundo */
-  -webkit-backdrop-filter: blur(10px);
-
-  color: var(--cor-branco, #fff);
-
-  border-radius: 24px; /* Bordas mais sutis */
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.1); /* Borda sutil */
-
-  padding: 10px 15px; /* Preenchimento reduzido */
-  z-index: 10001;
-
+  transform: translateX(-50%) scale(0.9);
+  width: 92%;
+  max-width: 400px;
+  background: rgba(28, 28, 30, 0.95); /* Dark mode Apple */
+  color: white;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 35px; /* Cantos arredondados */
+  padding: 12px 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px; /* Espaçamento interno reduzido */
-
-  /* Animação elástica suave */
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 0.4s ease;
-  visibility: hidden;
+  justify-content: space-between;
+  z-index: 2000;
   opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dynamic-island.active {
-  transform: translate(-50%, 0); /* Desliza para a posição final */
-  visibility: visible;
+  transform: translateX(-50%) scale(1);
   opacity: 1;
-}
-
-/* Conteúdo de Texto */
-.dynamic-island-content {
-  display: flex;
-  flex-direction: column;
-  min-width: 0; /* Permite que o container encolha abaixo do seu conteúdo mínimo */
-  flex-grow: 1; /* Permite que o container cresça para ocupar o espaço */
+  visibility: visible;
 }
 
 .dynamic-island-content p {
   margin: 0;
-  font-size: 13px;
+  font-size: 0.85rem; /* Tamanho da fonte */
   line-height: 1.3;
-  font-family: sans-serif;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.dynamic-island-content p strong {
-  color: var(--cor-destaque, #ffd700);
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.dynamic-island-content .address-info {
-  font-size: 11px;
-  opacity: 0.7; /* Texto secundário mais suave */
-  white-space: nowrap; /* Impede a quebra de linha */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  /* A largura máxima será controlada pelo container flex */
+.dynamic-island-content strong {
+  color: var(--cor-destaque);
+  font-size: 0.95rem;
+  display: block;
 }
 
 .dynamic-island-actions {
   display: flex;
   gap: 8px;
-  flex-shrink: 0; /* Impede que os botões encolham */
+  align-items: center;
 }
 
-/* Ajuste para os botões dentro da Ilha Dinâmica */
-.dynamic-island-actions .btn-island {
-  padding: 8px 16px;
-  border-radius: 20px; /* Bordas arredondadas para combinar com a ilha */
-  font-size: 12px;
-  font-weight: 700;
-  border-width: 1px; /* Garante uma borda sutil e consistente */
+.dynamic-island-actions button {
+  padding: 6px 14px;
+  font-size: 12px; /* Tamanho da fonte */
+  height: 32px;
+  border-radius: 16px;
 }
 
-/* Ícone animado de status (Bolinha pulsando) */
-.status-dot {
+.dynamic-island .btn-secondary {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+/* === TOAST NOTIFICATION === */
+#toast-container {
+  position: fixed;
+  top: calc(10px + var(--safe-top)); /* Posição */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 350px;
+  z-index: 11000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  color: var(--cor-texto);
+  padding: 14px 20px; /* Espaçamento interno */
+  border-radius: 50px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  font-weight: 500;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.toast-success {
+  border-left-color: var(--cor-sucesso);
+}
+.toast.toast-error {
+  border-left-color: var(--cor-erro);
+}
+.toast.toast-info {
+  border-left-color: var(--cor-destaque);
+}
+
+/* === STATUS DO ENTREGADOR === */
+#delivery-status-container {
+  background-color: var(--cor-card);
+  padding: 15px 20px;
+  border-radius: var(--borda-radius); /* Cantos arredondados */
+  box-shadow: var(--sombra);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#delivery-person-status {
+  margin: 0;
+  font-weight: 600;
+  color: var(--cor-texto); /* Cor do texto */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+#delivery-person-status::before {
+  content: "";
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  background-color: #4caf50; /* Verde online */
+  width: 12px;
+  height: 12px;
+  border-radius: 50%; /* Círculo */
+  background-color: var(--cor-aviso);
+}
+
+#delivery-person-status.online::before {
+  background-color: var(--cor-sucesso);
+}
+
+/* === MEDIA QUERIES FINAIS (TABLETS & DESKTOP) === */
+@media (min-width: 1024px) {
+  .container {
+    grid-template-columns: 1.2fr 2fr;
+    gap: 40px; /* Espaçamento entre colunas */
+  }
+
+  #kanban-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .order-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1); /* Sombra ao passar o mouse */
+  }
+
+  .map-mirror {
+    top: 100px;
+  }
+}
+
+/* =========================================
+   ESTILOS DA TABELA DE PEDIDOS (ADMIN)
+   ========================================= */
+
+/* Contêiner para cada grupo de status */
+.status-group-wrapper {
+  margin-bottom: 30px;
+}
+
+.status-group-wrapper h3 {
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+}
+
+.orders-table-wrapper {
+  background: var(--cor-card);
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-suave);
+  overflow: hidden;
+  margin-top: 20px;
+  border: 1px solid var(--cor-secundaria);
+}
+
+.orders-table-header {
+  display: none;
+  background-color: var(--cor-secundaria);
+  padding: 12px 20px;
+  color: var(--cor-texto-secundario);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@media (min-width: 768px) {
+  .orders-table-header {
+    display: grid;
+    grid-template-columns: 0.5fr 2fr 1fr 1.5fr 1fr;
+    align-items: center;
+  }
+}
+
+.order-row {
+  display: block;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--cor-secundaria);
+  cursor: pointer;
+  transition: background-color 0.1s ease-in-out;
+}
+
+.order-row:active {
+  background-color: #f0f0f5;
+}
+
+.order-row:last-child {
+  border-bottom: none;
+}
+
+@media (min-width: 768px) {
+  .order-row {
+    display: grid;
+    grid-template-columns: 0.5fr 2fr 1fr 1.5fr 1fr;
+    align-items: center;
+    padding: 10px 20px;
+  }
+}
+
+.order-data-item {
+  padding: 2px 0;
+  font-size: 0.95rem;
+  color: var(--cor-texto);
+  font-weight: 500;
+}
+
+.order-data-item .label {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--cor-texto-secundario);
+  font-weight: 400;
+  margin-right: 8px;
+  min-width: 60px;
+}
+
+@media (min-width: 768px) {
+  .order-data-item .label {
+    display: none;
+  }
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.status-pendente {
+  background-color: rgba(0, 122, 255, 0.1);
+  color: var(--cor-info);
+}
+.status-em_preparo {
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--cor-destaque);
+}
+.status-feito {
+  background-color: rgba(88, 86, 214, 0.1);
+  color: #5856d6;
+} /* Roxo iOS */
+.status-pronto_para_entrega {
+  background-color: rgba(255, 149, 0, 0.1);
+  color: var(--cor-aviso);
+}
+.status-em_entrega {
+  background-color: rgba(255, 45, 85, 0.1);
+  color: #ff2d55;
+} /* Rosa iOS */
+.status-entregue {
+  background-color: rgba(52, 199, 89, 0.1);
+  color: var(--cor-sucesso);
+}
+.status-cancelado {
+  background-color: rgba(255, 59, 48, 0.1);
+  color: var(--cor-erro);
+}
+
+@media (max-width: 767px) {
+  .order-data-item.status-data {
+    margin-top: 8px;
+  }
+}
+
+.order-actions-mini {
+  display: flex;
+  gap: 8px;
+}
+
+.action-icon-btn {
+  background: var(--cor-secundaria);
+  border: none;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  margin-right: 6px;
-  animation: pulse 2s infinite;
+  color: var(--cor-texto-secundario);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
-  }
+.action-icon-btn:hover {
+  background-color: #dcdcdc;
+  color: var(--cor-texto);
 }
 
-/* Ajuste para telas muito pequenas (ex: iPhone SE) */
-@media (max-width: 360px) {
-  .dynamic-island {
-    flex-direction: column; /* Empilha o conteúdo e os botões */
-    align-items: flex-start; /* Alinha tudo à esquerda */
-    gap: 12px; /* Reduz o espaçamento entre as seções */
-  }
-  .dynamic-island-actions {
-    width: 100%; /* Faz os botões ocuparem a largura total */
-  }
+.action-icon-btn:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+.action-icon-btn.primary {
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
+}
+
+.action-icon-btn.primary:hover {
+  background-color: #c49a31;
+}
+
+/* Botão de Ação com Texto (Estilo Pílula Pequena) */
+.action-text-btn {
+  background: var(--cor-secundaria);
+  border: none;
+  border-radius: 20px; /* Formato pílula */
+  color: var(--cor-texto);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.action-text-btn:hover {
+  opacity: 0.8;
+}
+
+.action-text-btn:active {
+  transform: scale(0.96);
+}
+
+.action-text-btn.primary {
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
 }

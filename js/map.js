@@ -1,213 +1,1081 @@
-import { geocodeAddress, getRouteDetails, calculateSpeed } from "./utils.js";
+// js/map.js - Versão Corrigida com OpenStreetMap (Sem erro 404)
 
 let map;
-let deliveryMarker; // Marcador do entregador
-let routeLayer;
-let clientMarker; // Marcador do cliente
-let routeRecalculationInterval = null;
+let deliveryMarker;
+let directions;
+let clientMarker;
+let mapStyleLoaded = false;
+let mapOriginalStyle = null;
+let satelliteMode = false;
+let threeDEnabled = false;
+let followMode = true;
+let currentRouteGeometry = null;
+let lastRouteOrigin = null;
+let lastRouteDestination = null;
+let destinationCoords = null; // Adicionado para armazenar as coordenadas do destino
 
-export function initializeMap(elementId) {
-  // Renamed from initMap
-  // Evita reinicializar o mapa se ele já existe (causa comum de bugs visuais)
-  if (map) {
-    return map;
-  }
+// Função utilitária para calcular a distância entre dois pontos (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // metros
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-  // Coordenadas de São Paulo como centro inicial
-  map = L.map(elementId).setView([-23.4273, -51.9375], 12);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution:
-      '&copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors',
-  }).addTo(map);
-  return map;
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distância em metros
 }
 
-/**
- * Atualiza ou cria o marcador do entregador no mapa.
- */
-export function updateDeliveryMarkerOnMap(location) {
-  if (location && map) {
-    const { latitude, longitude, heading } = location;
-    const latLng = [latitude, longitude];
+const satelliteStyle = {
+  version: 8,
+  sources: {
+    "sat-tiles": {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      attribution: "Esri World Imagery",
+    },
+  },
+  layers: [
+    {
+      id: "sat-tiles",
+      type: "raster",
+      source: "sat-tiles",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
 
-    if (deliveryMarker) {
-      deliveryMarker.setLatLng(latLng);
-      if (
-        typeof heading === "number" &&
-        !isNaN(heading) &&
-        deliveryMarker._icon
-      ) {
-        deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
+export async function initializeMap(
+  elementId,
+  center = [-51.9375, -23.4273],
+  zoom = 15,
+  initialSatelliteMode = false
+) {
+  if (map) return map;
+
+  if (typeof maplibregl === "undefined") {
+    console.error("Erro: A biblioteca MapLibre GL JS não foi carregada.");
+    return;
+  }
+
+  map = new maplibregl.Map({
+    container: elementId,
+    zoom: 15,
+    center: center,
+    zoom: zoom,
+    pitch: 0,
+
+    // === CORREÇÃO DO ERRO 404 ===
+    // Usamos o estilo direto do OpenStreetMap que é 100% garantido
+    style: {
+      version: 8,
+      sources: {
+        "raster-tiles": {
+          type: "raster",
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "&copy; OpenStreetMap Contributors",
+        },
+      },
+      layers: [
+        {
+          id: "simple-tiles",
+          type: "raster",
+          source: "raster-tiles",
+          minzoom: 0,
+          maxzoom: 19,
+        },
+      ],
+    },
+  });
+
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }));
+
+  // Aguarda o carregamento do estilo antes de continuar
+  await new Promise((resolve) => {
+    map.once("load", () => {
+      mapStyleLoaded = true;
+      mapOriginalStyle = map.getStyle();
+      console.log("Map style is loaded.");
+      resolve();
+    });
+    // fallback: se isStyleLoaded já estiver true
+    if (map.isStyleLoaded && map.isStyleLoaded()) {
+      mapStyleLoaded = true;
+      resolve();
+    }
+  });
+
+  // Create the main-route source and layer once after the style is loaded.
+  // This implements the "create-once and setData" pattern to avoid creating
+  // and removing layers repeatedly which causes ghost layers to persist.
+  const ensureRouteSource = () => {
+    try {
+      if (!map.getSource("main-route")) {
+        map.addSource("main-route", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
       }
-    } else {
-      deliveryMarker = L.marker(latLng, {
-        icon: L.icon({
-          iconUrl: "/CarroIcone/Versa2025.png",
-          iconSize: [70, 70],
-          iconAnchor: [35, 55],
-        }),
-      }).addTo(map);
-      // Aplica rotação inicial se disponível
-      if (
-        typeof heading === "number" &&
-        !isNaN(heading) &&
-        deliveryMarker._icon
-      ) {
-        deliveryMarker._icon.style.transform = `rotate(${heading}deg)`;
+      if (!map.getLayer("main-route-line")) {
+        map.addLayer({
+          id: "main-route-line",
+          type: "line",
+          source: "main-route",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#1b9af7",
+            "line-width": 5,
+            "line-opacity": 0.9,
+          },
+        });
       }
-    }
-    return deliveryMarker;
-  }
-  return null;
-}
-
-/**
- * Atualiza ou cria o marcador do cliente no mapa.
- */
-export function updateClientMarkerOnMap(coords) {
-  if (coords) {
-    const clientLatLng = [coords.lat, coords.lon];
-    if (clientMarker) {
-      clientMarker.setLatLng(clientLatLng);
-    } else {
-      clientMarker = L.marker(clientLatLng, {
-        icon: L.icon({
-          iconUrl: "/CarroIcone/cliente.png",
-          iconSize: [50, 50],
-          iconAnchor: [25, 50],
-        }),
-      }).addTo(map);
-    }
-  } else {
-    // Se coords for null, remove o marcador
-    if (clientMarker) {
-      map.removeLayer(clientMarker);
-      clientMarker = null;
-    }
-  }
-}
-
-/**
- * Ajusta o zoom do mapa para mostrar tanto o entregador quanto o cliente.
- */
-export function fitMapToBounds(deliveryLocation, clientCoords) {
-  if (!map) return; // Segurança extra
-
-  if (deliveryLocation && clientCoords) {
-    const deliveryLatLng = [
-      deliveryLocation.latitude,
-      deliveryLocation.longitude,
-    ];
-    const clientLatLng = [clientCoords.lat, clientCoords.lon];
-    const bounds = L.latLngBounds([deliveryLatLng, clientLatLng]);
-    map.fitBounds(bounds.pad(0.2));
-  } else if (deliveryLocation) {
-    map.setView([deliveryLocation.latitude, deliveryLocation.longitude], 15);
-  }
-}
-
-/**
- * Desenha a geometria de uma rota no mapa.
- */
-export function drawRouteOnMap(geometry) {
-  // Sempre limpa a rota anterior antes de desenhar a nova
-  clearRouteFromMap();
-
-  if (geometry) {
-    routeLayer = L.geoJSON(geometry, {
-      style: { color: "#007bff", weight: 5 },
-    }).addTo(map);
-  }
-}
-
-export function clearRouteFromMap() {
-  if (routeLayer && map) {
-    map.removeLayer(routeLayer);
-  }
-  routeLayer = null;
-}
-
-/**
- * Adiciona marcadores de início e fim da rota (função que estava faltando).
-
-export function addRouteMarkers(startCoords, endCoords) {
-  // A lógica de marcadores já é tratada por updateDeliveryMarkerOnMap e updateClientMarkerOnMap
-  // Esta função pode ser usada para lógicas adicionais se necessário.
-}
-
-/**
- * Inicia o processo de navegação, desenhando a rota e atualizando-a periodicamente.
- * @param {() => object} getStartCoords - Uma função que retorna as coordenadas atuais do entregador.
- * @param {object} endCoords - Coordenadas do cliente.
- * @param {(details: object) => void} onRouteUpdate - Callback chamado com os detalhes da rota.
- */
-export function startNavigation(getStartCoords, endCoords, onRouteUpdate) {
-  if (routeRecalculationInterval) clearInterval(routeRecalculationInterval);
-
-  const calculateAndDraw = async () => {
-    const currentStartCoords = getStartCoords();
-    if (!currentStartCoords) return;
-
-    const routeDetails = await getRouteDetails(currentStartCoords, endCoords);
-
-    // Nota: drawRouteOnMap já chama clearRouteFromMap internamente
-    if (routeDetails) {
-      drawRouteOnMap(routeDetails.geometry);
-      if (onRouteUpdate) onRouteUpdate(routeDetails);
-    } else {
-      if (onRouteUpdate) onRouteUpdate(routeDetails);
+    } catch (e) {
+      console.warn("initializeMap: não foi possível criar main-route:", e);
     }
   };
 
-  calculateAndDraw();
-  routeRecalculationInterval = setInterval(calculateAndDraw, 15000);
+  if (map.isStyleLoaded && map.isStyleLoaded()) {
+    ensureRouteSource();
+  } else {
+    map.on("style.load", ensureRouteSource);
+  }
+
+  // Apply initial satellite mode if requested
+  if (initialSatelliteMode) {
+    try {
+      satelliteMode = true;
+      map.setStyle(satelliteStyle);
+      console.debug("Map initialized in satellite mode.");
+    } catch (e) {
+      console.warn(
+        "Não foi possível ativar modo satélite na inicialização:",
+        e
+      );
+    }
+  }
+
+  // Instancia o plugin de direções somente depois do style carregar
+  if (typeof MapLibreGlDirections !== "undefined") {
+    try {
+      directions = new MapLibreGlDirections(map, {
+        api: "https://router.project-osrm.org/route/v1",
+        profile: "driving",
+        interactive: false,
+        controls: { instructions: false, inputs: false },
+      });
+    } catch (e) {
+      console.warn("Erro ao inicializar MapLibreGlDirections:", e);
+    }
+  } else {
+    console.warn("Aviso: Plugin MapLibreGlDirections não carregado.");
+  }
+
+  // Tenta adicionar controles e camadas 3D caso possível
+  try {
+    add3DBuildings();
+  } catch (e) {
+    console.warn("3D buildings não disponíveis:", e);
+  }
+
+  return map;
 }
 
-/**
- * Para a navegação, limpando o intervalo de atualização e a rota do mapa.
- */
-export function stopNavigation() {
-  clearMap(); // Use the new comprehensive clear function
+export function updateDeliveryMarkerOnMap(location, destination) {
+  if (!map || !location) return;
+  const latLng = [location.longitude, location.latitude];
+
+  if (deliveryMarker) deliveryMarker.remove();
+
+  const el = document.createElement("div");
+  el.style.backgroundImage = "url('./CarroIcone/EntregadorDireita.png')";
+  el.style.width = "60px";
+  el.style.height = "60px";
+  el.style.backgroundSize = "contain";
+  el.style.backgroundRepeat = "no-repeat";
+
+  if (location.heading) {
+    el.style.transform = `rotate(${location.heading}deg)`;
+  }
+
+  deliveryMarker = new maplibregl.Marker({ element: el })
+    .setLngLat(latLng)
+    .addTo(map);
+
+  checkProximityToDestination(location);
 }
 
-/**
- * Move o centro do mapa para a localização especificada.
- * @param {object} location - Objeto com latitude e longitude.
- */
-export function panMapTo(location) {
-  if (location && map) {
-    map.panTo([location.latitude, location.longitude]);
+let hasProximityAlertBeenShown = false;
+
+function checkProximityToDestination(deliveryLocation) {
+  if (!destinationCoords || !deliveryLocation || hasProximityAlertBeenShown)
+    return;
+
+  const distance = calculateDistance(
+    deliveryLocation.latitude,
+    deliveryLocation.longitude,
+    destinationCoords.lat,
+    destinationCoords.lon
+  );
+
+  if (distance <= 5) {
+    // 5 metros
+    alert("O entregador está a 5 metros do destino!");
+    hasProximityAlertBeenShown = true;
   }
 }
 
-/**
- * Força o mapa a recalcular seu tamanho e renderizar novamente.
- * Útil quando o contêiner do mapa muda de tamanho ou visibilidade.
- */
-export function invalidateMapSize() {
-  if (map) {
-    map.invalidateSize();
+export function resetProximityAlert() {
+  hasProximityAlertBeenShown = false;
+}
+
+export function setFollowMode(enabled) {
+  // This is a setter, not a getter
+  followMode = !!enabled;
+}
+
+export function isFollowMode() {
+  // This is the getter function
+  return !!followMode;
+}
+
+function computeZoomFromSpeed(speed) {
+  const speedKmh = (speed || 0) * 3.6;
+  if (speedKmh < 5) return 18;
+  if (speedKmh < 30) return 17;
+  if (speedKmh < 50) return 16;
+  return 15;
+}
+
+export function updateCameraForLocation(location) {
+  if (!map || !location) return;
+  try {
+    const zoom = computeZoomFromSpeed(location.speed);
+    const bearing = location.heading || map.getBearing();
+    const pitch = threeDEnabled ? 60 : 45;
+
+    map.easeTo({
+      center: [location.longitude, location.latitude],
+      bearing,
+      zoom,
+      pitch,
+      duration: 800,
+    });
+  } catch (e) {
+    console.warn("Erro ao atualizar câmera:", e);
   }
 }
 
-/**
- * Limpa todos os elementos relacionados a um pedido do mapa (rota, marcador do cliente)
- * e para o intervalo de recalculo da rota. O marcador do entregador permanece.
- */
+export function updateClientMarkerOnMap(coords) {
+  if (!map) return;
+
+  if (coords) {
+    const clientLatLng = [coords.lon, coords.lat];
+    if (clientMarker) clientMarker.remove();
+
+    const el = document.createElement("div");
+    el.style.backgroundImage = "url('./CarroIcone/cliente.png')";
+    el.style.width = "40px";
+    el.style.height = "40px";
+    el.style.backgroundSize = "contain";
+
+    clientMarker = new maplibregl.Marker({ element: el })
+      .setLngLat(clientLatLng)
+      .addTo(map);
+  } else if (clientMarker) {
+    clientMarker.remove();
+    clientMarker = null;
+  }
+}
+
+export function setRoute(origin, destination) {
+  // Use directions plugin if available (for UI + controls)
+  // Store last origin/destination so we can re-request the route after
+  // style changes (satellite/static) which may drop plugin layers.
+  try {
+    lastRouteOrigin = origin || null;
+    lastRouteDestination = destination || null;
+    destinationCoords = destination
+      ? { lat: destination.lat, lon: destination.lon }
+      : null; // Armazena as coordenadas do destino
+  } catch (e) {}
+  if (directions && typeof directions.setOrigin === "function") {
+    // If directions plugin is used for UI, its methods would go here.
+  }
+
+  // Sempre solicita rota ao OSRM e desenha como GeoJSON (fallback/visual consistente)
+  return requestRoute(origin, destination);
+}
+
+// Solicita uma rota ao OSRM e desenha no mapa como GeoJSON (linha azul)
+export async function requestRoute(origin, destination) {
+  if (!map || !origin || !destination) return null;
+
+  try {
+    const lon1 =
+      origin.longitude ?? origin.lon ?? origin.lng ?? origin.longitude;
+    const lat1 = origin.latitude ?? origin.lat ?? origin.lat ?? origin.latitude;
+    const lon2 = destination.lon ?? destination.longitude ?? destination.lng;
+    const lat2 = destination.lat ?? destination.latitude ?? destination.lat;
+
+    if ([lon1, lat1, lon2, lat2].some((v) => v == null)) {
+      console.warn("requestRoute: coordenadas inválidas", origin, destination);
+      return null;
+    }
+
+    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn("OSRM request failed", res.status);
+      return null;
+    }
+    const data = await res.json();
+    if (!data || !data.routes || !data.routes.length) return null;
+    const geometry = data.routes[0].geometry; // GeoJSON LineString
+
+    // Desenha a rota retornada pelo OSRM usando nosso estilo
+    currentRouteGeometry = geometry;
+    drawMainRoute(geometry);
+
+    return data.routes[0];
+  } catch (e) {
+    console.warn("Erro ao solicitar rota do OSRM:", e);
+    return null;
+  }
+}
+
+export function clearRoute() {
+  if (directions) directions.clear();
+}
+
+export function clearActiveRoute() {
+  // Limpa a linha da rota principal definindo seus dados como vazios
+  try {
+    if (map && map.getSource("main-route")) {
+      map
+        .getSource("main-route")
+        .setData({ type: "FeatureCollection", features: [] });
+    }
+  } catch (e) {
+    console.warn("Erro ao limpar a linha da rota principal:", e);
+  }
+
+  // Remove apenas o marcador do cliente
+  try {
+    if (clientMarker) {
+      clientMarker.remove();
+      clientMarker = null;
+    }
+  } catch (e) {
+    console.warn("Erro ao remover marcador do cliente:", e);
+  }
+
+  // Limpa também o plugin de direções, se existir
+  if (directions && typeof directions.clear === "function") {
+    try {
+      directions.clear();
+    } catch (e) {
+      console.warn("Erro ao limpar rota do plugin de direções:", e);
+    }
+  }
+
+  currentRouteGeometry = null;
+  lastRouteOrigin = null;
+  lastRouteDestination = null;
+}
+
+// Limpa marcadores, rota principal e fontes adicionais do mapa
 export function clearMap() {
-  // Renamed from clearOrderFromMap
-  // 1. Remove a Rota
-  clearRouteFromMap();
-
-  // 2. Remove o Marcador do Cliente
-  if (clientMarker && map) {
-    map.removeLayer(clientMarker);
+  // Limpa rota do plugin, se existir
+  if (directions && typeof directions.clear === "function") {
+    try {
+      directions.clear();
+    } catch (e) {
+      console.warn("Erro ao limpar rota do directions plugin:", e);
+    }
   }
-  clientMarker = null;
 
-  // 3. Para o intervalo de recálculo
-  if (routeRecalculationInterval) {
-    clearInterval(routeRecalculationInterval);
-    routeRecalculationInterval = null;
+  // Remove marcadores personalizados
+  try {
+    if (deliveryMarker) {
+      deliveryMarker.remove();
+      deliveryMarker = null;
+    }
+    if (clientMarker) {
+      clientMarker.remove();
+      clientMarker = null;
+    }
+  } catch (e) {
+    console.warn("Erro ao remover marcadores:", e);
   }
+
+  // Remove fonte/layer da rota principal (caso exista).
+  // Se o estilo ainda não foi carregado, aguarda o evento 'load' antes de remover fontes/layers.
+  if (map && map.getStyle) {
+    let cleanupRetries = 0;
+    const doCleanup = () => {
+      try {
+        const style = map.getStyle() || {};
+        // Debug: lista initial de layers/sources para diagnóstico
+        try {
+          const layerIds = (style.layers || [])
+            .map((l) => l && l.id)
+            .filter(Boolean);
+          const sourceIds = Object.keys(style.sources || {});
+          console.debug("clearMap: initial layers:", layerIds);
+          console.debug("clearMap: initial sources:", sourceIds);
+        } catch (e) {
+          console.debug("clearMap: erro ao listar layers/sources", e);
+        }
+
+        // 1) Remove layers que pareçam ter sido adicionadas pela aplicação/plugin
+        const layers = Array.isArray(style.layers) ? style.layers.slice() : [];
+        const layerPattern =
+          /(route|directions|main-route|osrm|mirror|delivery|client|line)/i;
+        layers.forEach((l) => {
+          try {
+            if (!l || !l.id) return;
+            // Se o id casar com padrões de rota/directions ou for do tipo 'line', remove
+            if (layerPattern.test(l.id) || l.type === "line") {
+              if (map.getLayer && map.getLayer(l.id)) {
+                try {
+                  map.removeLayer(l.id);
+                } catch (e) {
+                  /* ignore */
+                }
+              }
+
+              // tenta remover a fonte associada à layer (se fizer sentido)
+              const src = l.source;
+              if (src && style.sources && style.sources[src]) {
+                const srcMeta = style.sources[src];
+                if (
+                  (srcMeta && srcMeta.type === "geojson") ||
+                  /route|directions|main-route|osrm|geojson/i.test(src)
+                ) {
+                  try {
+                    if (map.getSource && map.getSource(src))
+                      map.removeSource(src);
+                  } catch (e) {
+                    /* ignore */
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            /* ignore per-layer errors */
+          }
+        });
+
+        // 2) Remove explicitamente fontes/layers conhecidos do plugin (não removemos 'main-route' aqui)
+        const explicitIds = [
+          "directions-route",
+          "directions-layer",
+          "directions-source",
+        ];
+        explicitIds.forEach((id) => {
+          try {
+            if (map.getLayer && map.getLayer(id)) map.removeLayer(id);
+          } catch (e) {}
+          try {
+            if (map.getSource && map.getSource(id)) map.removeSource(id);
+          } catch (e) {}
+        });
+
+        // 3) Varre todas as fontes e remove fontes geojson ou com nomes relacionados a rotas
+        const sources = Object.keys(style.sources || {});
+        sources.forEach((s) => {
+          try {
+            const src = style.sources[s];
+            if (!src) return;
+            if (
+              /route|directions|main-route|osrm|geojson/i.test(s) ||
+              src.type === "geojson"
+            ) {
+              if (map.getSource && map.getSource(s)) {
+                try {
+                  map.removeSource(s);
+                } catch (e) {
+                  /* ignore */
+                }
+              }
+            }
+          } catch (e) {
+            /* ignore per-source errors */
+          }
+        });
+
+        // Segunda passagem: tenta remover qualquer layer do tipo 'line' ou que ainda contenha padrões
+        try {
+          const remainingLayers = (map.getStyle && map.getStyle().layers) || [];
+          remainingLayers.forEach((l) => {
+            try {
+              if (!l || !l.id) return;
+              const matchesPattern =
+                /(route|directions|main-route|osrm|mirror|delivery|client|line)/i.test(
+                  l.id
+                );
+              const isLine =
+                l.type === "line" ||
+                (l &&
+                  l.paint &&
+                  Object.keys(l.paint).some((k) => k.includes("line")));
+              const paintColor =
+                l &&
+                l.paint &&
+                (l.paint["line-color"] ||
+                  (typeof l.paint["line-color"] === "function"
+                    ? ""
+                    : l.paint["line-color"]));
+              const suspiciousColor =
+                paintColor && paintColor.toString().includes("1b9af7");
+              if (matchesPattern || isLine || suspiciousColor) {
+                if (map.getLayer && map.getLayer(l.id)) {
+                  try {
+                    map.removeLayer(l.id);
+                  } catch (e) {
+                    /* ignore */
+                  }
+                }
+                // try to remove associated source
+                const src = l.source;
+                if (src && map.getSource && map.getSource(src)) {
+                  try {
+                    map.removeSource(src);
+                  } catch (e) {
+                    /* ignore */
+                  }
+                }
+              }
+            } catch (e) {
+              /* ignore per-layer errors */
+            }
+          });
+        } catch (e) {
+          /* ignore second pass errors */
+        }
+      } catch (e) {
+        console.warn("Erro durante limpeza de camadas/sources:", e);
+      }
+
+      // Remove marcadores personalizados
+      try {
+        if (deliveryMarker) {
+          deliveryMarker.remove();
+          deliveryMarker = null;
+        }
+        if (clientMarker) {
+          clientMarker.remove();
+          clientMarker = null;
+        }
+      } catch (e) {
+        console.warn("Erro ao remover marcadores durante limpeza:", e);
+      }
+
+      // Limpa estado do plugin de direções
+      try {
+        if (directions && typeof directions.clear === "function") {
+          try {
+            directions.clear();
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
+
+      // Debug: lista remaining layers/sources após tentativa de limpeza
+      try {
+        const afterStyle = map.getStyle() || {};
+        const layerIdsAfter = (afterStyle.layers || [])
+          .map((l) => l && l.id)
+          .filter(Boolean);
+        const sourceIdsAfter = Object.keys(afterStyle.sources || {});
+        console.debug("clearMap: remaining layers:", layerIdsAfter);
+        console.debug("clearMap: remaining sources:", sourceIdsAfter);
+        // Se ainda houver camadas relacionadas a rotas, tenta resetar o estilo e tentar de novo (uma vez)
+        try {
+          const stubborn = layerIdsAfter.filter((id) =>
+            /(route|directions|main-route|osrm|line)/i.test(id)
+          );
+          if (stubborn.length && cleanupRetries < 1 && mapOriginalStyle) {
+            cleanupRetries++;
+            console.warn(
+              "clearMap: camadas resistentes encontradas, reiniciando estilo original e tentando limpar de novo",
+              stubborn
+            );
+            try {
+              map.setStyle(mapOriginalStyle);
+              map.once("load", () => {
+                try {
+                  doCleanup();
+                } catch (e) {
+                  /* ignore */
+                }
+              });
+            } catch (e) {
+              console.warn(
+                "clearMap: falha ao resetar estilo para forçar limpeza",
+                e
+              );
+            }
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      } catch (e) {
+        console.debug(
+          "clearMap: erro ao listar layers/sources após limpeza",
+          e
+        );
+      }
+
+      // Esvazia a fonte principal de rota ao invés de remover (melhor para evitar erros de estilo)
+      try {
+        if (map.getSource && map.getSource("main-route")) {
+          try {
+            map
+              .getSource("main-route")
+              .setData({ type: "FeatureCollection", features: [] });
+          } catch (e) {
+            // fallback: se setData não for suportado, tenta remover a source/layer
+            try {
+              if (map.getLayer && map.getLayer("main-route-line"))
+                map.removeLayer("main-route-line");
+            } catch (er) {}
+            try {
+              if (map.getSource && map.getSource("main-route"))
+                map.removeSource("main-route");
+            } catch (er) {}
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
+
+      // Remove referência à geometria atual
+      try {
+        currentRouteGeometry = null;
+      } catch (e) {}
+    };
+
+    if (map.isStyleLoaded && !map.isStyleLoaded()) {
+      map.once("load", doCleanup);
+    } else {
+      doCleanup();
+    }
+  }
+}
+/**
+ * Limpeza mais agressiva de rotas/resíduos no mapa.
+ * Usa `clearMap()` e então executa uma segunda passada que remove quaisquer
+ * layers/sources do tipo 'line' ou com nomes suspeitos. Como último recurso
+ * tenta resetar o estilo original para forçar remoção de camadas resistentes.
+ */
+export function forceClearAllRoutes() {
+  try {
+    // Passo 1: limpeza normal
+    clearMap();
+  } catch (e) {
+    console.warn("forceClearAllRoutes: erro ao executar clearMap():", e);
+  }
+
+  // Passo 2: segunda passagem mais agressiva
+  try {
+    if (!map || !map.getStyle) return;
+    const style = map.getStyle() || {};
+    const layers = Array.isArray(style.layers) ? style.layers.slice() : [];
+    const layerPattern =
+      /(route|directions|main-route|osrm|mirror|delivery|client|line|shadow|route-line)/i;
+
+    layers.forEach((l) => {
+      try {
+        if (!l || !l.id) return;
+        const suspicious = layerPattern.test(l.id) || l.type === "line";
+        if (suspicious) {
+          if (map.getLayer && map.getLayer(l.id)) {
+            try {
+              map.removeLayer(l.id);
+              console.debug("forceClearAllRoutes: removed layer", l.id);
+            } catch (e) {
+              /* ignore */
+            }
+          }
+          // remove associated source if forçado
+          const src = l.source;
+          if (src && map.getSource && map.getSource(src)) {
+            try {
+              map.removeSource(src);
+              console.debug("forceClearAllRoutes: removed source", src);
+            } catch (e) {
+              /* ignore */
+            }
+          }
+        }
+      } catch (e) {
+        /* ignore per-layer errors */
+      }
+    });
+
+    // Remover quaisquer fontes geojson remanescentes
+    const sources = Object.keys(style.sources || {});
+    sources.forEach((s) => {
+      try {
+        const src = style.sources[s];
+        if (!src) return;
+        if (
+          /route|directions|main-route|osrm|geojson/i.test(s) ||
+          src.type === "geojson"
+        ) {
+          if (map.getSource && map.getSource(s)) {
+            try {
+              map.removeSource(s);
+              console.debug("forceClearAllRoutes: removed source by name", s);
+            } catch (e) {
+              /* ignore */
+            }
+          }
+        }
+      } catch (e) {
+        /* ignore per-source errors */
+      }
+    });
+  } catch (e) {
+    console.warn("forceClearAllRoutes: erro durante segunda passada:", e);
+  }
+
+  // Passo 3: se ainda houver camadas suspeitas, reinicia o estilo original
+  try {
+    const afterStyle = map.getStyle() || {};
+    const remaining = (afterStyle.layers || [])
+      .map((l) => l && l.id)
+      .filter(Boolean);
+    const stubborn = remaining.filter((id) =>
+      /(route|directions|main-route|osrm|line)/i.test(id)
+    );
+    if (stubborn.length && mapOriginalStyle) {
+      console.warn(
+        "forceClearAllRoutes: camadas resistentes encontradas, resetando estilo:",
+        stubborn
+      );
+      try {
+        map.setStyle(mapOriginalStyle);
+        map.once("load", () => {
+          try {
+            // garante que main-route exista e esteja vazia
+            if (map.getSource && map.getSource("main-route")) {
+              try {
+                map
+                  .getSource("main-route")
+                  .setData({ type: "FeatureCollection", features: [] });
+              } catch (e) {}
+            }
+          } catch (e) {}
+        });
+      } catch (e) {
+        console.warn("forceClearAllRoutes: falha ao resetar estilo:", e);
+      }
+    }
+  } catch (e) {
+    /* ignore final pass errors */
+  }
+
+  // Limpa referência à geometria atual
+  try {
+    currentRouteGeometry = null;
+  } catch (e) {}
+}
+// Desenha uma rota principal a partir de uma geometria GeoJSON ou array de coordenadas
+export function drawMainRoute(geometry) {
+  if (!map || !geometry) return;
+
+  // Se o estilo ainda não foi carregado, espera pelo evento 'load' antes de adicionar fontes/layers.
+  if (map.isStyleLoaded && !map.isStyleLoaded()) {
+    map.once("load", () => drawMainRoute(geometry));
+    return;
+  }
+
+  // Suporta receber a geometria como objeto GeoJSON ou diretamente um array de coordenadas
+  let geojson = null;
+  if (geometry.type && geometry.coordinates) {
+    geojson = geometry;
+  } else if (Array.isArray(geometry)) {
+    geojson = { type: "LineString", coordinates: geometry };
+  } else if (geometry.geometry && geometry.geometry.coordinates) {
+    geojson = geometry.geometry;
+  } else {
+    console.warn(
+      "Formato de geometria desconhecido para drawMainRoute:",
+      geometry
+    );
+    return;
+  }
+
+  // Atualiza a fonte existente da rota com a nova geometria (setData) — padrão de criação única
+  try {
+    const feature = { type: "Feature", geometry: geojson };
+    if (map.getSource && map.getSource("main-route")) {
+      try {
+        map.getSource("main-route").setData(feature);
+      } catch (e) {
+        // Se setData falhar por algum motivo, tenta recriar a fonte/layer (fallback)
+        try {
+          if (map.getLayer && map.getLayer("main-route-line"))
+            map.removeLayer("main-route-line");
+        } catch (er) {}
+        try {
+          if (map.getSource && map.getSource("main-route"))
+            map.removeSource("main-route");
+        } catch (er) {}
+        try {
+          map.addSource("main-route", { type: "geojson", data: feature });
+          map.addLayer({
+            id: "main-route-line",
+            type: "line",
+            source: "main-route",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: {
+              "line-color": "#1b9af7",
+              "line-width": 5,
+              "line-opacity": 0.9,
+            },
+          });
+        } catch (er) {
+          console.warn(
+            "Erro ao recriar source/layer da rota como fallback:",
+            er
+          );
+        }
+      }
+    } else {
+      // Caso a source não exista (estilo muito customizado), cria normalmente
+      try {
+        map.addSource("main-route", { type: "geojson", data: feature });
+        map.addLayer({
+          id: "main-route-line",
+          type: "line",
+          source: "main-route",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#1b9af7",
+            "line-width": 5,
+            "line-opacity": 0.9,
+          },
+        });
+      } catch (e) {
+        console.warn("Erro ao adicionar layer/source da rota:", e);
+      }
+    }
+  } catch (e) {
+    console.warn("Erro ao atualizar fonte da rota:", e);
+  }
+
+  // Ajusta bounds para exibir a rota
+  try {
+    const coords = geojson.coordinates;
+    if (coords && coords.length) {
+      const bounds = coords.reduce((b, c) => {
+        return b.extend(c);
+      }, new maplibregl.LngLatBounds(coords[0], coords[0]));
+      map.fitBounds(bounds, { padding: 80 });
+    }
+  } catch (e) {
+    console.warn("Erro ao ajustar bounds da rota:", e);
+  }
+}
+
+/**
+ * Habilita/Desabilita modo satélite (troca o estilo do mapa).
+ */
+export function setSatelliteMode(enabled) {
+  if (!map) return;
+  if (enabled === !!satelliteMode) return;
+  satelliteMode = !!enabled;
+
+  try {
+    if (satelliteMode) {
+      map.setStyle(satelliteStyle);
+    } else if (mapOriginalStyle) {
+      map.setStyle(mapOriginalStyle);
+    }
+
+    // Após trocar o estilo, re-adiciona a rota e camadas necessárias
+    map.once("load", async () => {
+      try {
+        console.debug(
+          "setSatelliteMode: style loaded — attempting to restore directions plugin and route"
+        );
+
+        // Recreate directions plugin instance after style change if available
+        try {
+          if (typeof MapLibreGlDirections !== "undefined") {
+            try {
+              if (directions && typeof directions.remove === "function") {
+                try {
+                  directions.remove();
+                } catch (e) {}
+              }
+            } catch (e) {}
+            try {
+              directions = new MapLibreGlDirections(map, {
+                api: "https://router.project-osrm.org/route/v1",
+                profile: "driving",
+                interactive: false,
+                controls: { instructions: false, inputs: false },
+              });
+              console.debug(
+                "setSatelliteMode: directions plugin reinstantiated"
+              );
+            } catch (e) {
+              console.warn("Erro ao reinstanciar MapLibreGlDirections:", e);
+            }
+          }
+        } catch (e) {
+          console.warn("Erro ao tentar reinstanciar plugin de direções:", e);
+        }
+
+        // If we have an origin+destination saved, re-request the route
+        // so the route geometry and plugin sources/layers are recreated
+        // under the new style. Falls back to drawing stored geometry.
+        if (lastRouteOrigin && lastRouteDestination) {
+          try {
+            console.debug(
+              "setSatelliteMode: requesting route recalculation",
+              lastRouteOrigin,
+              lastRouteDestination
+            );
+            const route = await requestRoute(
+              lastRouteOrigin,
+              lastRouteDestination
+            );
+            console.debug("setSatelliteMode: requestRoute result", route);
+            if (!route && currentRouteGeometry)
+              drawMainRoute(currentRouteGeometry);
+          } catch (e) {
+            // if recalculation fails, draw existing geometry
+            console.warn("setSatelliteMode: route recalculation failed:", e);
+            if (currentRouteGeometry) drawMainRoute(currentRouteGeometry);
+          }
+        } else if (currentRouteGeometry) {
+          drawMainRoute(currentRouteGeometry);
+        }
+        add3DBuildings();
+      } catch (e) {
+        console.warn("Após troca de estilo: erro ao restaurar camadas:", e);
+      }
+    });
+  } catch (e) {
+    console.warn("Erro ao trocar modo satélite:", e);
+  }
+}
+
+/**
+ * Tenta adicionar camada de prédios 3D se houver dados de building no estilo.
+ */
+export function add3DBuildings() {
+  if (!map || !mapStyleLoaded) return;
+  try {
+    // Procura uma camada de 'building' existente para usar como base
+    const buildingLayer = (map.getStyle().layers || []).find((l) =>
+      /building/i.test(l.id)
+    );
+    if (!buildingLayer) return; // Não há dados de building neste estilo
+
+    // Se já existe uma camada de extrusão, remove para re-criar
+    if (map.getLayer("building-extrusion")) {
+      try {
+        map.removeLayer("building-extrusion");
+      } catch (e) {}
+    }
+
+    map.addLayer({
+      id: "building-extrusion",
+      source: buildingLayer.source || buildingLayer.ref || buildingLayer.id,
+      "source-layer": buildingLayer["source-layer"] || undefined,
+      type: "fill-extrusion",
+      paint: {
+        "fill-extrusion-color": "#aaa",
+        "fill-extrusion-height": ["get", "height"],
+        "fill-extrusion-base": ["get", "min_height"],
+        "fill-extrusion-opacity": 0.8,
+      },
+    });
+  } catch (e) {
+    console.warn("Não foi possível adicionar prédios 3D:", e);
+  }
+}
+
+export function set3DMode(enabled) {
+  threeDEnabled = !!enabled;
+  if (!map) return;
+  try {
+    map.easeTo({ pitch: threeDEnabled ? 60 : 0, duration: 800 });
+    if (threeDEnabled) add3DBuildings();
+
+    // Recalculate route under new pitch/visuals to ensure layers/sources present
+    if (lastRouteOrigin && lastRouteDestination) {
+      try {
+        console.debug("set3DMode: recalculating route due to 3D toggle");
+        requestRoute(lastRouteOrigin, lastRouteDestination).catch((e) => {
+          console.warn("set3DMode: requestRoute failed:", e);
+        });
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  } catch (e) {
+    console.warn("Erro ao alternar 3D:", e);
+  }
+}
+
+export function invalidateMapSize() {
+  if (!map) return;
+  try {
+    map.resize();
+  } catch (e) {
+    console.warn("Erro ao invalidar tamanho do mapa:", e);
+  }
+}
+
+export function panMapTo({ latitude, longitude }) {
+  if (!map || latitude == null || longitude == null) return;
+  try {
+    map.flyTo({ center: [longitude, latitude], zoom: map.getZoom() || 15 });
+  } catch (e) {
+    console.warn("Erro ao mover o mapa:", e);
+  }
+}
+
+// Retorna uma Promise que resolve quando o estilo do mapa estiver carregado
+export function whenStyleLoaded() {
+  return new Promise((resolve) => {
+    if (!map) return resolve();
+    try {
+      if ((map.isStyleLoaded && map.isStyleLoaded()) || mapStyleLoaded) {
+        resolve();
+      } else {
+        map.once("load", () => resolve());
+      }
+    } catch (e) {
+      // Se algo falhar, ainda assim resolve para não travar chamadas dependentes
+      resolve();
+    }
+  });
+}
+export function fitMapToBounds(deliveryLocation, clientCoords) {
+  if (!map || !deliveryLocation || !clientCoords) return;
+  const bounds = new maplibregl.LngLatBounds(
+    [deliveryLocation.longitude, deliveryLocation.latitude],
+    [clientCoords.lon, clientCoords.lat]
+  );
+  map.fitBounds(bounds, { padding: 80 });
 }

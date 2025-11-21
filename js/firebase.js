@@ -51,27 +51,38 @@ export function listenToEntregadorLocation(callback) {
 
 // Cria um novo pedido
 function generateOrderId() {
-    const randomPart = Math.floor(100000 + Math.random() * 900000); // Gera 6 dígitos
-    return `SC${randomPart}`;
+  const randomPart = Math.floor(100000 + Math.random() * 900000); // Gera 6 dígitos
+  return `SC${randomPart}`;
 }
 
 export function createNewOrder(orderData) {
-    const orderId = generateOrderId();
-    const newPedidoRef = ref(db, `pedidos/${orderId.toLowerCase()}`); // Salva em minúsculas
-    const orderPayload = {
-        ...orderData,
-        id: orderId,
-        status: "pendente",
-        createdAt: Date.now(),
-    };
+  const orderId = generateOrderId().toLowerCase(); // Gera e já converte para minúsculas
+  const newPedidoRef = ref(db, `pedidos/${orderId}`);
+  const orderPayload = {
+    ...orderData,
+    id: orderId, // Garante que o ID salvo no objeto também esteja em minúsculas
+    status: "pendente",
+    timestamp: Date.now(), // CORRIGIDO: Usa 'timestamp' para consistência com a ordenação da UI
+  };
 
-    return set(newPedidoRef, orderPayload);
+  return set(newPedidoRef, orderPayload);
 }
 
 // Limpa todos os pedidos
-export function clearAllOrders() {
-  set(ref(db, 'pedidos'), null);
-  console.log("Todos os pedidos foram removidos.");
+export async function clearAllOrders() {
+  const pedidosRef = ref(db, "pedidos");
+  const snapshot = await get(pedidosRef);
+  let count = 0;
+
+  if (snapshot.exists()) {
+    count = Object.keys(snapshot.val()).length;
+  }
+
+  if (count > 0) {
+    await set(pedidosRef, null);
+    console.log(`${count} pedido(s) foram removidos.`);
+  }
+  return count; // Retorna o número de pedidos que foram removidos
 }
 
 // Atualiza o status de um pedido
@@ -109,13 +120,11 @@ export async function resetAllActiveDeliveries() {
 
     if (resetCount > 0) {
       await update(ref(db), updates);
-      alert(`${resetCount} entrega(s) ativa(s) foram resetadas.`);
-    } else {
-      alert("Nenhuma entrega ativa encontrada para resetar.");
+      return resetCount;
     }
+    return 0;
   } catch (error) {
     console.error("Erro ao resetar entregas ativas:", error);
-    alert("Ocorreu um erro ao resetar as entregas.");
     throw error;
   }
 }
@@ -125,8 +134,8 @@ export async function clearDeliveredOrders() {
   try {
     const snapshot = await get(ref(db, "pedidos"));
     if (!snapshot.exists()) {
-      console.log("Não há pedidos para limpar.");
-      return;
+      console.log("Não há pedidos para limpar (snapshot não existe).");
+      return 0; // CORREÇÃO: Retorna 0 em vez de undefined.
     }
 
     const pedidos = snapshot.val();
@@ -138,9 +147,15 @@ export async function clearDeliveredOrders() {
 
     if (Object.keys(updates).length > 0) {
       await update(ref(db), updates);
-      console.log("Pedidos entregues removidos com sucesso.");
+      console.log(
+        `${
+          Object.keys(updates).length
+        } pedidos entregues removidos com sucesso.`
+      );
+      return Object.keys(updates).length; // Retorna a contagem
     } else {
       console.log("Não há pedidos entregues para remover.");
+      return 0; // Retorna 0 se nada foi removido
     }
   } catch (error) {
     console.error("Erro ao limpar pedidos entregues:", error);
