@@ -2,26 +2,40 @@
  * Carrega um ou mais componentes HTML em um elemento contêiner.
  * @param {string} containerSelector - O seletor CSS do elemento que receberá os componentes.
  * @param {string[]} componentPaths - Um array de caminhos para os arquivos HTML dos componentes.
- * @param {() => void} [callback] - Uma função opcional a ser executada após o carregamento dos componentes.
+ * @returns {Promise<void>} Uma Promise que resolve quando os componentes são carregados.
  */
-export async function loadComponents(containerSelector, componentPaths, callback) {
+export function loadComponents(containerSelector, componentPaths = []) {
+  return new Promise(async (resolve, reject) => {
     const container = document.querySelector(containerSelector);
     if (!container) {
-        console.error(`Container element '${containerSelector}' not found.`);
-        return;
+      const errorMsg = `Container element '${containerSelector}' not found.`;
+      console.error(errorMsg);
+      return reject(new Error(errorMsg));
     }
 
-    const fetchPromises = componentPaths.map(path => fetch(path).then(response => response.text()));
+    // Componentes globais que devem ser carregados em todas as páginas
+    const globalComponents = [
+      "components/modal-novo-pedido.html",
+      "components/modal-confirm-delivery.html",
+      "components/modal-confirm.html",
+      "components/modal-read-message.html",
+    ];
+    // Usa Set para garantir que não haja caminhos duplicados
+    const allPaths = [...new Set([...componentPaths, ...globalComponents])].map(path =>
+      path.startsWith('/') ? path : `/${path}`
+    );
+
+    const fetchPromises = allPaths.map((path) =>
+      fetch(path).then((res) => res.text())
+    );
 
     try {
-        const componentsHtml = await Promise.all(fetchPromises);
-        container.innerHTML = componentsHtml.join('');
-
-        // Executa o callback se ele for fornecido
-        if (callback && typeof callback === 'function') {
-            callback();
-        }
+      const componentsHtml = await Promise.all(fetchPromises);
+      container.innerHTML = componentsHtml.join("");
+      resolve(); // Resolve a Promise após o innerHTML ser definido
     } catch (error) {
-        console.error('Error loading components:', error);
+      console.error("Error loading components:", error);
+      reject(error);
     }
+  });
 }
