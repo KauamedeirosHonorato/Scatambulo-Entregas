@@ -25,9 +25,10 @@ export function loadComponents(containerSelector, componentPaths = []) {
       new URL(path, document.baseURI).href
     );
 
-    const fetchPromises = allPaths.map((path) =>
-      fetch(path).then((res) => res.text())
-    );
+    const fetchPromises = allPaths.map((path) => {
+      console.log("Attempting to load component from URL:", path); // Adicionado para depuração
+      return fetch(path).then((res) => res.text());
+    });
 
     try {
       const componentsHtml = await Promise.all(fetchPromises);
