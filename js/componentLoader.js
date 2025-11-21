@@ -22,7 +22,7 @@ export function loadComponents(containerSelector, componentPaths = []) {
     ];
     // Usa Set para garantir que não haja caminhos duplicados
     const allPaths = [...new Set([...componentPaths, ...globalComponents])].map(path =>
-      path.startsWith('/') ? path : `/${path}`
+      new URL(path, document.baseURI).href
     );
 
     const fetchPromises = allPaths.map((path) =>
