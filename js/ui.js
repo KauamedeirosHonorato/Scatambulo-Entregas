@@ -467,7 +467,13 @@ function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel) {
 
     groupWrapper.innerHTML = `
       <h3>
-        <span class="status-pill status-${statusInfo.id}" style="margin-right: 10px;">${statusInfo.title}</span>
+        <span class="status-pill status-${
+          statusInfo.id
+        }" style="margin-right: 10px;">${statusInfo.title}</span>
+        <span 
+          class="column-count-badge" 
+          ${statusInfo.id === "pendente" ? 'id="pending-count-badge"' : ""}
+        >${groupPedidos.length}</span>
       </h3>
       <div class="orders-table-wrapper">
         <div class="orders-table-header">
@@ -1029,6 +1035,23 @@ export function showToast(message, type = "info") {
 }
 
 /**
+ * Mostra ou esconde a animação de carregamento sobre a lista de pedidos.
+ * @param {boolean} show - True para mostrar, false para esconder.
+ */
+export function showOrdersLoading(show) {
+  const overlay = document.getElementById("orders-loading-overlay");
+  if (!overlay) {
+    console.warn("Elemento de loading de pedidos não encontrado.");
+    return;
+  }
+  if (show) {
+    overlay.classList.add("active");
+  } else {
+    overlay.classList.remove("active");
+  }
+}
+
+/**
  * Exibe um modal de confirmação.
  * @param {string} message - A mensagem a ser exibida no modal.
  * @param {() => void} onConfirm - Callback a ser executado se o usuário confirmar.
@@ -1148,23 +1171,6 @@ export function hidePersistentError() {
 }
 
 /**
- * Mostra ou esconde a animação de carregamento sobre a lista de pedidos.
- * @param {boolean} show - True para mostrar, false para esconder.
- */
-export function showOrdersLoading(show) {
-  const overlay = document.getElementById("orders-loading-overlay");
-  if (!overlay) {
-    console.warn("Elemento de loading de pedidos não encontrado.");
-    return;
-  }
-  if (show) {
-    overlay.classList.add("active");
-  } else {
-    overlay.classList.remove("active");
-  }
-}
-
-/**
  * Atualiza o badge de contagem no botão de imprimir todas as etiquetas.
  * @param {number} count - O número de pedidos a serem exibidos no badge.
  */
@@ -1180,23 +1186,5 @@ export function updatePrintButtonBadge(count) {
     badge.style.display = "flex"; // Usa 'flex' para alinhar o número, conforme o CSS
   } else {
     badge.style.display = "none";
-  }
-}
-
-/**
- * Faz o contador de pedidos pendentes piscar para notificar novos pedidos.
- */
-export function blinkPendingCounter() {
-  // O contador está dentro do h3 do grupo 'pendente'
-  const pendingGroup = document
-    .querySelector("#orders-list-pendente")
-    ?.closest(".status-group-wrapper");
-  if (!pendingGroup) return;
-
-  const badge = pendingGroup.querySelector(".column-count-badge");
-  if (badge) {
-    badge.classList.add("blink");
-    // Remove a classe após a animação para que ela possa ser reativada
-    setTimeout(() => badge.classList.remove("blink"), 2400); // Duração de 2 ciclos da animação
   }
 }

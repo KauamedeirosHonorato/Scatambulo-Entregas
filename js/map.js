@@ -113,35 +113,43 @@ export async function initializeMap(
     const fullscreenBtn = document.getElementById("map-fullscreen-btn");
 
     if (interactionOverlay && fullscreenBtn) {
-      const toggleFullscreen = () => {
-        // Verifica se já está em tela cheia usando todos os prefixos
-        const isFullscreen =
-          document.fullscreenElement ||
-          document.webkitFullscreenElement ||
-          document.mozFullScreenElement ||
-          document.msFullscreenElement;
+      const isIphone = /iPhone/i.test(navigator.userAgent);
 
-        if (!isFullscreen) {
-          // Tenta entrar em tela cheia com todos os prefixos
-          if (mapContainer.requestFullscreen) {
-            mapContainer.requestFullscreen();
-          } else if (mapContainer.webkitRequestFullscreen) {
-            /* Safari */
-            mapContainer.webkitRequestFullscreen();
-          } else if (mapContainer.mozRequestFullScreen) {
-            /* Firefox */
-            mapContainer.mozRequestFullScreen();
-          } else if (mapContainer.msRequestFullscreen) {
-            /* IE/Edge */
-            mapContainer.msRequestFullscreen();
-          }
+      const toggleFullscreen = () => {
+        if (isIphone) {
+          // Simula tela cheia para iPhone
+          const isSimulatedFullscreen =
+            mapContainer.classList.contains("fullscreen-iphone");
+          mapContainer.classList.toggle(
+            "fullscreen-iphone",
+            !isSimulatedFullscreen
+          );
+          onFullscreenChange(); // Chama manualmente o handler de mudança
         } else {
-          // Tenta sair da tela cheia com todos os prefixos
-          if (document.exitFullscreen) document.exitFullscreen();
-          else if (document.webkitExitFullscreen)
-            document.webkitExitFullscreen();
-          else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-          else if (document.msExitFullscreen) document.msExitFullscreen();
+          // Lógica padrão para outros dispositivos
+          const isFullscreen =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
+
+          if (!isFullscreen) {
+            if (mapContainer.requestFullscreen)
+              mapContainer.requestFullscreen();
+            else if (mapContainer.webkitRequestFullscreen)
+              mapContainer.webkitRequestFullscreen(); // Safari
+            else if (mapContainer.mozRequestFullScreen)
+              mapContainer.mozRequestFullScreen(); // Firefox
+            else if (mapContainer.msRequestFullscreen)
+              mapContainer.msRequestFullscreen(); // IE/Edge
+          } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen)
+              document.webkitExitFullscreen();
+            else if (document.mozCancelFullScreen)
+              document.mozCancelFullScreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+          }
         }
       };
 
@@ -149,22 +157,30 @@ export async function initializeMap(
       interactionOverlay.addEventListener("click", toggleFullscreen);
 
       const onFullscreenChange = () => {
-        const isFullscreen = !!(
-          document.fullscreenElement ||
-          document.webkitFullscreenElement ||
-          document.mozFullScreenElement ||
-          document.msFullscreenElement
-        );
+        let isFullscreen;
+        if (isIphone) {
+          isFullscreen = mapContainer.classList.contains("fullscreen-iphone");
+        } else {
+          isFullscreen = !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement
+          );
+        }
+
         const icon = fullscreenBtn.querySelector("i");
 
         if (isFullscreen) {
           setMapInteractive(true);
           interactionOverlay.classList.add("hidden");
           if (icon) icon.className = "ph ph-arrows-in";
+          map.resize(); // Redimensiona o mapa para preencher o novo contêiner
         } else {
           setMapInteractive(false);
           interactionOverlay.classList.remove("hidden");
           if (icon) icon.className = "ph ph-arrows-out";
+          map.resize(); // Redimensiona o mapa de volta ao normal
         }
       };
 
