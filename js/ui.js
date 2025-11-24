@@ -1182,3 +1182,21 @@ export function updatePrintButtonBadge(count) {
     badge.style.display = "none";
   }
 }
+
+/**
+ * Faz o contador de pedidos pendentes piscar para notificar novos pedidos.
+ */
+export function blinkPendingCounter() {
+  // O contador está dentro do h3 do grupo 'pendente'
+  const pendingGroup = document
+    .querySelector("#orders-list-pendente")
+    ?.closest(".status-group-wrapper");
+  if (!pendingGroup) return;
+
+  const badge = pendingGroup.querySelector(".column-count-badge");
+  if (badge) {
+    badge.classList.add("blink");
+    // Remove a classe após a animação para que ela possa ser reativada
+    setTimeout(() => badge.classList.remove("blink"), 2400); // Duração de 2 ciclos da animação
+  }
+}

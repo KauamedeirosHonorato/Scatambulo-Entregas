@@ -114,17 +114,34 @@ export async function initializeMap(
 
     if (interactionOverlay && fullscreenBtn) {
       const toggleFullscreen = () => {
+        // Verifica se já está em tela cheia usando todos os prefixos
         const isFullscreen =
-          document.fullscreenElement || document.webkitFullscreenElement;
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement;
 
         if (!isFullscreen) {
-          if (mapContainer.requestFullscreen) mapContainer.requestFullscreen();
-          else if (mapContainer.webkitRequestFullscreen)
+          // Tenta entrar em tela cheia com todos os prefixos
+          if (mapContainer.requestFullscreen) {
+            mapContainer.requestFullscreen();
+          } else if (mapContainer.webkitRequestFullscreen) {
+            /* Safari */
             mapContainer.webkitRequestFullscreen();
+          } else if (mapContainer.mozRequestFullScreen) {
+            /* Firefox */
+            mapContainer.mozRequestFullScreen();
+          } else if (mapContainer.msRequestFullscreen) {
+            /* IE/Edge */
+            mapContainer.msRequestFullscreen();
+          }
         } else {
+          // Tenta sair da tela cheia com todos os prefixos
           if (document.exitFullscreen) document.exitFullscreen();
           else if (document.webkitExitFullscreen)
             document.webkitExitFullscreen();
+          else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+          else if (document.msExitFullscreen) document.msExitFullscreen();
         }
       };
 
@@ -132,8 +149,12 @@ export async function initializeMap(
       interactionOverlay.addEventListener("click", toggleFullscreen);
 
       const onFullscreenChange = () => {
-        const isFullscreen =
-          !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        const isFullscreen = !!(
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement
+        );
         const icon = fullscreenBtn.querySelector("i");
 
         if (isFullscreen) {
@@ -149,6 +170,8 @@ export async function initializeMap(
 
       document.addEventListener("fullscreenchange", onFullscreenChange);
       document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+      document.addEventListener("mozfullscreenchange", onFullscreenChange);
+      document.addEventListener("MSFullscreenChange", onFullscreenChange);
     }
   }
 
