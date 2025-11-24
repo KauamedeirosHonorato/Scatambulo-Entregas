@@ -133,6 +133,11 @@
         padding: 5px;
         background-color: var(--cor-destaque);
       }
+      #rastreio-map {
+        height: 100%;
+        width: 100%;
+        border-radius: 6px;
+      }
     </style>
   </head>
   <body>
@@ -211,6 +216,20 @@
           <!-- O mapa será exibido aqui quando o pedido estiver em rota -->
           <div id="map-container" style="display: none">
             <div id="rastreio-map"></div>
+            <div class="map-interaction-overlay" id="map-overlay">
+              <p>Clique para interagir com o mapa</p>
+            </div>
+            <div id="nav-hud" class="nav-hud-rastreio">
+              <div class="hud-controls">
+                <button
+                  id="map-fullscreen-btn"
+                  class="btn-secondary"
+                  title="Tela Cheia"
+                >
+                  <i class="ph ph-arrows-out"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       </div>

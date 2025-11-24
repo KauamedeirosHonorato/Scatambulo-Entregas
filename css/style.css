@@ -1,7 +1,7 @@
 :root {
-  /* === CORES GERAIS DO SISTEMA === */
-  --cor-principal: #f2f2f7; /* iOS System Gray 6 (Background padrão) */
-  --cor-secundaria: #e5e5ea; /* iOS System Gray 5 */
+  /* === CORES GERAIS DO SISTEMA (TEMA iOS NATIVO) === */
+  --cor-principal: #fafafa; /* Branco Pérola (Fundo Principal) */
+  --cor-secundaria: #f2f2f7; /* Cinza Claro (Fundo Secundário) */
   --cor-destaque: #d4af37; /* Dourado Marca */
   --cor-texto: #1c1c1e; /* Preto Suave (Apple style) */
   --cor-texto-secundario: #8e8e93; /* iOS System Gray */
@@ -10,9 +10,9 @@
   --cor-sucesso: #34c759; /* Verde iOS */
   --cor-aviso: #ff9500; /* Laranja iOS */
   --cor-erro: #ff3b30; /* Vermelho iOS */
-  --cor-info: #007aff; /* Azul iOS */
-  --sombra: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --sombra-suave: 0 4px 24px rgba(0, 0, 0, 0.04);
+  --cor-info: var(--cor-destaque); /* Dourado para consistência */
+  --sombra: 0 10px 30px rgba(0, 0, 0, 0.1); /* Sombra mais pronunciada */
+  --sombra-suave: 0 4px 12px rgba(0, 0, 0, 0.05);
   --borda-radius: 16px; /* Padrão App */
   --borda-radius-ios: 12px; /* Padrão Input iOS */
   /* Variáveis de Sistema (Safe Areas) */
@@ -27,8 +27,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-    "Poppins", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--cor-principal);
   color: var(--cor-texto);
   margin: 0;
@@ -410,17 +410,17 @@ header {
   }
 }
 
-/* === BOTÕES GERAIS (Estilo Pílula e Toque) === */
+/* === BOTÕES GERAIS (Estilo iOS 17) === */
 .btn-primary,
 .btn-secondary,
 .btn-sucesso,
 .btn-danger {
   border: none;
   border-radius: 50px; /* Pílula */
-  padding: 12px 24px; /* Espaçamento interno */
-  min-height: 44px; /* Altura mínima Apple HIG */
-  font-size: 15px;
-  font-weight: 600;
+  padding: 14px 28px; /* Espaçamento interno iOS */
+  min-height: 48px;
+  font-size: 17px;
+  font-weight: 500; /* Peso de fonte iOS */
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -430,7 +430,7 @@ header {
 }
 
 .btn-primary:active,
-.btn-secondary:active, /* Efeito de clique */
+.btn-secondary:active,
 .btn-sucesso:active,
 .btn-danger:active {
   transform: scale(0.96);
@@ -440,17 +440,17 @@ header {
 .btn-primary {
   background-color: var(--cor-destaque);
   color: var(--cor-branco);
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25); /* Sombra dourada */
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2);
 }
 
 .btn-secondary {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: var(--cor-texto);
+  background-color: rgba(212, 175, 55, 0.1); /* Dourado bem claro */
+  color: var(--cor-destaque);
   border: none;
 }
+
 /* Estado ativo para botões de controle (HUD) */
 .btn-secondary.active {
-  /* Botão ativo */
   background-color: var(--cor-destaque);
   color: white;
 }
@@ -458,12 +458,13 @@ header {
 .btn-sucesso {
   background-color: var(--cor-sucesso);
   color: white;
-  box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); /* Sombra verde */
+  box-shadow: 0 5px 15px rgba(52, 199, 89, 0.2);
 }
 
 .btn-danger {
-  background-color: rgba(255, 59, 48, 0.1);
-  color: var(--cor-erro);
+  background-color: var(--cor-erro);
+  color: white;
+  box-shadow: 0 5px 15px rgba(255, 59, 48, 0.2);
 }
 
 /* === MAPA E HUD === */
@@ -493,16 +494,6 @@ header {
   border: 1px solid rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  align-items: center;
-
-  /* Posicionamento */
-  position: absolute;
-  bottom: 20px;
-  right: 240px;
-  left: auto;
-  transform: none;
-  z-index: 1000;
 }
 
 /* Info Rows dentro do HUD */
@@ -832,14 +823,12 @@ header {
   position: fixed;
   inset: 0; /* Ocupa toda a tela */
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 9999;
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s;
-
-  /* Mobile First: Alinhado ao fundo */
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -852,16 +841,15 @@ header {
 }
 
 .modal-content {
-  background: #fff;
+  background: var(--cor-secundaria);
   width: 100%;
   max-width: 500px; /* Largura máxima */
-  border-radius: 24px 24px 0 0; /* Arredondado só em cima no mobile */
+  border-radius: 24px 24px 0 0;
   padding: 24px;
   padding-bottom: calc(24px + var(--safe-bottom)); /* Safe Area */
-
   transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
   text-align: center;
 }
 
@@ -880,7 +868,7 @@ header {
   .modal-content {
     border-radius: 24px;
     padding-bottom: 24px;
-    transform: scale(0.95); /* Animação de entrada */
+    transform: scale(0.95);
     opacity: 0;
   }
   .modal-backdrop.active .modal-content,
@@ -902,27 +890,28 @@ header {
 .modal-content .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center; /* Alinhamento */
+  align-items: center;
   margin-bottom: 24px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--cor-secundaria);
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .modal-content .modal-header h3 {
   margin: 0;
-  font-size: 1.2rem; /* Tamanho do título do modal */
+  font-size: 1.2rem;
   font-weight: 600;
+  text-align: left;
 }
 
 .close-button {
   background: #e5e5e5;
   border: none;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  color: #8e8e8e; /* Cor do ícone de fechar */
-  font-size: 18px;
-  line-height: 28px;
+  color: #8e8e93; /* Cor do ícone de fechar */
+  font-size: 20px;
+  line-height: 30px;
   text-align: center;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -930,12 +919,13 @@ header {
 
 .close-button:hover {
   background: #dcdcdc;
+  color: var(--cor-texto);
 }
 
 .modal-content .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px; /* Espaçamento entre itens do grid */
+  gap: 16px;
   text-align: left;
   grid-template-areas:
     "bolo bolo"
@@ -993,30 +983,35 @@ header {
   grid-area: complemento;
 }
 
-/* Inputs dentro do modal (Estilo diferente do login) */
+/* Inputs dentro do modal com Floating Label */
 .modal-content .input-group input {
   width: 100%;
-  background-color: #f0f2f5;
-  border: 1px solid #f0f2f5;
+  background-color: var(--cor-branco);
+  border: 1px solid #e5e5ea;
   border-radius: 8px;
-  padding: 20px 12px 8px 12px; /* Espaço para o label flutuante */
+  padding: 20px 12px 8px 12px;
   font-size: 16px;
+  color: var(--cor-texto);
+}
+
+.modal-content .input-group input:focus {
+  outline: none;
+  border-color: var(--cor-destaque);
 }
 
 .modal-content .input-group label {
   position: absolute;
-  top: 15px; /* Posição inicial do label flutuante */
-  left: 12px;
+  top: 15px;
+  left: 13px;
   font-size: 16px;
-  color: #8e8e93;
+  color: var(--cor-texto-secundario);
   pointer-events: none;
   transition: all 0.2s ease;
 }
 
-/* Animação do label flutuante */
 .modal-content .input-group input:focus + label,
 .modal-content .input-group input:not(:placeholder-shown) + label {
-  top: 6px; /* Posição final do label flutuante */
+  top: 6px;
   font-size: 11px;
   font-weight: 600;
   color: var(--cor-destaque);
@@ -1052,10 +1047,10 @@ header {
 
 #suggestion-modal #suggestion-details {
   background-color: #2f2f2f;
-  padding: 15px; /* Espaçamento */
+  padding: 15px;
   border-radius: 8px;
   margin-top: 15px;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid var(--cor-destaque);
 }
 
 #suggestion-modal #suggestion-details p {
@@ -1064,28 +1059,28 @@ header {
 
 #suggestion-modal .modal-footer {
   border-top: 1px solid #333;
-  padding-top: 15px; /* Espaçamento */
+  padding-top: 15px;
   margin-top: 20px;
 }
 
 #suggestion-modal #suggestion-modal-accept-btn {
-  background-color: #007bff;
+  background-color: var(--cor-destaque);
   color: white;
   width: 100%;
-  padding: 12px; /* Espaçamento */
+  padding: 12px;
   font-size: 1rem;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: filter 0.2s;
 }
 
 #suggestion-modal #suggestion-modal-accept-btn:hover {
-  background-color: #0056b3;
+  filter: brightness(1.1);
 }
 
 #suggestion-modal .close-button {
-  color: #aaa; /* Cor do botão de fechar */
+  color: #aaa;
   background: none;
 }
 
@@ -1358,8 +1353,8 @@ header {
 }
 
 .status-pendente {
-  background-color: rgba(0, 122, 255, 0.1);
-  color: var(--cor-info);
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--cor-destaque);
 }
 .status-em_preparo {
   background-color: rgba(212, 175, 55, 0.1);
@@ -1374,9 +1369,9 @@ header {
   color: var(--cor-aviso);
 }
 .status-em_entrega {
-  background-color: rgba(255, 45, 85, 0.1);
-  color: #ff2d55;
-} /* Rosa iOS */
+  background-color: rgba(255, 149, 0, 0.1);
+  color: var(--cor-aviso);
+}
 .status-entregue {
   background-color: rgba(52, 199, 89, 0.1);
   color: var(--cor-sucesso);
@@ -1384,6 +1379,123 @@ header {
 .status-cancelado {
   background-color: rgba(255, 59, 48, 0.1);
   color: var(--cor-erro);
+}
+
+@media (max-width: 767px) {
+  .order-data-item.status-data {
+    margin-top: 8px;
+  }
+}
+
+.order-actions-mini {
+  display: flex;
+  gap: 8px;
+}
+
+.action-icon-btn {
+  background: var(--cor-secundaria);
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--cor-texto-secundario);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.action-icon-btn:hover {
+  background-color: #dcdcdc;
+  color: var(--cor-texto);
+}
+
+.action-icon-btn:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+.action-icon-btn.primary {
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
+}
+
+/* === ESTILOS DO MODAL DE HISTÓRICO === */
+.history-item {
+  background-color: var(--cor-branco);
+  padding: 12px 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border-left: 4px solid var(--cor-sucesso);
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.history-item-header strong {
+  font-size: 1rem;
+}
+
+.history-item-header span {
+  font-size: 0.8rem;
+  color: var(--cor-texto-secundario);
+}
+
+.history-item-body {
+  margin-bottom: 12px; /* Espaço entre o corpo e o botão */
+}
+
+.history-invoice-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.history-invoice-btn i {
+  font-size: 18px;
+}
+
+.action-icon-btn.primary:hover {
+  background-color: #c49a31;
+}
+
+/* Botão de Ação com Texto (Estilo Pílula Pequena) */
+.action-text-btn {
+  background: var(--cor-secundaria);
+  border: none;
+  border-radius: 20px; /* Formato pílula */
+  color: var(--cor-texto);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.action-text-btn:hover {
+  opacity: 0.8;
+}
+
+.action-text-btn:active {
+  transform: scale(0.96);
+}
+
+.action-text-btn.primary {
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
 }
 
 @media (max-width: 767px) {

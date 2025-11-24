@@ -297,6 +297,18 @@ window.addEventListener("load", () => {
   }
 
   function handlePedidosUpdate(pedidos) {
+    // Mostra a animação de carregamento
+    UI.showOrdersLoading(true);
+
+    // Lógica para detectar novos pedidos e piscar o contador
+    if (!isFirstLoad) {
+      const newPendingOrders = Object.keys(pedidos).filter(
+        (id) => !knownOrderStatuses[id] && pedidos[id].status === "pendente"
+      );
+      if (newPendingOrders.length > 0) {
+        UI.blinkPendingCounter();
+      }
+    }
     if (!isFirstLoad) {
       for (const pedidoId in pedidos) {
         if (
@@ -312,7 +324,21 @@ window.addEventListener("load", () => {
       Object.entries(pedidos).map(([id, p]) => [id, p.status])
     );
     isFirstLoad = false;
-    UI.renderBoard(pedidos, handleUpdateOrderStatus, UI.printLabel);
+
+    // A renderização pode ser pesada, então usamos um pequeno timeout
+    // para garantir que a animação de loading apareça primeiro.
+    setTimeout(() => {
+      UI.renderBoard(pedidos, handleUpdateOrderStatus, UI.printLabel);
+
+      // Atualiza o badge do botão de impressão
+      const pedidosEmPreparoCount = Object.values(pedidos).filter(
+        (p) => p.status === "em_preparo"
+      ).length;
+      UI.updatePrintButtonBadge(pedidosEmPreparoCount);
+
+      // Esconde a animação de carregamento após a renderização
+      UI.showOrdersLoading(false);
+    }, 50); // Um pequeno delay para garantir que o DOM atualize
   }
 
   async function handleUpdateOrderStatus(pedidoId, newStatus) {
@@ -371,9 +397,11 @@ window.addEventListener("load", () => {
       console.log("Nenhum pedido 'em_preparo' encontrado para imprimir.");
       return;
     }
-    console.log(
-      `Encontrados ${pedidosEmPreparo.length} pedidos 'em_preparo' para imprimir.`
-    );
-    pedidosEmPreparo.forEach(([id, pedido]) => UI.printLabel(pedido, id));
+
+    // Chama a nova função para imprimir múltiplas etiquetas
+    UI.printMultipleLabels(pedidosEmPreparo);
+
+    // Mostra o feedback de sucesso no botão
+    UI.showPrintButtonSuccess();
   }
 });

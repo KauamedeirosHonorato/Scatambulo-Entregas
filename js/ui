@@ -330,7 +330,7 @@ function limparCamposEndereco() {
   }
 }
 
-export function setupHamburgerMenu() {
+function setupHamburgerMenu() {
   const hamburger = document.querySelector(".hamburger-menu");
   const mobileNav = document.querySelector(".mobile-nav");
   const desktopNav = document.querySelector(".desktop-nav");
@@ -1145,40 +1145,4 @@ export function showPersistentError(message, actionText, actionCallback) {
 export function hidePersistentError() {
   const existing = document.getElementById("persistent-error");
   if (existing) existing.remove();
-}
-
-/**
- * Mostra ou esconde a animação de carregamento sobre a lista de pedidos.
- * @param {boolean} show - True para mostrar, false para esconder.
- */
-export function showOrdersLoading(show) {
-  const overlay = document.getElementById("orders-loading-overlay");
-  if (!overlay) {
-    console.warn("Elemento de loading de pedidos não encontrado.");
-    return;
-  }
-  if (show) {
-    overlay.classList.add("active");
-  } else {
-    overlay.classList.remove("active");
-  }
-}
-
-/**
- * Atualiza o badge de contagem no botão de imprimir todas as etiquetas.
- * @param {number} count - O número de pedidos a serem exibidos no badge.
- */
-export function updatePrintButtonBadge(count) {
-  const printButton = document.getElementById("print-all-em-preparo-button");
-  if (!printButton) return;
-
-  const badge = printButton.querySelector(".badge");
-  if (!badge) return;
-
-  if (count > 0) {
-    badge.textContent = count;
-    badge.style.display = "flex"; // Usa 'flex' para alinhar o número, conforme o CSS
-  } else {
-    badge.style.display = "none";
-  }
 }

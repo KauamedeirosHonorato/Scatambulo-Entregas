@@ -227,3 +227,19 @@ function extractItems(text, lines) {
 
   return items.filter((item) => item.nome); // Remove itens vazios
 }
+
+/**
+ * Cria uma função "debounced" que atrasa a invocação de `func` até que `delay` milissegundos
+ * tenham se passado desde a última vez que a função "debounced" foi invocada.
+ * @param {Function} func A função para "debounce".
+ * @param {number} delay O número de milissegundos para atrasar.
+ * @returns {Function} Retorna a nova função "debounced".
+ */
+export function debounce(func, delay) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), delay);
+  };
+}

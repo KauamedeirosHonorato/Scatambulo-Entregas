@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import {
   getDatabase,
   ref,
@@ -8,7 +8,7 @@ import {
   push,
   child,
   get,
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
 // Configuração do Firebase
 const firebaseConfig = {

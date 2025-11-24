@@ -25,6 +25,7 @@ export function loadComponents(containerSelector, componentPaths = []) {
       "components/modal-read-message.html",
       "components/modal-confirm-delivery.html", // Usado pelo Entregador
       "components/modal-suggestion.html", // Modal de sugestão de nova rota
+      "components/modal-historico-entregas.html", // Novo modal de histórico
     ];
 
     // Usa Set para garantir que não haja caminhos duplicados

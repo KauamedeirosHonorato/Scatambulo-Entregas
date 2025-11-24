@@ -1,4 +1,4 @@
-import { showToast } from "./ui.js"; // Importa showToast
+import { showToast, printLabel } from "./ui.js"; // Importa showToast e printLabel
 
 export function setupEventListeners(
   onLogout,
@@ -34,6 +34,31 @@ export function setupEventListeners(
     dynamicIslandCancelBtn.addEventListener("click", onCancelNavigation);
   if (followMeButton)
     followMeButton.addEventListener("click", onToggleFollowMe);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const islandWrapper = document.getElementById("dynamic-island-wrapper");
+  if (islandWrapper) {
+    const island = islandWrapper.querySelector(".dynamic-island");
+    island.addEventListener("click", (e) => {
+      toggleIslandExpansion(islandWrapper, e);
+    });
+  }
+});
+
+function toggleIslandExpansion(islandWrapper, event) {
+  if (!islandWrapper) return;
+
+  const island = islandWrapper.querySelector(".dynamic-island");
+  if (!island) return;
+
+  // Só expande/contrai se o clique for na área compacta e a ilha estiver ativa
+  if (
+    islandWrapper.classList.contains("active") &&
+    event.target.closest(".island-compact-view")
+  ) {
+    island.classList.toggle("expanded");
+  }
 }
 
 export function setFollowMeButtonState(isActive) {
@@ -124,7 +149,7 @@ function createOrderCard(
     deliverButton.style.display = "none"; // Esconde botão entregar
     routeButton.textContent = "Iniciar Entrega";
   } else if (order.status === "em_entrega") {
-    routeButton.textContent = "Finalizar Navegação";
+    routeButton.textContent = "Cancelar Entrega";
     // Mantemos ambos visíveis ou ajustamos conforme regra de negócio
     // Se quiser esconder o "Iniciar" quando já estiver navegando, pode usar display none
   }
@@ -261,37 +286,57 @@ export function showConfirmDeliveryModal(show) {
 }
 
 export function showDynamicIsland(show, order) {
-  const dynamicIsland = document.getElementById("dynamic-island");
+  const islandWrapper = document.getElementById("dynamic-island-wrapper");
   const clientNameEl = document.getElementById("dynamic-island-client");
   const addressEl = document.getElementById("dynamic-island-address");
-
-  const distanceEl = document.getElementById("dynamic-island-distance");
+  const expandedItemEl = document.getElementById("expanded-island-item");
+  const expandedAddressEl = document.getElementById("expanded-island-address");
+  // distanceEl foi removido da estrutura da ilha dinâmica, não é mais necessário aqui.
+  // const distanceEl = document.getElementById("dynamic-island-distance");
   const cancelBtn = document.getElementById("dynamic-island-cancel-btn");
   const finishBtn = document.getElementById("dynamic-island-finish-btn");
 
-  if (!dynamicIsland || !clientNameEl || !addressEl) return;
+  console.log(
+    "showDynamicIsland called. show:",
+    show,
+    "order:",
+    order,
+    "islandWrapper:",
+    islandWrapper
+  );
+
+  if (!islandWrapper || !clientNameEl || !addressEl) {
+    console.error("Dynamic Island elements not found:", {
+      islandWrapper,
+      clientNameEl,
+      addressEl,
+    });
+    return;
+  }
 
   if (show && order) {
     clientNameEl.textContent = order.nomeCliente || "Cliente";
     addressEl.textContent = order.endereco || "Endereço";
-    if (distanceEl)
-      distanceEl.textContent = order.distancia
-        ? `${order.distancia} km`
-        : "-- km";
-
-    // Mostra botões e habilita/desabilita conforme status
-    if (cancelBtn) cancelBtn.style.display = "inline-block";
-    if (finishBtn) finishBtn.style.display = "inline-block";
-
-    dynamicIsland.classList.add("active");
+    if (expandedItemEl) expandedItemEl.textContent = order.nomeBolo || "--";
+    if (expandedAddressEl)
+      expandedAddressEl.textContent = order.endereco || "--";
+    // A distância agora é exibida no overlay do mapa, não diretamente na ilha dinâmica.
+    // if (distanceEl)
+    //   distanceEl.textContent = order.distancia
+    //     ? `${order.distancia} km`
+    //     : "-- km";
+    islandWrapper.classList.add("active");
   } else {
     // Limpa o texto ao esconder para não mostrar dados antigos rapidamente
     clientNameEl.textContent = "";
     addressEl.textContent = "";
-    if (distanceEl) distanceEl.textContent = "-- km";
-    if (cancelBtn) cancelBtn.style.display = "none";
-    if (finishBtn) finishBtn.style.display = "none";
-    dynamicIsland.classList.remove("active");
+    if (expandedItemEl) expandedItemEl.textContent = "--";
+    if (expandedAddressEl) expandedAddressEl.textContent = "--";
+    islandWrapper.classList.remove("active");
+    // Garante que a ilha não permaneça expandida ao ser desativada
+    islandWrapper
+      .querySelector(".dynamic-island")
+      ?.classList.remove("expanded");
   }
 }
 
@@ -370,6 +415,71 @@ export function showSuggestionModal(orderData, onAccept) {
     // Adiciona listener para fechar ao clicar fora
     modal.addEventListener("click", backdropClickHandler);
 
+    modal.classList.add("active");
+  } else {
+    hide();
+  }
+}
+
+/**
+ * Mostra ou esconde o modal de histórico de entregas.
+ * @param {boolean} show - True para mostrar, false para esconder.
+ * @param {Array} [orders] - Array de pedidos entregues para renderizar.
+ */
+export function showHistoryModal(show, orders = []) {
+  const modal = document.getElementById("history-modal");
+  if (!modal) return;
+
+  const listContainer = document.getElementById("history-list-container");
+  const closeButton = modal.querySelector(".close-button");
+
+  const hide = () => modal.classList.remove("active");
+
+  if (show) {
+    listContainer.innerHTML = ""; // Limpa a lista
+
+    if (orders.length === 0) {
+      listContainer.innerHTML = "<p>Nenhum pedido entregue encontrado.</p>";
+    } else {
+      orders.forEach(([orderId, order]) => {
+        const item = document.createElement("div");
+        item.className = "history-item";
+        const deliveryDate = order.timestamp
+          ? new Date(order.timestamp).toLocaleString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "Data indisponível";
+
+        // Cria o botão de "Ver Nota Fiscal"
+        const viewInvoiceButton = document.createElement("button");
+        viewInvoiceButton.className = "btn-secondary history-invoice-btn";
+        viewInvoiceButton.innerHTML = `<i class="ph ph-receipt"></i> Ver Nota Fiscal`;
+        viewInvoiceButton.onclick = (e) => {
+          e.stopPropagation(); // Impede que o clique se propague
+          // Reutiliza a função de impressão de etiqueta para mostrar o modal
+          printLabel(order, orderId);
+        };
+
+        item.innerHTML = `
+          <div class="history-item-header">
+            <strong>#${orderId.substring(0, 5).toUpperCase()}</strong>
+            <span>${deliveryDate}</span>
+          </div>
+          <div class="history-item-body">
+            <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
+            <p><strong>Item:</strong> ${order.nomeBolo}</p>
+          </div>
+        `;
+        item.appendChild(viewInvoiceButton); // Adiciona o botão ao item
+        listContainer.appendChild(item);
+      });
+    }
+
+    closeButton.onclick = hide;
     modal.classList.add("active");
   } else {
     hide();

@@ -1,4 +1,4 @@
-// js/map.js - Versão Corrigida com OpenStreetMap (Sem erro 404)
+// js/map.js - Refatorado para MapLibre GL JS e com funcionalidade de tela cheia
 
 let map;
 let deliveryMarker;
@@ -8,11 +8,12 @@ let mapStyleLoaded = false;
 let mapOriginalStyle = null;
 let satelliteMode = false;
 let threeDEnabled = false;
-let followMode = true;
 let currentRouteGeometry = null;
 let lastRouteOrigin = null;
 let lastRouteDestination = null;
 let destinationCoords = null; // Adicionado para armazenar as coordenadas do destino
+let isInteractive = false; // Controla se o mapa pode ser manipulado pelo usuário
+let followMode = true; // Controla o modo de seguimento da câmera
 
 // Função utilitária para calcular a distância entre dois pontos (Haversine formula)
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -66,50 +67,112 @@ export async function initializeMap(
     return;
   }
 
+  // Define o estilo padrão do OpenStreetMap
+  const osmStyle = {
+    version: 8,
+    sources: {
+      "raster-tiles": {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "&copy; OpenStreetMap Contributors",
+      },
+    },
+    layers: [
+      {
+        id: "simple-tiles",
+        type: "raster",
+        source: "raster-tiles",
+        minzoom: 0,
+        maxzoom: 19,
+      },
+    ],
+  };
+
+  // Decide qual estilo usar na inicialização
+  const initialStyle = initialSatelliteMode ? satelliteStyle : osmStyle;
+  if (initialSatelliteMode) {
+    satelliteMode = true; // Seta o estado global
+  }
+
   map = new maplibregl.Map({
+    interactive: false, // Inicia o mapa como não interativo
     container: elementId,
-    zoom: 15,
     center: center,
     zoom: zoom,
     pitch: 0,
-
-    // === CORREÇÃO DO ERRO 404 ===
-    // Usamos o estilo direto do OpenStreetMap que é 100% garantido
-    style: {
-      version: 8,
-      sources: {
-        "raster-tiles": {
-          type: "raster",
-          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: "&copy; OpenStreetMap Contributors",
-        },
-      },
-      layers: [
-        {
-          id: "simple-tiles",
-          type: "raster",
-          source: "raster-tiles",
-          minzoom: 0,
-          maxzoom: 19,
-        },
-      ],
-    },
+    style: initialStyle, // Usa o estilo decidido
   });
 
-  map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }));
+  // Lógica para o overlay de interação e tela cheia
+  const mapContainer = document.getElementById(elementId)?.parentElement;
+  if (mapContainer) {
+    const interactionOverlay = mapContainer.querySelector(
+      ".map-interaction-overlay"
+    );
+    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
+
+    if (interactionOverlay && fullscreenBtn) {
+      const toggleFullscreen = () => {
+        const isFullscreen =
+          document.fullscreenElement || document.webkitFullscreenElement;
+
+        if (!isFullscreen) {
+          if (mapContainer.requestFullscreen) mapContainer.requestFullscreen();
+          else if (mapContainer.webkitRequestFullscreen)
+            mapContainer.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen)
+            document.webkitExitFullscreen();
+        }
+      };
+
+      fullscreenBtn.addEventListener("click", toggleFullscreen);
+      interactionOverlay.addEventListener("click", toggleFullscreen);
+
+      const onFullscreenChange = () => {
+        const isFullscreen =
+          !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        const icon = fullscreenBtn.querySelector("i");
+
+        if (isFullscreen) {
+          setMapInteractive(true);
+          interactionOverlay.classList.add("hidden");
+          if (icon) icon.className = "ph ph-arrows-in";
+        } else {
+          setMapInteractive(false);
+          interactionOverlay.classList.remove("hidden");
+          if (icon) icon.className = "ph ph-arrows-out";
+        }
+      };
+
+      document.addEventListener("fullscreenchange", onFullscreenChange);
+      document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    }
+  }
 
   // Aguarda o carregamento do estilo antes de continuar
   await new Promise((resolve) => {
     map.once("load", () => {
       mapStyleLoaded = true;
-      mapOriginalStyle = map.getStyle();
+      // Se o estilo original não for satélite, armazena para poder voltar
+      if (!initialSatelliteMode) {
+        mapOriginalStyle = map.getStyle();
+      } else {
+        mapOriginalStyle = osmStyle; // Garante que temos o osmStyle para alternar
+      }
       console.log("Map style is loaded.");
       resolve();
     });
     // fallback: se isStyleLoaded já estiver true
     if (map.isStyleLoaded && map.isStyleLoaded()) {
       mapStyleLoaded = true;
+      if (!initialSatelliteMode) {
+        mapOriginalStyle = map.getStyle();
+      } else {
+        mapOriginalStyle = osmStyle;
+      }
       resolve();
     }
   });
@@ -149,20 +212,6 @@ export async function initializeMap(
     map.on("style.load", ensureRouteSource);
   }
 
-  // Apply initial satellite mode if requested
-  if (initialSatelliteMode) {
-    try {
-      satelliteMode = true;
-      map.setStyle(satelliteStyle);
-      console.debug("Map initialized in satellite mode.");
-    } catch (e) {
-      console.warn(
-        "Não foi possível ativar modo satélite na inicialização:",
-        e
-      );
-    }
-  }
-
   // Instancia o plugin de direções somente depois do style carregar
   if (typeof MapLibreGlDirections !== "undefined") {
     try {
@@ -180,6 +229,8 @@ export async function initializeMap(
   }
 
   // Tenta adicionar controles e camadas 3D caso possível
+  map.addControl(new maplibregl.NavigationControl(), "top-right");
+  map.addControl(new maplibregl.ScaleControl(), "bottom-right");
   try {
     add3DBuildings();
   } catch (e) {
@@ -187,6 +238,30 @@ export async function initializeMap(
   }
 
   return map;
+}
+/**
+ * Ativa ou desativa a interatividade do mapa.
+ * @param {boolean} interactive - True para ativar, false para desativar.
+ */
+function setMapInteractive(interactive) {
+  if (!map) return;
+  isInteractive = interactive;
+
+  const methods = [
+    "boxZoom",
+    "doubleClickZoom",
+    "dragPan",
+    "dragRotate",
+    "keyboard",
+    "scrollZoom",
+    "touchZoomRotate",
+  ];
+
+  methods.forEach((method) => {
+    if (map[method]) {
+      interactive ? map[method].enable() : map[method].disable();
+    }
+  });
 }
 
 export function updateDeliveryMarkerOnMap(location, destination) {

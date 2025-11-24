@@ -31,14 +31,24 @@
         <div class="input-group">
           <input type="email" id="email-cliente" name="emailCliente" />
           <label for="email-cliente">Email do Cliente</label>
+          <span id="email-error-message" class="input-error-message"></span>
         </div>
         <div class="input-group">
           <input type="text" id="telefone" name="whatsapp" />
           <label for="telefone">WhatsApp</label>
         </div>
         <div class="input-group cep-group">
-          <input type="text" id="cep" name="cep" required />
+          <input type="text" id="cep" name="cep" required maxlength="8" />
           <label for="cep">CEP</label>
+          <div
+            id="cep-loading-indicator"
+            class="loading-indicator"
+            style="display: none"
+          >
+            <div class="spinner"></div>
+            Procurando...
+          </div>
+          <span id="cep-error-message" class="input-error-message"></span>
         </div>
         <div class="input-group rua-group">
           <input type="text" id="rua" name="rua" required />
@@ -51,6 +61,14 @@
         <div class="input-group bairro-group">
           <input type="text" id="bairro" name="bairro" required />
           <label for="bairro">Bairro</label>
+        </div>
+        <div class="input-group cidade-group">
+          <input type="text" id="cidade" name="cidade" required />
+          <label for="cidade">Cidade</label>
+        </div>
+        <div class="input-group estado-group">
+          <input type="text" id="estado" name="estado" required />
+          <label for="estado">Estado</label>
         </div>
         <div class="input-group complemento-group">
           <input type="text" id="complemento" name="complemento" />

@@ -9,6 +9,7 @@ import {
   updateLocationStatus,
   showConfirmModal,
   showPersistentError, // showConfirmModal será substituído por uma implementação local
+  setupHamburgerMenu,
   hidePersistentError,
 } from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
@@ -45,11 +46,11 @@ window.addEventListener("load", () => {
     setupMapEventListeners();
     checkGeolocationPermission();
     listenToFirebaseOrders();
-    setupUIEventListeners();
 
     // Espera o carregamento dos componentes (modais) antes de continuar
-    await loadComponents("#modal-container"); // Re-add this call
-    setupModalEventListeners(); // <--- MOVIDO: Agora é chamado APÓS o carregamento dos modais
+    await loadComponents("#modal-container");
+    // Configura todos os listeners de ações (modais, botões da ilha, etc.)
+    setupActionListeners();
 
     UI.setFollowMeButtonState(isFollowingDeliveryPerson);
     Map.setFollowMode(isFollowingDeliveryPerson);
@@ -68,61 +69,18 @@ window.addEventListener("load", () => {
   /**
    * Configura os event listeners para os modais carregados dinamicamente.
    */
-  function setupModalEventListeners() {
-    const confirmDeliveryBtn = document.getElementById(
-      "confirm-delivery-final-btn"
-    );
-    const cancelDeliveryBtn = document.getElementById(
-      "cancel-delivery-final-btn"
-    );
+  function setupActionListeners() {
+    // Configuração do Menu Hambúrguer
+    setupHamburgerMenu();
 
-    // Ação de confirmar a entrega
-    if (confirmDeliveryBtn)
-      confirmDeliveryBtn.addEventListener("click", handleFinishDelivery);
-
-    // Ação de cancelar (apenas fecha o modal)
-    if (cancelDeliveryBtn) {
-      cancelDeliveryBtn.addEventListener(
-        "click",
-        () => UI.showConfirmDeliveryModal(false) // Chama a função para esconder o modal
-      );
+    // Botão de Logout
+    const historyButton = document.getElementById("history-button");
+    if (historyButton) {
+      historyButton.addEventListener("click", handleShowHistory);
     }
-  }
-
-  function setupUIEventListeners() {
-    // Conecta os botões da ilha dinâmica diretamente aqui
-    const finishBtn = document.getElementById("dynamic-island-finish-btn");
-    const cancelBtn = document.getElementById("dynamic-island-cancel-btn");
-
-    if (finishBtn) {
-      finishBtn.addEventListener("click", () => {
-        if (activeDelivery) {
-          orderIdToConfirm = activeDelivery.orderId;
-          UI.showConfirmDeliveryModal(true, orderIdToConfirm);
-        }
-      });
-    }
-    if (cancelBtn) {
-      cancelBtn.addEventListener("click", handleCancelNavigation);
-    }
-
-    UI.setupEventListeners(
-      () => {
-        // onLogout
-        localStorage.removeItem("currentUser");
-        window.location.href = "index.html";
-      },
-      null, // onNewOrder (não aplicável para entregador)
-      null, // onPrintAll (não aplicável para entregador)
-      null, // onReadMessage (não aplicável para entregador)
-      null, // onClearDelivered (não aplicável para entregador)
-      null, // onResetActiveDeliveries (não aplicável para entregador)
-      null, // onClearAllOrders (não aplicável para entregador)
-      null, // onNewOrderSubmit (não aplicável para entregador)
-      null // onReadMessageSubmit (não aplicável para entregador)
-    );
-
-    // Local HUD buttons (follow, satellite, 3D) — ensure follow button wired
+    const logoutButton = document.getElementById("logout-button");
+    if (logoutButton) logoutButton.addEventListener("click", handleLogout);
+    // Botões do HUD do mapa
     const followBtn = document.getElementById("follow-me-button");
     if (followBtn) followBtn.addEventListener("click", handleToggleFollowMe);
     else {
@@ -132,8 +90,6 @@ window.addEventListener("load", () => {
       if (followBtnMobile)
         followBtnMobile.addEventListener("click", handleToggleFollowMe);
     }
-
-    // HUD controls (follow, satellite, 3D)
     const satBtn = document.getElementById("satellite-toggle");
     const toggle3dBtn = document.getElementById("toggle-3d");
     let satelliteOn = false;
@@ -152,6 +108,75 @@ window.addEventListener("load", () => {
         Map.set3DMode(threeDOn);
         toggle3dBtn.classList.toggle("active", threeDOn);
       });
+    }
+
+    // Botões da Ilha Dinâmica
+    const islandFinishBtn = document.getElementById(
+      "dynamic-island-finish-btn"
+    );
+    const islandCancelBtn = document.getElementById(
+      "dynamic-island-cancel-btn"
+    );
+
+    if (islandFinishBtn) {
+      islandFinishBtn.addEventListener("click", () => {
+        if (activeDelivery) {
+          orderIdToConfirm = activeDelivery.orderId;
+          UI.showConfirmDeliveryModal(true, orderIdToConfirm);
+        }
+      });
+    }
+    if (islandCancelBtn) {
+      islandCancelBtn.addEventListener("click", handleCancelNavigation);
+    }
+
+    // Botões do Modal de Confirmação de Entrega
+    const confirmDeliveryFinalBtn = document.getElementById(
+      "confirm-delivery-final-btn"
+    );
+    const cancelDeliveryFinalBtn = document.getElementById(
+      "cancel-delivery-final-btn"
+    );
+
+    if (confirmDeliveryFinalBtn) {
+      confirmDeliveryFinalBtn.addEventListener("click", () =>
+        handleFinishDelivery()
+      );
+    }
+    if (cancelDeliveryFinalBtn) {
+      cancelDeliveryFinalBtn.addEventListener("click", () =>
+        UI.showConfirmDeliveryModal(false)
+      );
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("currentUser");
+    window.location.href = "index.html";
+  }
+
+  async function handleShowHistory() {
+    try {
+      const snapshot = await get(ref(db, "pedidos"));
+      const pedidos = snapshot.val() || {};
+
+      const deliveredOrders = Object.entries(pedidos).filter(
+        ([, p]) =>
+          p.status === "entregue" && p.entregadorId === currentUser.username
+      );
+
+      // Ordena do mais recente para o mais antigo
+      deliveredOrders.sort(
+        ([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0)
+      );
+
+      UI.showHistoryModal(true, deliveredOrders);
+    } catch (error) {
+      console.error("Erro ao buscar histórico de entregas:", error);
+      showToast(
+        "Não foi possível carregar o histórico. Tente novamente.",
+        "error"
+      );
     }
   }
 
@@ -393,7 +418,12 @@ window.addEventListener("load", () => {
       [`/pedidos/${orderId}/entregadorId`]: currentUser.username,
     });
 
-    UI.showDynamicIsland(true, order);
+    // Atualiza a ilha dinâmica com os dados corretos
+    UI.showDynamicIsland(true, {
+      ...order,
+      endereco: order.endereco || enderecoParaGeocodar,
+    });
+    Map.updateClientMarkerOnMap(geocodeResult);
 
     // Define a rota usando o novo plugin e solicita OSRM para desenhar a linha azul
     if (entregadorLocation) {
@@ -405,12 +435,11 @@ window.addEventListener("load", () => {
         UI.updateEtaDisplay(durationMin);
 
         // Atualiza ilha dinâmica com a distância calculada
-        UI.showDynamicIsland(true, {
-          nomeCliente: order.nomeCliente,
-          endereco: order.endereco || enderecoParaGeocodar,
-          distancia: distanceKm,
-          orderId,
-        });
+        // UI.showDynamicIsland(true, {
+        //   ...order,
+        //   endereco: order.endereco || enderecoParaGeocodar,
+        //   distancia: distanceKm,
+        // });
 
         // Persiste dados de entrega no pedido
         try {
@@ -494,7 +523,7 @@ window.addEventListener("load", () => {
     UI.showDynamicIsland(false, null);
   }
 
-  async function handleFinishDelivery(orderId) {
+  async function handleFinishDelivery() {
     // O orderId é pego da variável global `orderIdToConfirm`
     if (!orderIdToConfirm) return;
     await updateStatus(orderIdToConfirm, "entregue");
@@ -508,7 +537,7 @@ window.addEventListener("load", () => {
     const confirmed = await new Promise((resolve) => {
       showConfirmModal(
         "Tem certeza que deseja cancelar a entrega em andamento?",
-        () => resolve(true),
+        resolve,
         "Sim, Cancelar",
         "btn-danger"
       );
