@@ -37,8 +37,21 @@
           <input type="text" id="telefone" name="whatsapp" />
           <label for="telefone">WhatsApp</label>
         </div>
+        <div class="input-group">
+          <input type="date" id="data-entrega" name="dataEntrega" required />
+          <label for="data-entrega">Data de Entrega</label>
+        </div>
+        <div class="input-group">
+          <input
+            type="text"
+            id="horario-entrega"
+            name="horarioEntrega"
+            placeholder=" "
+          />
+          <label for="horario-entrega">Horário de Entrega</label>
+        </div>
         <div class="input-group cep-group">
-          <input type="text" id="cep" name="cep" required maxlength="8" />
+          <input type="text" id="cep" name="cep" required maxlength="9" />
           <label for="cep">CEP</label>
           <div
             id="cep-loading-indicator"

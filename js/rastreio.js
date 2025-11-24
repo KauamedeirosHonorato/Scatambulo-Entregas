@@ -29,16 +29,34 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") trackOrder();
   });
 
-  mapInitPromise = Map.initializeMap("rastreio-map", [-51.9333, -23.4243], 12, true);
-  mapInitPromise.catch(error => {
-    console.error("Falha ao inicializar o mapa:", error);
-    showMessage("Não foi possível carregar o mapa.", true);
-  });
+  // 1. Inicializa o mapa primeiro para garantir que a promessa exista.
+  mapInitPromise = Map.initializeMap(
+    "rastreio-map",
+    [-51.9333, -23.4243],
+    12,
+    true
+  );
+  mapInitPromise
+    .then(() => {
+      // 2. Após a inicialização do mapa, verifica se há um ID na URL e inicia a busca.
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderIdFromUrl = urlParams.get("id");
+      if (orderIdFromUrl) {
+        orderCodeInput.value = orderIdFromUrl;
+        trackOrder();
+      }
+    })
+    .catch((error) => {
+      console.error("Falha ao inicializar o mapa:", error);
+      showMessage("Não foi possível carregar o mapa.", true);
+    });
 
   // --- Funções de UI ---
   function showMessage(message, isError = false) {
     trackingMessage.textContent = message;
-    trackingMessage.style.color = isError ? "var(--ios-red)" : "var(--ios-blue)";
+    trackingMessage.style.color = isError
+      ? "var(--ios-red)"
+      : "var(--ios-blue)";
     trackingMessage.style.display = "block";
   }
 
@@ -52,31 +70,81 @@ document.addEventListener("DOMContentLoaded", () => {
     orderDetailsSection.style.display = "block";
     trackingMessage.style.display = "none";
 
-    document.getElementById("order-id-display").textContent = `#${id.toUpperCase()}`;
+    const idDisplay = document.getElementById("order-id-display");
+    idDisplay.textContent = `#${id.toUpperCase()}`;
+
+    // Remove o botão de cópia antigo, se existir, para evitar duplicação
+    const existingCopyBtn = document.getElementById("copy-tracking-link-btn");
+    if (existingCopyBtn) {
+      existingCopyBtn.remove();
+    }
+
+    // Cria e adiciona o botão de copiar link
+    const copyButton = document.createElement("button");
+    copyButton.id = "copy-tracking-link-btn";
+    copyButton.className = "copy-link-button"; // Para estilização opcional
+    copyButton.title = "Copiar link de rastreio";
+    copyButton.innerHTML = '<i class="ph ph-link"></i>'; // Ícone de link
+
+    copyButton.addEventListener("click", () => {
+      const trackingUrl = window.location.href;
+      navigator.clipboard
+        .writeText(trackingUrl)
+        .then(() => {
+          showToast("Link de rastreio copiado!", "success");
+        })
+        .catch(() => {
+          showToast("Falha ao copiar o link.", "error");
+        });
+    });
+
+    idDisplay.insertAdjacentElement("afterend", copyButton);
+
     document.getElementById("order-cake-name").textContent =
-      order.nomeBolo || order.item || (order.items && order.items.length > 0 ? order.items[0].nome : "N/A");
-    document.getElementById("order-client-name").textContent = order.nomeCliente || "N/A";
+      order.nomeBolo ||
+      order.item ||
+      (order.items && order.items.length > 0 ? order.items[0].nome : "N/A");
+    document.getElementById("order-client-name").textContent =
+      order.nomeCliente || "N/A";
 
     updateStatusFlow(order.status);
   }
 
   function updateStatusFlow(currentStatus) {
     const steps = document.querySelectorAll(".status-step");
-    let activateNext = true;
-    steps.forEach((step) => {
-      const statusId = step.dataset.status;
-      if (activateNext) {
+    const statusOrder = Array.from(steps).map((step) => step.dataset.status);
+    const currentIndex = statusOrder.indexOf(currentStatus);
+
+    // Itera sobre cada passo para definir seu estado (ativo, piscando ou inativo)
+    steps.forEach((step, index) => {
+      // Limpa a classe 'blink' de todos os passos para garantir que apenas o correto pisque
+      step.classList.remove("blink");
+
+      if (index < currentIndex) {
+        // Ativa todos os passos até o status atual
         step.classList.add("active");
-      } else {
+      } else if (index === currentIndex) {
+        // Ativa o passo do status atual, mas sem piscar
+        step.classList.add("active");
+      } else if (index === currentIndex + 1) {
+        // Faz o próximo passo piscar e o deixa esmaecido (sem a classe 'active')
         step.classList.remove("active");
-      }
-      if (statusId === currentStatus) {
-        activateNext = false;
+        step.classList.add("blink");
+      } else {
+        // Desativa todos os passos futuros
+        step.classList.remove("active");
       }
     });
   }
 
   // --- Lógica Principal de Rastreio ---
+
+  function cleanupPreviousState() {
+    if (activeOrderListener) activeOrderListener(); // Remove o listener antigo do Firebase
+    if (entregadorListener) entregadorListener();
+    activeOrderListener = null;
+    entregadorListener = null;
+  }
 
   function trackOrder() {
     const orderId = orderCodeInput.value.trim().toLowerCase();
@@ -86,31 +154,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Limpa estado e listeners antigos
-    if (activeOrderListener) activeOrderListener();
-    if (entregadorListener) entregadorListener();
+    cleanupPreviousState();
     currentOrder = null;
     clientCoordinates = null;
     deliveryPersonLocation = null;
-    
-    if(mapInitPromise) {
-        mapInitPromise.then(() => Map.clearMap());
-    }
+    mapInitPromise.then(() => Map.clearMap());
 
     hideDetails();
     showMessage("Rastreando pedido...", false);
 
     // Inicia o listener principal do pedido
     const orderRef = ref(db, `pedidos/${orderId}`);
-    activeOrderListener = onValue(orderRef, (snapshot) => handleOrderUpdate(orderId, snapshot), (error) => {
-      console.error("Erro ao ler dados do pedido:", error);
-      showMessage("Erro de conexão ao rastrear o pedido.", true);
-      hideDetails();
-    });
+    activeOrderListener = onValue(
+      orderRef,
+      (snapshot) => handleOrderUpdate(orderId, snapshot),
+      (error) => {
+        console.error("Erro ao ler dados do pedido:", error);
+        showMessage("Erro de conexão ao rastrear o pedido.", true);
+        hideDetails();
+      }
+    );
+
+    // Atualiza a URL e o foco após iniciar a busca.
+    // Esta lógica foi movida de um .then() incorreto.
+    window.history.pushState({}, "", `?id=${orderId}`);
+    trackOrderButton.focus(); // Move o foco para o botão
   }
 
   async function handleOrderUpdate(orderId, snapshot) {
     if (!snapshot.exists()) {
-      showMessage(`Pedido #${orderId.toUpperCase()} não encontrado. Verifique o código.`, true);
+      showMessage(
+        `Pedido #${orderId.toUpperCase()} não encontrado. Verifique o código.`,
+        true
+      );
       hideDetails();
       return;
     }
@@ -118,9 +194,14 @@ document.addEventListener("DOMContentLoaded", () => {
     currentOrder = snapshot.val();
     updateStaticOrderDetails(orderId, currentOrder);
 
+    // Limpa o listener do entregador se o status não for 'em_entrega'
+    if (currentOrder.status !== "em_entrega" && entregadorListener) {
+      cleanupPreviousState();
+    }
+
     if (currentOrder.status === "em_entrega") {
       mapContainer.style.display = "block";
-      
+
       // Inicia o listener do entregador (se ainda não estiver ativo)
       if (!entregadorListener) {
         startEntregadorListener();
@@ -136,7 +217,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Redesenha o mapa com os dados mais recentes
       await redrawMap();
-
     } else {
       mapContainer.style.display = "none";
       if (entregadorListener) {
@@ -174,12 +254,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 3. Desenha a rota
-    if (currentOrder && currentOrder.entrega && currentOrder.entrega.geometria) {
+    if (
+      currentOrder &&
+      currentOrder.entrega &&
+      currentOrder.entrega.geometria
+    ) {
       Map.drawMainRoute(currentOrder.entrega.geometria);
     }
 
     // 4. Ajusta o zoom
-    if (deliveryPersonLocation && clientCoordinates && !clientCoordinates.error) {
+    if (
+      deliveryPersonLocation &&
+      clientCoordinates &&
+      !clientCoordinates.error
+    ) {
       Map.fitMapToBounds(deliveryPersonLocation, clientCoordinates);
     } else if (clientCoordinates && !clientCoordinates.error) {
       Map.fitMapToBounds(clientCoordinates, clientCoordinates, 14);

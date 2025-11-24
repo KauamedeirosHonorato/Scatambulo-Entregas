@@ -33,6 +33,8 @@ export function setupEventListeners(
   const newOrderForm = document.getElementById("novo-pedido-form"); // CORREÇÃO: ID correto
   const cepField = document.getElementById("cep");
   const emailField = document.getElementById("email-cliente");
+  const phoneField = document.getElementById("telefone");
+  const dataEntregaField = document.getElementById("data-entrega");
   const clearDeliveredBtn = document.getElementById("clear-delivered-button");
   const emailErrorMessage = document.getElementById("email-error-message");
   const cepErrorMessage = document.getElementById("cep-error-message");
@@ -92,6 +94,10 @@ export function setupEventListeners(
 
     cepField.addEventListener("input", (e) => {
       // Sem debounce aqui
+      // Aplica a máscara de formatação XXXXX-XXX
+      let value = e.target.value.replace(/\D/g, "");
+      value = value.replace(/^(\d{5})(\d)/, "$1-$2");
+      e.target.value = value;
       const cepValue = e.target.value;
       const cepLimpo = cepValue.replace(/\D/g, "");
       const loadingIndicator = document.getElementById("cep-loading-indicator");
@@ -140,6 +146,22 @@ export function setupEventListeners(
     });
   }
 
+  // Adiciona a máscara de formatação para o campo de telefone
+  if (phoneField) {
+    phoneField.addEventListener("input", (e) => {
+      formatPhoneNumber(e.target);
+    });
+  }
+
+  // Define a data mínima para o campo de data de entrega como hoje
+  if (dataEntregaField) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0"); // Meses são base 0
+    const dd = String(today.getDate()).padStart(2, "0");
+    dataEntregaField.min = `${yyyy}-${mm}-${dd}`;
+  }
+
   if (newOrderForm && onNewOrderSubmit)
     newOrderForm.addEventListener("submit", onNewOrderSubmit);
   if (readMessageForm && onReadMessageSubmit)
@@ -173,6 +195,21 @@ export function handleNewOrderSubmit(e) {
   const emailErrorMessage = document.getElementById("email-error-message");
   const cepErrorMessage = document.getElementById("cep-error-message");
 
+  // Validação da data de entrega
+  const dataEntregaField = document.getElementById("data-entrega");
+  if (dataEntregaField && dataEntregaField.value) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normaliza a data de hoje para meia-noite
+
+    // Adiciona T00:00:00 para evitar problemas de fuso horário ao comparar
+    const selectedDate = new Date(dataEntregaField.value + "T00:00:00");
+
+    if (selectedDate < today) {
+      showToast("A data de entrega não pode ser no passado.", "error");
+      dataEntregaField.focus();
+      return; // Impede o envio do formulário
+    }
+  }
   if (
     emailInput &&
     emailInput.value.trim() !== "" &&
@@ -195,6 +232,8 @@ export function handleNewOrderSubmit(e) {
     numero: document.getElementById("numero").value,
     bairro: document.getElementById("bairro").value,
     cidade: document.getElementById("cidade")?.value || "",
+    dataEntrega: dataEntregaField?.value || "",
+    horarioEntrega: document.getElementById("horario-entrega")?.value || "",
     complemento: document.getElementById("complemento").value,
   };
 
@@ -224,7 +263,10 @@ export function handleReadMessageSubmit(e) {
   const messageText = document.getElementById("message-text").value;
   const parsedData = parseWhatsappMessage(messageText);
 
-  if (!parsedData || !parsedData.cliente.enderecoRaw) {
+  // A função parseWhatsappMessage agora retorna um objeto plano.
+  // A verificação foi atualizada para checar se o nome do cliente foi extraído,
+  // que é um campo essencial.
+  if (!parsedData || !parsedData.nomeCliente) {
     showToast("Não foi possível extrair dados da mensagem.", "error");
     return;
   }
@@ -298,6 +340,26 @@ export async function handleCepInput(e) {
   }
 }
 
+/**
+ * Formata o valor de um campo de input para um número de telefone brasileiro.
+ * @param {HTMLInputElement} input - O elemento de input do telefone.
+ */
+function formatPhoneNumber(input) {
+  // Remove todos os caracteres que não são dígitos
+  let value = input.value.replace(/\D/g, "");
+
+  // Limita o tamanho para 11 dígitos (DDD + 9 dígitos)
+  value = value.substring(0, 11);
+
+  // Aplica a máscara (XX) XXXXX-XXXX
+  if (value.length > 10) {
+    input.value = value.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  } else if (value.length > 2) {
+    input.value = value.replace(/(\d{2})(\d+)/, "($1) $2");
+  } else if (value.length > 0) {
+    input.value = value.replace(/(\d+)/, "($1");
+  }
+}
 /**
  * Habilita ou desabilita os campos de endereço do formulário.
  * @param {boolean} disabled - True para desabilitar, false para habilitar.
@@ -788,6 +850,8 @@ export function fillOrderForm(data) {
     complemento: document.getElementById("complemento"),
     whatsapp: document.getElementById("telefone"), // CORREÇÃO: ID correto é 'telefone'
     emailCliente: document.getElementById("email-cliente"),
+    dataEntrega: document.getElementById("data-entrega"),
+    horarioEntrega: document.getElementById("horario-entrega"),
   };
   for (const key of Object.keys(fields)) {
     if (Object.prototype.hasOwnProperty.call(fields, key) && data[key]) {
@@ -909,20 +973,23 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
  * @param {string} pedidoId - O ID do pedido.
  */
 export function printLabel(pedido, pedidoId) {
-  const fullId = pedidoId ? pedidoId.toUpperCase() : "N/A";
-  // Constrói a URL de rastreio. Ex: https://seusite.com/rastreio.html?id=SC123456
-  const trackingUrl = `${
-    window.location.origin
-  }/rastreio.html?id=${fullId.toLowerCase()}`;
+  const fullId = pedidoId ? pedidoId.toUpperCase() : "N/A"; // Código de rastreio
+  // URL de rastreio atualizada para o site de produção
+  const trackingUrl = `https://scatambulo-entregas-iivh.vercel.app/rastreio.html?id=${fullId.toLowerCase()}`;
+
   // Conteúdo HTML da etiqueta
   const printContent = `
     <div class="label-container">
       <div class="header">
         <div class="header-text">
           <div class="brand">Angela Scatambulo</div>
-          <div class="order-id">Cód: ${fullId.substring(0, 8)}</div>
+          <div class="order-id">Cód. Rastreio: ${fullId.substring(0, 8)}</div>
         </div>
         <div id="qrcode" class="qrcode-container" data-url="${trackingUrl}"></div>
+      </div>
+      <div class="section item-info">
+        <div class="title">ITEM</div>
+        <div class="content">${pedido.nomeBolo || "N/A"}</div>
       </div>
       <div class="section client-info">
         <div class="title">CLIENTE</div>
@@ -930,16 +997,16 @@ export function printLabel(pedido, pedidoId) {
           pedido.nomeCliente || "N/A"
         }</div>
       </div>
-      <div class="section item-info">
-        <div class="title">ITEM</div>
-        <div class="content">${pedido.nomeBolo || "N/A"}</div>
-      </div>
       <div class="section address-info">
         <div class="title">ENDEREÇO DE ENTREGA</div>
         <div class="content">
           ${pedido.rua || "N/A"}, ${pedido.numero || "S/N"}<br>
-          ${pedido.bairro || "N/A"} - ${pedido.cidade || "N/A"}<br>
-          CEP: ${pedido.cep || "N/A"}
+          ${pedido.complemento ? `${pedido.complemento}<br>` : ""}
+          ${pedido.bairro || "N/A"} - ${pedido.cidade || "N/A"} / ${
+    pedido.estado || "PR"
+  }<br>
+          CEP: ${pedido.cep || "N/A"}<br>
+          WhatsApp: ${pedido.whatsapp || "N/A"}
         </div>
       </div>
     </div>
@@ -952,15 +1019,15 @@ export function printLabel(pedido, pedidoId) {
     .label-container {
       width: 100mm; height: 50mm;
       padding: 4mm;
-      box-sizing: border-box;
+      box-sizing: border-box; 
       display: flex; flex-direction: column;
-      font-size: 9pt; /* Reduzido para caber o QR Code */
+      font-size: 8.5pt; /* Ajustado para caber mais informações */
     }
     .header { display: flex; justify-content: space-between; align-items: flex-start; font-weight: 700; margin-bottom: 3mm; }
     .header-text { display: flex; flex-direction: column; }
     .qrcode-container { width: 18mm; height: 18mm; }
     .qrcode-container img { width: 100%; height: 100%; }
-    .brand { font-size: 10pt; }
+    .brand { font-size: 9.5pt; }
     .order-id { font-size: 9pt; }
     .section { margin-bottom: 3mm; }
     .title { font-size: 8pt; font-weight: 700; color: #555; margin-bottom: 0.5mm; }
@@ -1186,5 +1253,22 @@ export function updatePrintButtonBadge(count) {
     badge.style.display = "flex"; // Usa 'flex' para alinhar o número, conforme o CSS
   } else {
     badge.style.display = "none";
+  }
+}
+
+/**
+ * Aplica um efeito de "piscar" no contador de pedidos pendentes.
+ */
+export function blinkPendingCounter() {
+  // O ID 'pending-count-badge' é definido na função renderGroupedOrders
+  const badge = document.getElementById("pending-count-badge");
+  if (badge) {
+    // Adiciona a classe que dispara a animação CSS
+    badge.classList.add("blink");
+
+    // Remove a classe após a animação terminar para que possa ser disparada novamente
+    setTimeout(() => {
+      badge.classList.remove("blink");
+    }, 1500); // A duração deve ser igual ou maior que a da animação CSS
   }
 }

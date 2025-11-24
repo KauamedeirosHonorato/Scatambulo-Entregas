@@ -131,24 +131,78 @@ export function calculateDistance(loc1, loc2) {
  * @returns {object} Os dados do pedido (cliente, items, raw).
  */
 export function parseWhatsappMessage(text) {
-  if (!text)
-    return {
-      cliente: { nome: "", telefone: "", enderecoRaw: "" },
-      items: [],
-      raw: "",
-    };
+  if (!text) return {};
 
-  const lines = text.split("\n").filter((l) => l.trim() !== "");
+  // Função para extrair valor de uma linha com base em um prefixo (ex: "Nome: ...")
+  const extractValue = (prefix) => {
+    const regex = new RegExp(`^${prefix}\\s*(.+)`, "im");
+    const match = text.match(regex);
+    return match ? match[1].trim() : "";
+  };
 
-  const phone = extractPhoneNumber(text);
-  const name = extractClientName(text, lines);
-  const address = extractAddress(text, lines);
-  const items = extractItems(text, lines);
+  // Extrai os dados usando a função auxiliar
+  const nomeCliente = extractValue("Nome:");
+  const cep = extractValue("CEP:");
+  const enderecoCompleto = extractValue("Endereço:");
+  const bairro = extractValue("Bairro:");
+  const cidade = extractValue("Cidade:");
+  let dataEntrega = extractValue("Data de entrega:");
+  const horarioEntrega = extractValue("Horário para entrega:");
 
+  // Converte a data para o formato YYYY-MM-DD, se ela existir
+  if (dataEntrega) {
+    const parts = dataEntrega.split("/");
+    if (parts.length === 3) {
+      // Formato: DD/MM/YYYY -> YYYY-MM-DD
+      dataEntrega = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+
+  // Extrai os itens do pedido
+  const itemsSectionMatch = text.match(
+    /--- ITENS DO PEDIDO ---\s*([\s\S]*?)\s*---/
+  );
+  let nomeBolo = "Item não extraído";
+  if (itemsSectionMatch && itemsSectionMatch[1]) {
+    const itemsText = itemsSectionMatch[1];
+    const itemLines = itemsText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("-"));
+    if (itemLines.length > 0) {
+      // Pega o nome do primeiro item, removendo o traço inicial e detalhes em parênteses
+      nomeBolo = itemLines[0]
+        .replace(/^-/, "")
+        .replace(/\(.*\)/, "")
+        .trim();
+    }
+  }
+
+  // Separa a rua e o número do endereço completo
+  let rua = enderecoCompleto;
+  let numero = "";
+  const numeroMatch = enderecoCompleto.match(
+    /(,?\s*(?:Nº|N|Numero|Número)\s*\.?\s*)(\d+.*)/i
+  );
+  if (numeroMatch) {
+    rua = enderecoCompleto
+      .substring(0, numeroMatch.index)
+      .replace(/,$/, "")
+      .trim();
+    numero = numeroMatch[2].trim();
+  }
+
+  // Retorna um objeto plano, compatível com a função `fillOrderForm`
   return {
-    cliente: { nome: name, telefone: phone, enderecoRaw: address },
-    items,
-    raw: text,
+    nomeCliente,
+    cep,
+    rua,
+    numero,
+    bairro,
+    cidade,
+    nomeBolo, // Mapeado para o campo 'item' no formulário
+    dataEntrega,
+    horarioEntrega,
   };
 }
 
@@ -237,7 +291,7 @@ function extractItems(text, lines) {
  */
 export function debounce(func, delay) {
   let timeout;
-  return function(...args) {
+  return function (...args) {
     const context = this;
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), delay);

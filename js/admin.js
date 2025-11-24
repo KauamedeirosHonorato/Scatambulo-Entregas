@@ -297,9 +297,6 @@ window.addEventListener("load", () => {
   }
 
   function handlePedidosUpdate(pedidos) {
-    // Mostra a animação de carregamento
-    UI.showOrdersLoading(true);
-
     // Lógica para detectar novos pedidos e piscar o contador
     if (!isFirstLoad) {
       const newPendingOrders = Object.keys(pedidos).filter(
@@ -335,9 +332,6 @@ window.addEventListener("load", () => {
         (p) => p.status === "em_preparo"
       ).length;
       UI.updatePrintButtonBadge(pedidosEmPreparoCount);
-
-      // Esconde a animação de carregamento após a renderização
-      UI.showOrdersLoading(false);
     }, 50); // Um pequeno delay para garantir que o DOM atualize
   }
 
