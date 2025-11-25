@@ -3,7 +3,20 @@
 import { db, ref, set, onValue, update, get } from "./firebase.js";
 import { geocodeAddress, calculateSpeed, calculateDistance } from "./utils.js";
 import * as Map from "./map.js";
-import * as UI from "./ui-entregador.js";
+import {
+  renderDeliveryOrders,
+  renderScheduledOrders,
+  showDynamicIsland,
+  showHistoryModal,
+  showSuggestionModal,
+  updateButtonsForNavigation,
+  updateDistanceDisplay,
+  updateEtaDisplay,
+  updateNavigationStatus,
+  updateSpeedDisplay,
+  showConfirmDeliveryModal,
+  setFollowMeButtonState,
+} from "./ui-entregador.js";
 import {
   showToast,
   updateLocationStatus,
@@ -11,7 +24,6 @@ import {
   showPersistentError, // showConfirmModal será substituído por uma implementação local
   setupHamburgerMenu,
   hidePersistentError,
-  renderScheduledOrders,
 } from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
 
@@ -53,7 +65,7 @@ window.addEventListener("load", () => {
     // Configura todos os listeners de ações (modais, botões da ilha, etc.)
     setupActionListeners();
 
-    UI.setFollowMeButtonState(isFollowingDeliveryPerson);
+    setFollowMeButtonState(isFollowingDeliveryPerson);
     Map.setFollowMode(isFollowingDeliveryPerson);
   }
 
@@ -63,7 +75,7 @@ window.addEventListener("load", () => {
 
     map.on("dragstart", () => {
       isFollowingDeliveryPerson = false;
-      UI.setFollowMeButtonState(isFollowingDeliveryPerson);
+      setFollowMeButtonState(isFollowingDeliveryPerson);
     });
   }
 
@@ -129,7 +141,7 @@ window.addEventListener("load", () => {
       islandFinishBtn.addEventListener("click", () => {
         if (activeDelivery) {
           orderIdToConfirm = activeDelivery.orderId;
-          UI.showConfirmDeliveryModal(true, orderIdToConfirm);
+          showConfirmDeliveryModal(true, orderIdToConfirm);
         }
       });
     }
@@ -151,9 +163,9 @@ window.addEventListener("load", () => {
       );
     }
     if (cancelDeliveryFinalBtn) {
-      cancelDeliveryFinalBtn.addEventListener("click", () =>
-        UI.showConfirmDeliveryModal(false)
-      );
+      cancelDeliveryFinalBtn.addEventListener("click", () => {
+        showConfirmDeliveryModal(false);
+      });
     }
   }
 
@@ -177,7 +189,7 @@ window.addEventListener("load", () => {
         ([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0)
       );
 
-      UI.showHistoryModal(true, deliveredOrders);
+      showHistoryModal(true, deliveredOrders);
     } catch (error) {
       console.error("Erro ao buscar histórico de entregas:", error);
       showToast(
@@ -301,12 +313,12 @@ window.addEventListener("load", () => {
     }
 
     UI.updateSpeedDisplay(entregadorLocation.speed || 0);
-    updateLocationStatus("Localização ativa.", "success");
+    // updateLocationStatus("Localização ativa.", "success"); // Comentado para reduzir toasts
   }
 
   function handleToggleFollowMe() {
     isFollowingDeliveryPerson = !isFollowingDeliveryPerson;
-    UI.setFollowMeButtonState(isFollowingDeliveryPerson);
+    setFollowMeButtonState(isFollowingDeliveryPerson);
     Map.setFollowMode(isFollowingDeliveryPerson);
     if (isFollowingDeliveryPerson)
       Map.updateCameraForLocation(entregadorLocation);
@@ -402,7 +414,7 @@ window.addEventListener("load", () => {
           }
 
           if (closestOrder) {
-            UI.showSuggestionModal(closestOrder, (suggestedOrderId) => {
+            showSuggestionModal(closestOrder, (suggestedOrderId) => {
               const card = document.getElementById(`order-${suggestedOrderId}`);
               if (card) {
                 card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -421,22 +433,22 @@ window.addEventListener("load", () => {
     Map.updateClientMarkerOnMap(geocodeResult);
 
     // Atualiza ilha dinâmica com informações iniciais
-    UI.showDynamicIsland(true, {
+    showDynamicIsland(true, {
       nomeCliente: order.nomeCliente,
       endereco: order.endereco || enderecoParaGeocodar,
       distancia: "--",
       orderId,
     });
 
-    UI.updateButtonsForNavigation(true, orderId);
-    UI.updateNavigationStatus(`Navegando para ${order.nomeCliente}.`);
+    updateButtonsForNavigation(true, orderId);
+    updateNavigationStatus(`Navegando para ${order.nomeCliente}.`);
     update(ref(db), {
       [`/pedidos/${orderId}/status`]: "em_entrega",
       [`/pedidos/${orderId}/entregadorId`]: currentUser.username,
     });
 
     // Atualiza a ilha dinâmica com os dados corretos
-    UI.showDynamicIsland(true, {
+    showDynamicIsland(true, {
       ...order,
       endereco: order.endereco || enderecoParaGeocodar,
     });
@@ -448,11 +460,11 @@ window.addEventListener("load", () => {
       if (route) {
         const distanceKm = (route.distance / 1000).toFixed(1);
         const durationMin = Math.round(route.duration / 60);
-        UI.updateDistanceDisplay(parseFloat(distanceKm));
-        UI.updateEtaDisplay(durationMin);
+        updateDistanceDisplay(parseFloat(distanceKm));
+        updateEtaDisplay(durationMin);
 
         // Atualiza ilha dinâmica com a distância calculada
-        // UI.showDynamicIsland(true, {
+        // showDynamicIsland(true, {
         //   ...order,
         //   endereco: order.endereco || enderecoParaGeocodar,
         //   distancia: distanceKm,
@@ -524,7 +536,7 @@ window.addEventListener("load", () => {
 
     // Volta ao estado de seguimento do entregador
     isFollowingDeliveryPerson = true;
-    UI.setFollowMeButtonState(isFollowingDeliveryPerson);
+    setFollowMeButtonState(isFollowingDeliveryPerson);
     Map.setFollowMode(true);
 
     // Se tivermos a localização atual do entregador, reposiciona a câmera e redesenha o marcador
@@ -543,18 +555,18 @@ window.addEventListener("load", () => {
       }
     }
 
-    UI.updateButtonsForNavigation(false, null);
-    UI.updateNavigationStatus("");
-    UI.updateEtaDisplay(null);
-    UI.updateDistanceDisplay(null);
-    UI.showDynamicIsland(false, null);
+    updateButtonsForNavigation(false, null);
+    updateNavigationStatus("");
+    updateEtaDisplay(null);
+    updateDistanceDisplay(null);
+    showDynamicIsland(false, null);
   }
 
   async function handleFinishDelivery() {
     // O orderId é pego da variável global `orderIdToConfirm`
     if (!orderIdToConfirm) return;
     await updateStatus(orderIdToConfirm, "entregue");
-    UI.showConfirmDeliveryModal(false);
+    showConfirmDeliveryModal(false);
     stopNavigation();
   }
 
@@ -647,12 +659,12 @@ window.addEventListener("load", () => {
       }
       knownReadyOrderIds = new Set(Object.keys(readyOrders));
 
-      UI.renderDeliveryOrders(
+      renderDeliveryOrders(
         readyOrders,
         inRouteOrders,
         (orderId) => {
           orderIdToConfirm = orderId;
-          UI.showConfirmDeliveryModal(true);
+          showConfirmDeliveryModal(true);
         },
         startNavigation,
         handleCancelNavigation

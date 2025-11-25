@@ -485,3 +485,87 @@ export function showHistoryModal(show, orders = []) {
     hide();
   }
 }
+
+/**
+ * Renderiza os pedidos agendados no modal correspondente.
+ * @param {Array} scheduledOrders - Array de pedidos agendados.
+ * @param {Function} onStartNavigation - Callback para iniciar a navegação.
+ */
+export function renderScheduledOrders(scheduledOrders, onStartNavigation) {
+  const listContainer = document.getElementById("scheduled-orders-list");
+  if (!listContainer) return;
+
+  listContainer.innerHTML = ""; // Limpa a lista
+
+  if (scheduledOrders.length === 0) {
+    listContainer.innerHTML =
+      '<p style="text-align: center; color: #888;">Nenhum pedido agendado para os próximos 7 dias.</p>';
+    return;
+  }
+
+  // Agrupa os pedidos por data de entrega
+  const ordersByDate = scheduledOrders.reduce((acc, [id, order]) => {
+    const date = order.dataEntrega;
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+    acc[date].push([id, order]);
+    return acc;
+  }, {});
+
+  // Renderiza cada grupo de data
+  for (const date in ordersByDate) {
+    const dayGroup = document.createElement("div");
+    dayGroup.className = "scheduled-day-group";
+
+    const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
+      "pt-BR",
+      {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+      }
+    );
+
+    dayGroup.innerHTML = `<h4>${formattedDate}</h4>`;
+
+    ordersByDate[date].forEach(([orderId, order]) => {
+      const row = document.createElement("div");
+      row.className = "order-row-scheduled";
+
+      const horario = order.horarioEntrega || "Não especificado";
+
+      row.innerHTML = `
+        <div class="order-data-item-scheduled">
+          <strong>${order.nomeCliente}</strong>
+        </div>
+        <div class="order-data-item-scheduled">
+          ${order.nomeBolo}
+        </div>
+        <div class="order-data-item-scheduled">
+          ${horario}
+        </div>
+        <div class="order-data-item-scheduled">
+          ${order.endereco}
+        </div>
+        <div class="order-data-item-scheduled">
+          <button class="btn-primary start-scheduled-btn" data-order-id="${orderId}">
+            <i class="ph ph-moped"></i> Iniciar
+          </button>
+        </div>
+      `;
+
+      // Adiciona o listener para o botão "Iniciar"
+      const startBtn = row.querySelector(".start-scheduled-btn");
+      startBtn.addEventListener("click", () => {
+        if (onStartNavigation) {
+          onStartNavigation(orderId, order);
+        }
+      });
+
+      dayGroup.appendChild(row);
+    });
+
+    listContainer.appendChild(dayGroup);
+  }
+}
