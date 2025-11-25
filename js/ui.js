@@ -330,7 +330,7 @@ function limparCamposEndereco() {
   }
 }
 
-function setupHamburgerMenu() {
+export function setupHamburgerMenu() {
   const hamburger = document.querySelector(".hamburger-menu");
   const mobileNav = document.querySelector(".mobile-nav");
   const desktopNav = document.querySelector(".desktop-nav");
@@ -468,7 +468,6 @@ function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel) {
     groupWrapper.innerHTML = `
       <h3>
         <span class="status-pill status-${statusInfo.id}" style="margin-right: 10px;">${statusInfo.title}</span>
-        <span class="column-count-badge" id="count-${statusInfo.id}">${groupPedidos.length}</span>
       </h3>
       <div class="orders-table-wrapper">
         <div class="orders-table-header">
@@ -992,39 +991,6 @@ export function printLabel(pedido, pedidoId) {
       </html>`);
     printWindow.document.close();
   });
-}
-
-/**
- * Faz o contador de pedidos pendentes piscar.
- */
-export function blinkPendingCounter() {
-  const pendingCounter = document.getElementById("count-pendente");
-  if (pendingCounter) {
-    pendingCounter.classList.add("blink");
-    // Remove a classe após a animação para que possa ser reativada
-    setTimeout(() => {
-      pendingCounter.classList.remove("blink");
-    }, 2400); // Duração um pouco maior que a animação (2 ciclos)
-  }
-}
-
-/**
- * Atualiza o badge de contagem no botão de imprimir todas as etiquetas.
- * @param {number} count - O número de pedidos para exibir no badge.
- */
-export function updatePrintButtonBadge(count) {
-  const printButton = document.getElementById("print-all-em-preparo-button");
-  if (!printButton) return;
-
-  const badge = printButton.querySelector(".badge");
-  if (!badge) return;
-
-  if (count > 0) {
-    badge.textContent = count;
-    badge.style.display = "flex";
-  } else {
-    badge.style.display = "none";
-  }
 }
 
 /**

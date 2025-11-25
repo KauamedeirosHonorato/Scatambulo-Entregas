@@ -22,8 +22,8 @@ import {
   updateLocationStatus,
   showConfirmModal,
   showPersistentError, // showConfirmModal será substituído por uma implementação local
-  setupHamburgerMenu,
   hidePersistentError,
+  setupHamburgerMenu,
 } from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
 
