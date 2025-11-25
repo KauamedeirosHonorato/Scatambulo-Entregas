@@ -1,0 +1,156 @@
+/* CSS para o modal de impressão de todas as etiquetas */
+#print-all-labels-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+#print-all-labels-modal .modal-content {
+  background-color: #fefefe;
+  margin: 5% auto;
+  padding: 25px;
+  border: 1px solid #888;
+  width: 90%;
+  max-width: 800px; /* Ajustado para caber múltiplas etiquetas */
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+#print-all-labels-modal .close-button {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+#print-all-labels-modal .close-button:hover,
+#print-all-labels-modal .close-button:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#print-labels-container {
+  display: grid; /* Usar grid para melhor organização das etiquetas */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Adaptável */
+  gap: 15px;
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #eee;
+  background-color: #f9f9f9;
+}
+
+#print-labels-container .label-preview-item {
+  border: 1px solid #ddd;
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#print-all-confirm-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+#print-all-confirm-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Estilos de Impressão */
+@media print {
+  body > *:not(#print-all-labels-modal) {
+    display: none !important;
+  }
+
+  #print-all-labels-modal {
+    position: static !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    background-color: transparent !important;
+  }
+
+  #print-all-labels-modal .modal-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    width: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  #print-all-labels-modal .close-button,
+  #print-all-labels-modal #print-all-confirm-btn {
+    display: none !important;
+  }
+
+  #print-labels-container {
+    display: block !important; /* Desabilita grid para impressão */
+    border: none !important;
+    padding: 0 !important;
+    background-color: transparent !important;
+  }
+
+  @page {
+    size: 100mm 50mm; /* Define o tamanho da página para o padrão de etiqueta */
+    margin: 0;
+  }
+
+  #print-labels-container .label-preview-item {
+    page-break-after: always; /* Cada etiqueta em uma nova página/corte */
+    width: 100mm; /* Força a largura da etiqueta */
+    height: 50mm; /* Força a altura da etiqueta */
+    padding: 4mm; /* Adiciona um preenchimento interno */
+    box-sizing: border-box;
+    border: none; /* Remove bordas na impressão final */
+    box-shadow: none; /* Remove sombras */
+    margin: 0; /* Remove margens externas */
+    overflow: hidden; /* Garante que nada vaze */
+  }
+
+  /* Garante que o QR Code se ajuste corretamente */
+  #print-labels-container .qrcode-container {
+    width: 18mm;
+    height: 18mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Oculta tudo que não for o conteúdo do modal durante a impressão */
+  body.printing-active > *:not(#print-all-labels-modal) {
+    display: none !important;
+  }
+  body.printing-active #print-all-labels-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #fff; /* Fundo branco para impressão */
+  }
+  body.printing-active #print-all-labels-modal .modal-content {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: auto;
+  }
+}

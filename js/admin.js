@@ -381,21 +381,53 @@ window.addEventListener("load", () => {
   }
 
   async function printAllEmPreparoLabels() {
-    const snapshot = await get(ref(db, "pedidos"));
-    const pedidos = snapshot.val() || {};
-    const pedidosEmPreparo = Object.entries(pedidos).filter(
-      ([, p]) => p.status === "em_preparo"
-    );
-    if (pedidosEmPreparo.length === 0) {
-      UI.showToast("Não há pedidos em preparo para imprimir.", "info");
-      console.log("Nenhum pedido 'em_preparo' encontrado para imprimir.");
-      return;
+    try {
+      const snapshot = await get(ref(db, "pedidos"));
+      const pedidos = snapshot.val() || {};
+      const pedidosEmPreparo = Object.entries(pedidos).filter(
+        ([, p]) => p.status === "em_preparo"
+      );
+
+      if (pedidosEmPreparo.length === 0) {
+        UI.showToast("Não há pedidos em preparo para imprimir.", "info");
+        return;
+      }
+
+      const printModal = document.getElementById("print-all-labels-modal");
+      const labelsContainer = document.getElementById("print-labels-container");
+      const printConfirmBtn = document.getElementById("print-all-confirm-btn");
+
+      if (!printModal || !labelsContainer || !printConfirmBtn) {
+        console.error("Modal de impressão não encontrado no DOM.");
+        UI.showToast("Erro ao abrir modal de impressão.", "error");
+        return;
+      }
+
+      // Gera o HTML para cada etiqueta de forma assíncrona (com QR Codes)
+      const labelPromises = pedidosEmPreparo.map(([id, pedido]) =>
+        UI.createLabelHTML(id, pedido)
+      );
+      const labelHtmls = await Promise.all(labelPromises);
+      labelsContainer.innerHTML = labelHtmls.join("");
+
+      // Adiciona a classe 'print-container' ao corpo do modal para a impressão
+      const modalBody = labelsContainer; // O container das etiquetas é o que queremos imprimir
+
+      const handlePrint = () => {
+        modalBody.classList.add("print-container");
+        window.print();
+        modalBody.classList.remove("print-container");
+      };
+
+      printConfirmBtn.onclick = handlePrint; // Usamos .onclick para substituir qualquer listener anterior
+
+      printModal.classList.add("active");
+      // A função showPrintButtonSuccess() não foi encontrada no contexto,
+      // mas se existir, pode ser chamada aqui.
+      // Ex: UI.showPrintButtonSuccess();
+    } catch (error) {
+      console.error("Erro ao preparar etiquetas para impressão:", error);
+      UI.showToast("Erro ao gerar etiquetas.", "error");
     }
-
-    // Chama a nova função para imprimir múltiplas etiquetas
-    UI.printMultipleLabels(pedidosEmPreparo);
-
-    // Mostra o feedback de sucesso no botão
-    UI.showPrintButtonSuccess();
   }
 });

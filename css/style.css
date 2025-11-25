@@ -1498,6 +1498,72 @@ header {
   color: var(--cor-branco);
 }
 
+/* =========================================
+   MODAL DE PEDIDOS AGENDADOS (ENTREGADOR)
+   ========================================= */
+
+/* O modal em si pode reutilizar .modal-backdrop, .modal-content, etc. */
+/* Corpo do modal com scroll para a lista de agendamentos */
+#scheduled-orders-modal .modal-body {
+  max-height: 70vh; /* Altura máxima para o corpo do modal */
+  overflow-y: auto; /* Adiciona scroll se o conteúdo exceder a altura */
+  padding: 10px;
+  margin: -10px; /* Compensa o padding para alinhar com o modal-content */
+}
+
+/* Contêiner para cada grupo de data */
+.scheduled-date-group {
+  margin-bottom: 24px;
+}
+
+.scheduled-date-group h4 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  background-color: var(--cor-principal);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: -11px; /* Compensa o padding do modal-body */
+  z-index: 10;
+}
+
+/* Card para cada pedido agendado */
+.scheduled-order-card {
+  background-color: var(--cor-branco);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--sombra-suave);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.scheduled-order-info {
+  flex-grow: 1;
+}
+
+.scheduled-order-info .client-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--cor-texto);
+}
+
+.scheduled-order-info .order-address {
+  font-size: 0.85rem;
+  color: var(--cor-texto-secundario);
+  margin-top: 4px;
+}
+
+.scheduled-order-time {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cor-destaque);
+}
+
 @media (max-width: 767px) {
   .order-data-item.status-data {
     margin-top: 8px;
@@ -1509,66 +1575,173 @@ header {
   gap: 8px;
 }
 
-.action-icon-btn {
-  background: var(--cor-secundaria);
-  border: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  color: var(--cor-texto-secundario);
-  font-size: 16px;
-  cursor: pointer;
+/* =========================================
+   ESTILOS DE IMPRESSÃO E ETIQUETA (ESTILO iOS/CUPOM TÉRMICO)
+   ========================================= */
+
+@media print {
+  /* Esconde tudo exceto a área de impressão */
+  body > *:not(.print-container) {
+    display: none !important;
+  }
+
+  .print-container,
+  .print-container * {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .print-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* No modo de impressão, o container da etiqueta não deve ter padding extra ou fundo */
+    padding: 0 !important;
+    background-color: transparent !important;
+  }
+
+  /* Garante que cores de fundo (como a do rastreio) saiam na impressão */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Remove sombras e bordas extras na hora de imprimir no papel */
+  .print-label {
+    box-shadow: none !important;
+    border: none !important;
+    /* Linha Dourada para impressão: Borda superior sólida */
+    border-top: 6px solid var(--cor-destaque) !important;
+    page-break-inside: avoid; /* Evita cortar a etiqueta no meio */
+    margin: 0 auto; /* Centraliza a etiqueta na página impressa */
+    width: 80mm; /* Define uma largura padrão de cupom térmico */
+    max-width: 100%; /* Garante que não ultrapasse a largura do papel */
+    padding: 20px 0 !important; /* Ajusta o padding para impressão */
+  }
+
+  /* Remove o pseudo-elemento dourado no print para evitar duplicação */
+  .print-label::before {
+    display: none !important;
+  }
+}
+
+/* =========================================
+   ESTILOS VISUAIS DA ETIQUETA NO MODAL
+   ========================================= */
+
+#print-preview-modal .modal-content {
+  max-width: 900px;
+  width: 95%;
+  background-color: var(--cor-secundaria);
+}
+
+#print-labels-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsivo */
+  gap: 20px;
+  padding: 20px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+/* O CARD DA ETIQUETA (Aqui acontece a mágica visual) */
+.print-label {
+  background-color: white;
+  padding: 20px 15px; /* Ajuste o padding para corresponder ao espaçamento da imagem */
+  border-radius: 4px; /* Pequenas bordas arredondadas para o preview */
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1); /* Sombra suave para o preview */
+
+  /* Fonte limpa estilo iOS, como na imagem */
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  text-align: center; /* Centraliza tudo como na foto */
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s, color 0.2s;
+  overflow: hidden; /* Garante que a linha dourada fique na borda */
 }
 
-.action-icon-btn:hover {
-  background-color: #dcdcdc;
-  color: var(--cor-texto);
+/* A linha dourada no topo (Visualização em tela) */
+.print-label::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 6px; /* Altura da linha dourada */
+  background-color: var(--cor-destaque, #d4af37); /* Cor dourada */
 }
 
-.action-icon-btn:active {
-  transform: scale(0.95);
-  opacity: 0.8;
+/* Nome da Loja */
+.print-label h5 {
+  font-size: 16px;
+  font-weight: 500; /* Peso de fonte mais leve que bold */
+  color: #000;
+  margin: 15px 0 10px 0; /* Ajuste a margem superior por causa da linha dourada */
+  padding: 0;
 }
 
-.action-icon-btn.primary {
-  background-color: var(--cor-destaque);
-  color: var(--cor-branco);
+/* A pílula cinza do Rastreio */
+.tracking-badge {
+  background-color: #f8f8fa; /* Cinza bem suave, quase branco, como na imagem */
+  color: #555;
+  font-size: 12px;
+  padding: 6px 15px; /* Mais padding vertical */
+  border-radius: 8px; /* Mais arredondado */
+  margin-bottom: 20px; /* Mais espaço abaixo */
+  display: inline-block;
+  width: auto; /* Deixa a largura se ajustar ao conteúdo */
+  max-width: 80%; /* Para não quebrar em telas pequenas */
+  font-weight: 400; /* Peso da fonte */
+  letter-spacing: 0.3px; /* Pequeno espaçamento de letra */
 }
 
-.action-icon-btn.primary:hover {
-  background-color: #c49a31;
+/* QR Code grande e centralizado */
+.print-qr-code {
+  width: 150px; /* Ligeiramente maior */
+  height: 150px;
+  object-fit: contain;
+  margin: 10px auto 25px auto; /* Mais espaçamento */
+  display: block;
 }
 
-/* Botão de Ação com Texto (Estilo Pílula Pequena) */
-.action-text-btn {
-  background: var(--cor-secundaria);
-  border: none;
-  border-radius: 20px; /* Formato pílula */
-  color: var(--cor-texto);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
-  gap: 6px;
-  transition: all 0.2s;
+/* Grupos de informações (Item, Cliente, Endereço) */
+.info-group {
+  margin-bottom: 18px; /* Mais espaço entre os grupos */
+  width: 100%;
 }
 
-.action-text-btn:hover {
-  opacity: 0.8;
+.info-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #8e8e93; /* Cinza texto secundário */
+  margin-bottom: 4px; /* Mais espaço entre título e valor */
+  display: block;
+  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
-.action-text-btn:active {
-  transform: scale(0.96);
+.info-value {
+  font-size: 14px;
+  color: #000;
+  font-weight: 400;
+  line-height: 1.4; /* Espaçamento de linha */
 }
 
-.action-text-btn.primary {
-  background-color: var(--cor-destaque);
-  color: var(--cor-branco);
+/* Destaque para nome do Cliente (Negrito) */
+.info-value.bold {
+  font-size: 16px; /* Tamanho ligeiramente maior */
+  font-weight: 700; /* Negrito mais forte */
+}
+
+/* Estilo específico para o bloco de endereço */
+.address-block .info-value {
+  margin-top: 5px; /* Espaço entre o título "ENDEREÇO DE ENTREGA" e o primeiro item do endereço */
+}
+
+/* Ajuste fino para os itens de endereço dentro do bloco */
+.address-block .info-value span {
+  display: block; /* Cada parte do endereço em uma nova linha */
 }

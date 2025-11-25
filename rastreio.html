@@ -21,13 +21,18 @@
     <link rel="stylesheet" href="css/style.css" />
     <style>
       body {
-        background-color: #f9f9f9;
+        background-color: var(
+          --cor-secundaria
+        ); /* Cinza claro para combinar com o tema */
+        padding-bottom: var(
+          --safe-bottom
+        ); /* Adiciona espaço na parte inferior para a home bar do iOS */
       }
       .tracking-container {
         max-width: 600px;
         margin: 40px auto;
         padding: 30px;
-        background-color: #fff;
+        background-color: var(--cor-principal);
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
         text-align: center;

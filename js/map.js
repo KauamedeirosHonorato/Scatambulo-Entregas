@@ -107,60 +107,74 @@ export async function initializeMap(
   // Lógica para o overlay de interação e tela cheia
   const mapContainer = document.getElementById(elementId)?.parentElement;
   if (mapContainer) {
+    // Adiciona um elemento de vídeo para a funcionalidade de tela cheia no iPhone
+    const videoEl = document.createElement("video");
+    videoEl.id = "iphone-fullscreen-video";
+    videoEl.setAttribute("playsinline", ""); // Impede que o vídeo seja reproduzido em tela cheia automaticamente
+    videoEl.style.display = "none"; // O vídeo não precisa ser visível
+    mapContainer.appendChild(videoEl);
+
     const interactionOverlay = mapContainer.querySelector(
       ".map-interaction-overlay"
     );
     const fullscreenBtn = document.getElementById("map-fullscreen-btn");
 
     if (interactionOverlay && fullscreenBtn) {
-      const isIphone = /iPhone/i.test(navigator.userAgent);
+      // Detecção mais robusta para iPhone/iPad/iPod
+      const isIos =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
       const toggleFullscreen = () => {
-        if (isIphone) {
-          // Simula tela cheia para iPhone
-          const isSimulatedFullscreen =
-            mapContainer.classList.contains("fullscreen-iphone");
-          mapContainer.classList.toggle(
-            "fullscreen-iphone",
-            !isSimulatedFullscreen
-          );
-          onFullscreenChange(); // Chama manualmente o handler de mudança
-        } else {
-          // Lógica padrão para outros dispositivos
-          const isFullscreen =
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.mozFullScreenElement ||
-            document.msFullscreenElement;
-
-          if (!isFullscreen) {
-            if (mapContainer.requestFullscreen)
-              mapContainer.requestFullscreen();
-            else if (mapContainer.webkitRequestFullscreen)
-              mapContainer.webkitRequestFullscreen(); // Safari
-            else if (mapContainer.mozRequestFullScreen)
-              mapContainer.mozRequestFullScreen(); // Firefox
-            else if (mapContainer.msRequestFullscreen)
-              mapContainer.msRequestFullscreen(); // IE/Edge
+        if (isIos) {
+          // Usa o elemento de vídeo para entrar em tela cheia no iOS
+          if (videoEl.webkitDisplayingFullscreen) {
+            videoEl.webkitExitFullscreen();
           } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen)
-              document.webkitExitFullscreen();
-            else if (document.mozCancelFullScreen)
-              document.mozCancelFullScreen();
-            else if (document.msExitFullscreen) document.msExitFullscreen();
+            videoEl.webkitRequestFullscreen();
           }
+        } else {
+          // Lógica padrão de tela cheia para outros dispositivos
+          toggleStandardFullscreen();
+        }
+      };
+
+      const toggleStandardFullscreen = () => {
+        const isFullscreen =
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement;
+
+        if (!isFullscreen) {
+          if (mapContainer.requestFullscreen) mapContainer.requestFullscreen();
+          else if (mapContainer.webkitRequestFullscreen)
+            mapContainer.webkitRequestFullscreen(); // Safari
+          else if (mapContainer.mozRequestFullScreen)
+            mapContainer.mozRequestFullScreen(); // Firefox
+          else if (mapContainer.msRequestFullscreen)
+            mapContainer.msRequestFullscreen(); // IE/Edge
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen)
+            document.webkitExitFullscreen();
+          else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+          else if (document.msExitFullscreen) document.msExitFullscreen();
         }
       };
 
       fullscreenBtn.addEventListener("click", toggleFullscreen);
       interactionOverlay.addEventListener("click", toggleFullscreen);
 
+      // Handler para mudança de estado de tela cheia
       const onFullscreenChange = () => {
         let isFullscreen;
-        if (isIphone) {
-          isFullscreen = mapContainer.classList.contains("fullscreen-iphone");
+        if (isIos) {
+          // Para iOS, verificamos o estado do elemento de vídeo
+          isFullscreen = videoEl.webkitDisplayingFullscreen;
+          // Adiciona/remove a classe de simulação para manter a estilização
+          mapContainer.classList.toggle("fullscreen-iphone", isFullscreen);
         } else {
+          // Para outros dispositivos, usamos a API padrão
           isFullscreen = !!(
             document.fullscreenElement ||
             document.webkitFullscreenElement ||
@@ -171,23 +185,29 @@ export async function initializeMap(
 
         const icon = fullscreenBtn.querySelector("i");
 
+        // Atualiza a UI com base no estado de tela cheia
         if (isFullscreen) {
           setMapInteractive(true);
           interactionOverlay.classList.add("hidden");
           if (icon) icon.className = "ph ph-arrows-in";
-          map.resize(); // Redimensiona o mapa para preencher o novo contêiner
         } else {
           setMapInteractive(false);
           interactionOverlay.classList.remove("hidden");
           if (icon) icon.className = "ph ph-arrows-out";
-          map.resize(); // Redimensiona o mapa de volta ao normal
         }
+        // Redimensiona o mapa em ambos os casos para garantir o ajuste correto
+        map.resize();
       };
 
+      // Adiciona listeners para os eventos de tela cheia
       document.addEventListener("fullscreenchange", onFullscreenChange);
       document.addEventListener("webkitfullscreenchange", onFullscreenChange);
       document.addEventListener("mozfullscreenchange", onFullscreenChange);
       document.addEventListener("MSFullscreenChange", onFullscreenChange);
+
+      // Adiciona listeners específicos do WebKit para o elemento de vídeo no iOS
+      videoEl.addEventListener("webkitbeginfullscreen", onFullscreenChange);
+      videoEl.addEventListener("webkitendfullscreen", onFullscreenChange);
     }
   }
 

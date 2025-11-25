@@ -25,6 +25,9 @@
       <div class="header-container">
         <h1>Painel Entregador</h1>
         <div class="desktop-nav">
+          <button id="scheduled-orders-button" class="btn-secondary">
+            <i class="ph ph-calendar-check"></i> Ver Agendados
+          </button>
           <button id="history-button" class="btn-secondary">
             <i class="ph ph-scroll"></i> Histórico
           </button>
@@ -302,6 +305,47 @@
       .btn-island-finish {
         background-color: var(--ios-green);
         color: #000;
+      }
+
+      /* Estilos para o Modal de Pedidos Agendados */
+      .scheduled-day-group {
+        background-color: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+      .scheduled-day-group h4 {
+        font-size: 16px;
+        color: #333;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 15px;
+        text-transform: capitalize;
+      }
+
+      .order-row-scheduled {
+        display: grid;
+        grid-template-columns: 1.5fr 1.5fr 80px 2fr 85px;
+        gap: 15px;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .order-row-scheduled:last-child {
+        border-bottom: none;
+      }
+
+      .order-data-item-scheduled {
+        font-size: 14px;
+        color: #555;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .order-data-item-scheduled strong {
+        color: #111;
+        font-weight: 600;
       }
     </style>
 

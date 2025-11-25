@@ -11,6 +11,7 @@ import {
   showPersistentError, // showConfirmModal será substituído por uma implementação local
   setupHamburgerMenu,
   hidePersistentError,
+  renderScheduledOrders,
 } from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
 
@@ -77,6 +78,12 @@ window.addEventListener("load", () => {
     const historyButton = document.getElementById("history-button");
     if (historyButton) {
       historyButton.addEventListener("click", handleShowHistory);
+    }
+    const scheduledOrdersButton = document.getElementById(
+      "scheduled-orders-button"
+    );
+    if (scheduledOrdersButton) {
+      scheduledOrdersButton.addEventListener("click", handleShowScheduled);
     }
     const logoutButton = document.getElementById("logout-button");
     if (logoutButton) logoutButton.addEventListener("click", handleLogout);
@@ -177,6 +184,16 @@ window.addEventListener("load", () => {
         "Não foi possível carregar o histórico. Tente novamente.",
         "error"
       );
+    }
+  }
+
+  function handleShowScheduled() {
+    const modal = document.getElementById("scheduled-orders-modal");
+    if (modal) {
+      modal.classList.add("active");
+    } else {
+      console.error("Modal de pedidos agendados não encontrado!");
+      showToast("Erro ao abrir agendamentos.", "error");
     }
   }
 
@@ -462,6 +479,16 @@ window.addEventListener("load", () => {
     }
   }
 
+  function handleStartScheduledNavigation(orderId, order) {
+    const modal = document.getElementById("scheduled-orders-modal");
+    if (modal) {
+      modal.classList.remove("active");
+    }
+    // Adiciona um pequeno atraso para garantir que o modal fechou antes de iniciar a navegação
+    // e potencialmente mostrar outros alertas.
+    setTimeout(() => startNavigation(orderId, order), 300);
+  }
+
   async function resumeActiveDelivery() {
     const snapshot = await get(ref(db, "pedidos/"));
     const pedidos = snapshot.val() || {};
@@ -566,6 +593,28 @@ window.addEventListener("load", () => {
         Object.entries(pedidos).filter(([, p]) => p.status === "em_entrega")
       );
 
+      // Filtra pedidos agendados para os próximos 7 dias
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas a data
+      const sevenDaysFromNow = new Date(today);
+      sevenDaysFromNow.setDate(today.getDate() + 7);
+
+      const scheduledOrders = Object.entries(pedidos)
+        .filter(([, p]) => {
+          if (!p.dataEntrega) return false;
+          // Evita problemas de fuso horário tratando a data como string
+          const deliveryDate = new Date(`${p.dataEntrega}T00:00:00`);
+          return (
+            deliveryDate >= today &&
+            deliveryDate <= sevenDaysFromNow &&
+            p.status !== "entregue" &&
+            p.status !== "cancelado"
+          );
+        })
+        .sort(([, a], [, b]) => {
+          return new Date(a.dataEntrega) - new Date(b.dataEntrega);
+        });
+
       // Se a entrega ativa não estiver mais listada como "em_entrega",
       // provavelmente foi entregue ou cancelada por outro painel — limpar rotas.
       try {
@@ -608,6 +657,8 @@ window.addEventListener("load", () => {
         startNavigation,
         handleCancelNavigation
       );
+
+      renderScheduledOrders(scheduledOrders, handleStartScheduledNavigation);
 
       // Após a renderização, garante que o item ativo (se houver) seja destacado.
       // Primeiro, remove o destaque de qualquer item que possa tê-lo.
