@@ -1146,3 +1146,34 @@ export function hidePersistentError() {
   const existing = document.getElementById("persistent-error");
   if (existing) existing.remove();
 }
+
+/**
+ * Atualiza o badge de notificação no botão de imprimir todos.
+ * @param {number} count - O número a ser exibido no badge.
+ */
+export function updatePrintButtonBadge(count) {
+  const printButton = document.getElementById("print-all-em-preparo-button");
+  if (!printButton) {
+    return; // Botão não encontrado
+  }
+
+  let badge = printButton.querySelector(".notification-badge");
+
+  // Se o contador for 0 ou menos, remove o badge se ele existir
+  if (count <= 0) {
+    if (badge) {
+      badge.remove();
+    }
+    return;
+  }
+
+  // Se o badge não existir, cria um novo
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "notification-badge";
+    printButton.appendChild(badge);
+  }
+
+  // Atualiza o texto do badge
+  badge.textContent = count;
+}
