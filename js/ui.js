@@ -273,7 +273,7 @@ export async function handleCepInput(e) {
   try {
     // 2. Se não estiver no cache, busca na API
     const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
-      signal: AbortSignal.timeout(5000), // Timeout de 5 segundos
+      signal: AbortSignal.timeout(10000), // Timeout de 10 segundos (aumentado para mobile)
     });
     const data = await res.json();
 
