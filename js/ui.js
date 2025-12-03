@@ -852,6 +852,9 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
         <button id="preview-print-btn" class="btn-primary" style="flex: 1;">
           <i class="ph ph-printer"></i> Imprimir
         </button>
+        <button id="preview-pdf-btn" class="btn-primary" style="flex: 1; background-color: var(--cor-erro);">
+          <i class="ph ph-file-pdf"></i> Gerar PDF
+        </button>
       </div>
     </div>
   `;
@@ -874,6 +877,28 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
   modal
     .querySelector("#preview-print-btn")
     .addEventListener("click", printAndClose);
+
+  // Novo listener para o botão Gerar PDF
+  modal.querySelector("#preview-pdf-btn").addEventListener("click", async () => {
+    const content = modal.querySelector("#label-preview-content");
+    const opt = {
+      margin: 10,
+      filename: 'etiqueta_pedido.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    try {
+      showToast("Gerando PDF, aguarde...", "info");
+      await html2pdf().set(opt).from(content).save();
+      showToast("PDF gerado com sucesso!", "success");
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      showToast("Erro ao gerar PDF.", "error");
+    } finally {
+      closeModal(); // Fecha o modal após gerar o PDF
+    }
+  });
 
   // Fecha ao clicar no backdrop
   modal.addEventListener("click", (e) => {
