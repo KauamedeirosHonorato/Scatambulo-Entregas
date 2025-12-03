@@ -36,6 +36,7 @@ body {
   padding-bottom: calc(80px + var(--safe-bottom)); /* Espaço para nav mobile */
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  touch-action: manipulation; /* Adicionado para melhorar a responsividade de toque no iOS */
 }
 
 h1,
@@ -291,7 +292,7 @@ header {
   padding-top: max(12px, var(--safe-top));
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 2001;
 }
 
 .header-container {
@@ -373,6 +374,7 @@ header {
   inset: 0;
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: -1;
   transform: translateX(-100%); /* Cobre o resto da tela */
 }
@@ -470,10 +472,20 @@ header {
 /* === MAPA E HUD === */
 #map-container {
   position: relative; /* Para posicionar overlays */
-  height: 60vh; /* Mais altura no mobile */
+  height: 450px; /* Mais altura no mobile */
   border-radius: var(--borda-radius);
-  overflow: hidden;
+  /* overflow: hidden; */ /* Removido para compatibilidade com iOS */
   box-shadow: var(--sombra);
+}
+
+.map-interaction-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: transparent; /* Invisible overlay */
+  z-index: 499; /* Below HUD controls (z-index 500) but above the map */
 }
 
 #map {
@@ -1513,10 +1525,6 @@ header {
 
 /* Contêiner para cada grupo de data */
 .scheduled-date-group {
-  margin-bottom: 24px;
-}
-
-.scheduled-date-group h4 {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   font-size: 1.1rem;
   font-weight: 600;
@@ -1575,173 +1583,18 @@ header {
   gap: 8px;
 }
 
-/* =========================================
-   ESTILOS DE IMPRESSÃO E ETIQUETA (ESTILO iOS/CUPOM TÉRMICO)
-   ========================================= */
-
-@media print {
-  /* Esconde tudo exceto a área de impressão */
-  body > *:not(.print-container) {
-    display: none !important;
-  }
-
-  .print-container,
-  .print-container * {
-    display: block !important;
-    visibility: visible !important;
-  }
-
-  .print-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    /* No modo de impressão, o container da etiqueta não deve ter padding extra ou fundo */
-    padding: 0 !important;
-    background-color: transparent !important;
-  }
-
-  /* Garante que cores de fundo (como a do rastreio) saiam na impressão */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Remove sombras e bordas extras na hora de imprimir no papel */
-  .print-label {
-    box-shadow: none !important;
-    border: none !important;
-    /* Linha Dourada para impressão: Borda superior sólida */
-    border-top: 6px solid var(--cor-destaque) !important;
-    page-break-inside: avoid; /* Evita cortar a etiqueta no meio */
-    margin: 0 auto; /* Centraliza a etiqueta na página impressa */
-    width: 80mm; /* Define uma largura padrão de cupom térmico */
-    max-width: 100%; /* Garante que não ultrapasse a largura do papel */
-    padding: 20px 0 !important; /* Ajusta o padding para impressão */
-  }
-
-  /* Remove o pseudo-elemento dourado no print para evitar duplicação */
-  .print-label::before {
-    display: none !important;
-  }
-}
-
-/* =========================================
-   ESTILOS VISUAIS DA ETIQUETA NO MODAL
-   ========================================= */
-
-#print-preview-modal .modal-content {
-  max-width: 900px;
-  width: 95%;
-  background-color: var(--cor-secundaria);
-}
-
-#print-labels-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsivo */
-  gap: 20px;
-  padding: 20px;
-  max-height: 65vh;
-  overflow-y: auto;
-}
-
-/* O CARD DA ETIQUETA (Aqui acontece a mágica visual) */
-.print-label {
-  background-color: white;
-  padding: 20px 15px; /* Ajuste o padding para corresponder ao espaçamento da imagem */
-  border-radius: 4px; /* Pequenas bordas arredondadas para o preview */
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1); /* Sombra suave para o preview */
-
-  /* Fonte limpa estilo iOS, como na imagem */
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
-  text-align: center; /* Centraliza tudo como na foto */
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow: hidden; /* Garante que a linha dourada fique na borda */
-}
-
-/* A linha dourada no topo (Visualização em tela) */
-.print-label::before {
-  content: "";
-  position: absolute;
+/* Estilos para o modo tela cheia no iPhone, aplicado via JS */
+.fullscreen-iphone {
+  position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 6px; /* Altura da linha dourada */
-  background-color: var(--cor-destaque, #d4af37); /* Cor dourada */
-}
-
-/* Nome da Loja */
-.print-label h5 {
-  font-size: 16px;
-  font-weight: 500; /* Peso de fonte mais leve que bold */
-  color: #000;
-  margin: 15px 0 10px 0; /* Ajuste a margem superior por causa da linha dourada */
-  padding: 0;
-}
-
-/* A pílula cinza do Rastreio */
-.tracking-badge {
-  background-color: #f8f8fa; /* Cinza bem suave, quase branco, como na imagem */
-  color: #555;
-  font-size: 12px;
-  padding: 6px 15px; /* Mais padding vertical */
-  border-radius: 8px; /* Mais arredondado */
-  margin-bottom: 20px; /* Mais espaço abaixo */
-  display: inline-block;
-  width: auto; /* Deixa a largura se ajustar ao conteúdo */
-  max-width: 80%; /* Para não quebrar em telas pequenas */
-  font-weight: 400; /* Peso da fonte */
-  letter-spacing: 0.3px; /* Pequeno espaçamento de letra */
-}
-
-/* QR Code grande e centralizado */
-.print-qr-code {
-  width: 150px; /* Ligeiramente maior */
-  height: 150px;
-  object-fit: contain;
-  margin: 10px auto 25px auto; /* Mais espaçamento */
-  display: block;
-}
-
-/* Grupos de informações (Item, Cliente, Endereço) */
-.info-group {
-  margin-bottom: 18px; /* Mais espaço entre os grupos */
-  width: 100%;
-}
-
-.info-title {
-  font-size: 10px;
-  text-transform: uppercase;
-  color: #8e8e93; /* Cinza texto secundário */
-  margin-bottom: 4px; /* Mais espaço entre título e valor */
-  display: block;
-  letter-spacing: 0.5px;
-  font-weight: 500;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #000;
-  font-weight: 400;
-  line-height: 1.4; /* Espaçamento de linha */
-}
-
-/* Destaque para nome do Cliente (Negrito) */
-.info-value.bold {
-  font-size: 16px; /* Tamanho ligeiramente maior */
-  font-weight: 700; /* Negrito mais forte */
-}
-
-/* Estilo específico para o bloco de endereço */
-.address-block .info-value {
-  margin-top: 5px; /* Espaço entre o título "ENDEREÇO DE ENTREGA" e o primeiro item do endereço */
-}
-
-/* Ajuste fino para os itens de endereço dentro do bloco */
-.address-block .info-value span {
-  display: block; /* Cada parte do endereço em uma nova linha */
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999; /* Garante que o mapa esteja acima de todos os outros elementos */
+  background-color: var(--cor-principal); /* Garante um fundo sólido */
+  /* Adicionalmente, forçar aceleração de hardware */
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }

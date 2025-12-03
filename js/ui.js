@@ -377,11 +377,11 @@ export function setupHamburgerMenu() {
   moveNavItems(); // Executa uma vez na carga inicial
 }
 
-export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
+export function renderBoard(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf) {
   const adminContainer = document.getElementById("orders-by-status-container");
   // Se o container de admin existir, renderiza as tabelas agrupadas por status
   if (adminContainer) {
-    renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel);
+    renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf);
     return;
   }
 
@@ -420,7 +420,7 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
   });
 }
 
-function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel) {
+function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf) {
   const container = document.getElementById("orders-by-status-container");
   container.innerHTML = "";
 
@@ -485,7 +485,7 @@ function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel) {
       `#orders-list-${statusInfo.id}`
     );
     groupPedidos.forEach(([id, pedido]) => {
-      const row = createOrderTableRow(id, pedido, onStatusUpdate, onPrintLabel);
+      const row = createOrderTableRow(id, pedido, onStatusUpdate, onPrintLabel, onPrintPdf);
       listContainer.appendChild(row);
     });
 
@@ -496,7 +496,7 @@ function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel) {
 /**
  * Cria uma linha (row) para a tabela de pedidos.
  */
-function createOrderTableRow(pedidoId, pedido, onStatusUpdate, onPrintLabel) {
+function createOrderTableRow(pedidoId, pedido, onStatusUpdate, onPrintLabel, onPrintPdf) {
   const row = document.createElement("div");
   row.className = "order-row";
   row.id = `pedido-${pedidoId}`;
@@ -536,13 +536,23 @@ function createOrderTableRow(pedidoId, pedido, onStatusUpdate, onPrintLabel) {
 
   const actionsContainer = row.querySelector(".order-actions-mini");
 
-  // Botão de Imprimir
+  // Botão de Imprimir Etiqueta
   const printBtn = document.createElement("button");
   printBtn.className = "action-icon-btn";
   printBtn.title = "Imprimir Etiqueta";
   printBtn.innerHTML = '<i class="ph ph-printer"></i>';
   printBtn.onclick = () => onPrintLabel(pedido, pedidoId);
   actionsContainer.appendChild(printBtn);
+
+  // Botão de Imprimir PDF
+  if (onPrintPdf) {
+    const pdfBtn = document.createElement("button");
+    pdfBtn.className = "action-icon-btn";
+    pdfBtn.title = "Imprimir PDF";
+    pdfBtn.innerHTML = '<i class="ph ph-file-pdf"></i>';
+    pdfBtn.onclick = () => onPrintPdf(pedido, pedidoId);
+    actionsContainer.appendChild(pdfBtn);
+  }
 
   // Botão de Próximo Status (se houver)
   const nextAction = getNextAction(pedido.status);
@@ -897,18 +907,10 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
   }
 }
 
-/**
- * Gera e imprime uma etiqueta de pedido formatada para impressoras de 600 DPI.
- * @param {object} pedido - O objeto do pedido contendo os detalhes.
- * @param {string} pedidoId - O ID do pedido.
- */
-export function printLabel(pedido, pedidoId) {
+export function createLabelHTML(pedido, pedidoId) {
   const fullId = pedidoId ? pedidoId.toUpperCase() : "N/A";
-  // Constrói a URL de rastreio. Ex: https://seusite.com/rastreio.html?id=SC123456
-  const trackingUrl = `${
-    window.location.origin
-  }/rastreio.html?id=${fullId.toLowerCase()}`;
-  // Conteúdo HTML da etiqueta
+  const trackingUrl = `${window.location.origin}/rastreio.html?id=${fullId.toLowerCase()}`;
+  
   const printContent = `
     <div class="label-container">
       <div class="header">
@@ -916,7 +918,7 @@ export function printLabel(pedido, pedidoId) {
           <div class="brand">Angela Scatambulo</div>
           <div class="order-id">Cód: ${fullId.substring(0, 8)}</div>
         </div>
-        <div id="qrcode" class="qrcode-container" data-url="${trackingUrl}"></div>
+        <div id="qrcode-label-${pedidoId}" class="qrcode-container" data-url="${trackingUrl}"></div>
       </div>
       <div class="section client-info">
         <div class="title">CLIENTE</div>
@@ -939,6 +941,26 @@ export function printLabel(pedido, pedidoId) {
     </div>
   `;
 
+  return new Promise((resolve) => {
+    loadQrCodeLibrary(() => {
+        const qr = qrcode(0, 'L');
+        qr.addData(trackingUrl);
+        qr.make();
+        const qrImgTag = qr.createImgTag(5, 2);
+        const finalHtml = printContent.replace(`<div id="qrcode-label-${pedidoId}" class="qrcode-container" data-url="${trackingUrl}"></div>`, `<div class="qrcode-container">${qrImgTag}</div>`);
+        resolve(finalHtml);
+    });
+  });
+}
+
+/**
+ * Gera e imprime uma etiqueta de pedido formatada para impressoras de 600 DPI.
+ * @param {object} pedido - O objeto do pedido contendo os detalhes.
+ * @param {string} pedidoId - O ID do pedido.
+ */
+export async function printLabel(pedido, pedidoId) {
+  const printContent = await createLabelHTML(pedido, pedidoId);
+  
   // Estilos CSS para a etiqueta, incluindo otimização para impressão
   const printStyles = `
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
@@ -973,17 +995,12 @@ export function printLabel(pedido, pedidoId) {
         <head>
           <title>Etiqueta do Pedido</title>
           <style>${printStyles}</style>
-          <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
         </head>
         <body>
     `);
     printWindow.document.write(printContent);
     printWindow.document.write(`
           <script>
-            const qr = qrcode(0, 'L');
-            qr.addData('${trackingUrl}');
-            qr.make();
-            document.getElementById('qrcode').innerHTML = qr.createImgTag(5, 2);
             window.print();
             window.close();
           </script>
@@ -1025,6 +1042,40 @@ export function showToast(message, type = "info") {
   // Remove o toast automaticamente apenas se não for um erro
   if (type !== "error") {
     setTimeout(() => toast.remove(), 5000); // Aumentei para 5 segundos
+  }
+}
+
+export function updatePrintButtonBadge(count) {
+  const printButton = document.getElementById("print-all-em-preparo-button");
+  if (printButton) {
+    let badge = printButton.querySelector(".badge");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "badge";
+      printButton.appendChild(badge);
+    }
+    badge.textContent = count > 0 ? count : "";
+    badge.style.display = count > 0 ? "flex" : "none";
+  }
+}
+
+export function blinkPendingCounter() {
+  const pendingStatusPill = document.querySelector(".status-group-wrapper h3 .status-pill.status-pendente");
+  if (pendingStatusPill) {
+    let badge = pendingStatusPill.querySelector(".column-count-badge");
+    // If badge doesn't exist, it means renderGroupedOrders hasn't created it yet.
+    // In this case, we'll create a temporary one for blinking or log a warning.
+    if (!badge) {
+      console.warn("blinkPendingCounter: No .column-count-badge found for pending orders. Creating one temporarily.");
+      badge = document.createElement("span");
+      badge.className = "column-count-badge";
+      // This temporary badge won't persist across re-renders, but will allow the blink effect.
+      pendingStatusPill.appendChild(badge);
+    }
+    badge.classList.add("blink");
+    setTimeout(() => {
+      badge.classList.remove("blink");
+    }, 3000); // Blink for 3 seconds
   }
 }
 
@@ -1145,4 +1196,22 @@ export function showPersistentError(message, actionText, actionCallback) {
 export function hidePersistentError() {
   const existing = document.getElementById("persistent-error");
   if (existing) existing.remove();
+}
+
+export function loadQrCodeLibrary(callback) {
+    // Check if the library is already loaded
+    if (typeof qrcode === 'function') {
+        if (callback) callback();
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js';
+    script.onload = () => {
+        if (callback) callback();
+    };
+    script.onerror = () => {
+        console.error('Failed to load QR Code library.');
+    };
+    document.head.appendChild(script);
 }

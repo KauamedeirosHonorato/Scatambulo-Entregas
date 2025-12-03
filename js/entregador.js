@@ -167,6 +167,22 @@ window.addEventListener("load", () => {
         showConfirmDeliveryModal(false);
       });
     }
+
+    // Listeners para o Modal de Pedidos Agendados
+    const scheduledModal = document.getElementById("scheduled-orders-modal");
+    if (scheduledModal) {
+      const closeButtons = scheduledModal.querySelectorAll(".close-button");
+      const hideModal = () => scheduledModal.classList.remove("active");
+
+      closeButtons.forEach((btn) => btn.addEventListener("click", hideModal));
+
+      // Fecha também se clicar no backdrop
+      scheduledModal.addEventListener("click", (e) => {
+        if (e.target === scheduledModal) {
+          hideModal();
+        }
+      });
+    }
   }
 
   function handleLogout() {
@@ -491,14 +507,29 @@ window.addEventListener("load", () => {
     }
   }
 
-  function handleStartScheduledNavigation(orderId, order) {
-    const modal = document.getElementById("scheduled-orders-modal");
-    if (modal) {
-      modal.classList.remove("active");
+  async function handleStartScheduledNavigation(orderId, order, buttonElement) {
+    // Desabilita o botão imediatamente para evitar cliques duplos
+    buttonElement.disabled = true;
+    buttonElement.innerHTML = `<i class="ph ph-spinner-gap"></i> Iniciando...`;
+
+    try {
+      // Tenta iniciar a navegação. A função startNavigation já lida com toasts de erro.
+      const success = await startNavigation(orderId, order);
+
+      if (success) {
+        // Se a navegação iniciou com sucesso, atualiza o botão permanentemente
+        buttonElement.innerHTML = `<i class="ph ph-check-circle"></i> Iniciado`;
+        buttonElement.classList.replace("btn-primary", "btn-sucesso");
+      } else {
+        // Se falhou (ex: outra entrega ativa, erro de geocode), reabilita o botão
+        buttonElement.disabled = false;
+        buttonElement.innerHTML = `<i class="ph ph-moped"></i> Iniciar`;
+      }
+    } catch (error) {
+      console.error("Erro em handleStartScheduledNavigation:", error);
+      buttonElement.disabled = false;
+      buttonElement.innerHTML = `<i class="ph ph-moped"></i> Iniciar`;
     }
-    // Adiciona um pequeno atraso para garantir que o modal fechou antes de iniciar a navegação
-    // e potencialmente mostrar outros alertas.
-    setTimeout(() => startNavigation(orderId, order), 300);
   }
 
   async function resumeActiveDelivery() {

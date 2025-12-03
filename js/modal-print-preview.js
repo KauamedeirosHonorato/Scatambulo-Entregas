@@ -8,7 +8,6 @@ export function showPrintPreviewModal(order) {
 
     // Preenche as informações do pedido
     printContent.innerHTML = `
-        <h3>Detalhes do Pedido</h3>
         <p><strong>ID do Pedido:</strong> ${order.id}</p>
         <p><strong>Cliente:</strong> ${order.customerName}</p>
         <p><strong>Endereço:</strong> ${order.address}</p>
@@ -61,6 +60,34 @@ export function showPrintPreviewModal(order) {
         window.print();
     };
 
+    // Configura o botão de gerar PDF
+    const pdfButton = document.getElementById('pdf-button');
+    pdfButton.onclick = function() {
+        loadHtml2PdfScript(() => {
+            const element = document.getElementById('print-content-wrapper');
+            const opt = {
+                margin:       [0.5, 0, 0, 0],
+                filename:     `pedido-${order.id}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        });
+    };
+
     // Fecha o modal se o usuário clicar fora dele
     window.addEventListener('click', closeOnOutsideClick);
+}
+
+function loadHtml2PdfScript(callback) {
+    if (typeof html2pdf === 'function') {
+        callback();
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = callback;
+    document.head.appendChild(script);
 }

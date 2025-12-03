@@ -20,6 +20,7 @@ import {
   handleReadMessageSubmit,
   handleCepInput,
 } from "./ui.js";
+import { showPrintPreviewModal } from './modal-print-preview.js';
 
 window.addEventListener("load", () => {
   // ======= 1. Validação de Usuário =======
@@ -325,7 +326,7 @@ window.addEventListener("load", () => {
     // A renderização pode ser pesada, então usamos um pequeno timeout
     // para garantir que a animação de loading apareça primeiro.
     setTimeout(() => {
-      UI.renderBoard(pedidos, handleUpdateOrderStatus, UI.printLabel);
+      UI.renderBoard(pedidos, handleUpdateOrderStatus, UI.printLabel, handlePrintPdf);
 
       // Atualiza o badge do botão de impressão
       const pedidosEmPreparoCount = Object.values(pedidos).filter(
@@ -333,6 +334,17 @@ window.addEventListener("load", () => {
       ).length;
       UI.updatePrintButtonBadge(pedidosEmPreparoCount);
     }, 50); // Um pequeno delay para garantir que o DOM atualize
+  }
+
+  function handlePrintPdf(pedido, pedidoId) {
+    const orderData = {
+      id: pedidoId,
+      customerName: pedido.nomeCliente,
+      address: pedido.endereco,
+      item: pedido.nomeBolo,
+      status: pedido.status,
+    };
+    showPrintPreviewModal(orderData);
   }
 
   async function handleUpdateOrderStatus(pedidoId, newStatus) {
@@ -405,7 +417,7 @@ window.addEventListener("load", () => {
 
       // Gera o HTML para cada etiqueta de forma assíncrona (com QR Codes)
       const labelPromises = pedidosEmPreparo.map(([id, pedido]) =>
-        UI.createLabelHTML(id, pedido)
+        UI.createLabelHTML(pedido, id)
       );
       const labelHtmls = await Promise.all(labelPromises);
       labelsContainer.innerHTML = labelHtmls.join("");
@@ -431,3 +443,4 @@ window.addEventListener("load", () => {
     }
   }
 });
+

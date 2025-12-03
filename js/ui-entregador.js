@@ -499,7 +499,7 @@ export function renderScheduledOrders(scheduledOrders, onStartNavigation) {
 
   if (scheduledOrders.length === 0) {
     listContainer.innerHTML =
-      '<p style="text-align: center; color: #888;">Nenhum pedido agendado para os próximos 7 dias.</p>';
+      '<p style="text-align: center; color: #888;">Nenhum pedido agendado para os próximos 2 dias.</p>';
     return;
   }
 
@@ -558,8 +558,9 @@ export function renderScheduledOrders(scheduledOrders, onStartNavigation) {
       // Adiciona o listener para o botão "Iniciar"
       const startBtn = row.querySelector(".start-scheduled-btn");
       startBtn.addEventListener("click", () => {
+        // Passa o elemento do botão como terceiro argumento
         if (onStartNavigation) {
-          onStartNavigation(orderId, order);
+          onStartNavigation(orderId, order, startBtn);
         }
       });
 
