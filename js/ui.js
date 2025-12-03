@@ -1045,19 +1045,7 @@ export function showToast(message, type = "info") {
   }
 }
 
-export function updatePrintButtonBadge(count) {
-  const printButton = document.getElementById("print-all-em-preparo-button");
-  if (printButton) {
-    let badge = printButton.querySelector(".badge");
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "badge";
-      printButton.appendChild(badge);
-    }
-    badge.textContent = count > 0 ? count : "";
-    badge.style.display = count > 0 ? "flex" : "none";
-  }
-}
+
 
 export function blinkPendingCounter() {
   const pendingStatusPill = document.querySelector(".status-group-wrapper h3 .status-pill.status-pendente");
@@ -1226,7 +1214,7 @@ export function updatePrintButtonBadge(count) {
     return; // Botão não encontrado
   }
 
-  let badge = printButton.querySelector(".notification-badge");
+  let badge = printButton.querySelector(".badge");
 
   // Se o contador for 0 ou menos, remove o badge se ele existir
   if (count <= 0) {
@@ -1239,7 +1227,7 @@ export function updatePrintButtonBadge(count) {
   // Se o badge não existir, cria um novo
   if (!badge) {
     badge = document.createElement("span");
-    badge.className = "notification-badge";
+    badge.className = "badge";
     printButton.appendChild(badge);
   }
 
