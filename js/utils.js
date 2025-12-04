@@ -138,7 +138,7 @@ export function parseWhatsappMessage(text) {
 
   // Helper to extract a value based on a label
   const extractField = (labelText, targetKey, transform = (v) => v) => {
-    const regex = new RegExp(`${labelText}:\\s*(.*?)(?=\\n\\S|\\n\\n|$)`, 'im');
+    const regex = new RegExp(`${labelText}:\\s*(.*?)(?=\\n\\w+:\\s*|$)`, 'im');
     const match = text.match(regex);
     console.log(`parseWhatsappMessage: Attempting to extract '${labelText}'. Match:`, match ? match[1] : "No match");
     if (match && match[1]) {
@@ -186,10 +186,10 @@ export function parseWhatsappMessage(text) {
   // Derive Rua and Número from Endereço
   let rua = extractedData.enderecoCompleto || '';
   let numero = '';
-  const numeroMatch = rua.match(/(,\s*Nº?\s*|\s+Nº?\s*)(\d+[a-zA-Z]?)(?:\s*(?:-|e|complemento|apto|bloco).*|$)/i);
-  if (numeroMatch) {
-    numero = numeroMatch[2].trim();
-    rua = rua.substring(0, numeroMatch.index).replace(/,$/, '').trim();
+  const addressPartsMatch = rua.match(/(.*(?:rua|avenida|travessa|alameda|estrada).*?),?\s*(?:nº?|número)?\s*(\d+.*)/i);
+  if (addressPartsMatch) {
+    rua = addressPartsMatch[1].trim();
+    numero = addressPartsMatch[2].trim();
   }
   extractedData.rua = rua;
   extractedData.numero = numero;
