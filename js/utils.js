@@ -138,7 +138,7 @@ export function parseWhatsappMessage(text) {
 
   // Helper to extract a value based on a label
   const extractField = (labelText, targetKey, transform = (v) => v) => {
-    const regex = new RegExp(`${labelText}:\\s*(.*?)(?=\\n\\w+:\\s*|$)`, 'im');
+    const regex = new RegExp(`${labelText}:\\s*([^\\n\\r]*)`, 'im');
     const match = text.match(regex);
     console.log(`parseWhatsappMessage: Attempting to extract '${labelText}'. Match:`, match ? match[1] : "No match");
     if (match && match[1]) {
