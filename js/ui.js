@@ -730,46 +730,43 @@ export function createOrderCard(
 }
 
 export function updateAdminMapInfo(order, deliveryData, speed) {
-  const infoEl = document.getElementById("delivery-info-admin");
-  if (!infoEl) return;
+  const distanceDisplay = document.getElementById("distance-display");
+  const etaDisplay = document.getElementById("eta-display");
+  const speedDisplay = document.getElementById("speed-display");
 
-  if (!order || !deliveryData) {
-    infoEl.style.display = "none";
-    infoEl.innerHTML = "";
+  if (!distanceDisplay || !etaDisplay || !speedDisplay) {
+    console.warn("One or more map info display elements not found in admin panel.");
     return;
   }
 
-  const speedText = typeof speed === "number" ? `${speed} km/h` : "...";
-  const distanceText =
+  if (!order || !deliveryData) {
+    distanceDisplay.textContent = "-- km";
+    etaDisplay.textContent = "-- min";
+    speedDisplay.textContent = "-- km/h";
+    distanceDisplay.style.display = "block"; // Always show, even if empty
+    etaDisplay.style.display = "block";
+    speedDisplay.style.display = "block";
+    return;
+  }
+
+  const currentSpeed = typeof speed === "number" ? `${speed} km/h` : "-- km/h";
+  const currentDistance =
     typeof deliveryData.distancia === "number" || !isNaN(deliveryData.distancia)
-      ? `${deliveryData.distancia} km`
-      : "...";
-  const timeText =
+      ? `${deliveryData.distancia.toFixed(1)} km`
+      : "-- km";
+  const estimatedTime =
     typeof deliveryData.tempoEstimado === "number" ||
     !isNaN(deliveryData.tempoEstimado)
-      ? `${deliveryData.tempoEstimado} min`
-      : "...";
+      ? `${Math.round(deliveryData.tempoEstimado)} min`
+      : "-- min";
 
-  infoEl.innerHTML = `
-      <h4>Entrega em Andamento</h4>
-      <p><strong>Pedido:</strong> ${order.nomeBolo}</p>
-      <p><strong>Cliente:</strong> ${order.nomeCliente}</p>
-      <div class="delivery-realtime-info">
-        <div class="info-item">
-          <div class="value">${speedText}</div>
-          <div class="label">🚗 Velocidade</div>
-        </div>
-        <div class="info-item">
-          <div class="value">${distanceText}</div>
-          <div class="label">📏 Distância</div>
-        </div>
-        <div class="info-item">
-          <div class="value">${timeText}</div>
-          <div class="label">⏱️ Tempo Estimado</div>
-        </div>
-      </div>
-    `;
-  infoEl.style.display = "block";
+  speedDisplay.textContent = currentSpeed;
+  distanceDisplay.textContent = currentDistance;
+  etaDisplay.textContent = estimatedTime;
+
+  distanceDisplay.style.display = "block";
+  etaDisplay.style.display = "block";
+  speedDisplay.style.display = "block";
 }
 
 export function highlightClosestOrder(closestOrder) {

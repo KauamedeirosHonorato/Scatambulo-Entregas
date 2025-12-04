@@ -115,7 +115,37 @@ function createOrderCard(
         }</span>
     </div>
 
-    <div class="route-info" id="route-info-${orderId}"></div>
+    <div class="route-info" id="route-info-${orderId}">
+      ${
+        order.status === "em_entrega" && order.entrega
+          ? `
+            <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee;">
+              <p style="margin: 0; font-size: 0.85rem; color: #555;">
+                <span style="display: inline-block; width: 80px;">Veloc.:</span> ${
+                  order.entrega.velocidade
+                    ? `${order.entrega.velocidade} km/h`
+                    : "--"
+                }
+              </p>
+              <p style="margin: 4px 0; font-size: 0.85rem; color: #555;">
+                <span style="display: inline-block; width: 80px;">Dist.:</span> ${
+                  order.entrega.distancia
+                    ? `${order.entrega.distancia.toFixed(1)} km`
+                    : "--"
+                }
+              </p>
+              <p style="margin: 0; font-size: 0.85rem; color: #555;">
+                <span style="display: inline-block; width: 80px;">ETA:</span> ${
+                  order.entrega.tempoEstimado
+                    ? `${Math.round(order.entrega.tempoEstimado)} min`
+                    : "--"
+                }
+              </p>
+            </div>
+            `
+          : ""
+      }
+    </div>
     
     <div class="order-actions">
         <button class="btn-sucesso deliver-button" style="flex: 1;">
