@@ -422,38 +422,35 @@ window.addEventListener("load", () => {
         return;
       }
 
-      const printModal = document.getElementById("print-all-labels-modal");
-      const labelsContainer = document.getElementById("print-labels-container");
-      const printConfirmBtn = document.getElementById("print-all-confirm-btn");
-
-      if (!printModal || !labelsContainer || !printConfirmBtn) {
-        console.error("Modal de impressão não encontrado no DOM.");
-        UI.showToast("Erro ao abrir modal de impressão.", "error");
-        return;
-      }
-
       // Gera o HTML para cada etiqueta de forma assíncrona (com QR Codes)
       const labelPromises = pedidosEmPreparo.map(([id, pedido]) =>
         UI.createLabelHTML(pedido, id)
       );
       const labelHtmls = await Promise.all(labelPromises);
-      labelsContainer.innerHTML = labelHtmls.join("");
 
-      // Adiciona a classe 'print-container' ao corpo do modal para a impressão
-      const modalBody = labelsContainer; // O container das etiquetas é o que queremos imprimir
+      // Cria um container temporário para as etiquetas para impressão
+      const tempPrintContainer = document.createElement("div");
+      tempPrintContainer.id = "temp-print-container";
+      tempPrintContainer.innerHTML = labelHtmls.join("");
 
-      const handlePrint = () => {
-        document.body.classList.add("printing-active");
-        window.print();
-        document.body.classList.remove("printing-active");
-      };
+      // Estilo para garantir que o container temporário seja invisível mas printável
+      tempPrintContainer.style.position = "absolute";
+      tempPrintContainer.style.left = "-9999px"; // Move para fora da tela
+      tempPrintContainer.style.width = "100%"; // Ocupa a largura total para impressão
+      tempPrintContainer.style.zIndex = "-1"; // Garante que não interfira com a UI
 
-      printConfirmBtn.onclick = handlePrint; // Usamos .onclick para substituir qualquer listener anterior
+      document.body.appendChild(tempPrintContainer);
 
-      printModal.classList.add("active");
-      // A função showPrintButtonSuccess() não foi encontrada no contexto,
-      // mas se existir, pode ser chamada aqui.
-      // Ex: UI.showPrintButtonSuccess();
+      // Adiciona a classe para ativar os estilos de impressão do CSS
+      document.body.classList.add("printing-active");
+
+      // Chama a função de impressão do navegador
+      window.print();
+
+      // Remove a classe e o container temporário após a impressão
+      document.body.classList.remove("printing-active");
+      document.body.removeChild(tempPrintContainer);
+
     } catch (error) {
       console.error("Erro ao preparar etiquetas para impressão:", error);
       UI.showToast("Erro ao gerar etiquetas.", "error");
