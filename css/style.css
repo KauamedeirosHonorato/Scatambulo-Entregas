@@ -1592,7 +1592,9 @@ header {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh; /* Usa a altura dinâmica da viewport, corrigindo bugs do Safari */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
   z-index: 9999; /* Garante que o mapa esteja acima de todos os outros elementos */
   background-color: var(--cor-principal); /* Garante um fundo sólido */
   /* Adicionalmente, forçar aceleração de hardware */

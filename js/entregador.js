@@ -283,12 +283,13 @@ window.addEventListener("load", () => {
   function handleLocationUpdate(position) {
     const { latitude, longitude, speed, heading } = position.coords;
 
+    const speedKmh = (speed || 0) * 3.6; // Convert m/s to km/h
     entregadorLocation = {
       latitude,
       longitude,
       timestamp: Date.now(),
       heading: heading || 0,
-      speed: speed || 0,
+      speed: parseFloat(speedKmh.toFixed(1)),
     };
 
     Map.updateDeliveryMarkerOnMap(
