@@ -94,7 +94,6 @@
   }
 
   .label-preview-item {
-    page-break-after: always; /* Cada etiqueta em uma nova página/corte */
     width: 50mm; /* Força a largura da etiqueta */
     height: 30mm; /* Força a altura da etiqueta */
     padding: 4mm; /* Adiciona um preenchimento interno */
