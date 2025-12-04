@@ -200,12 +200,15 @@ document.addEventListener("DOMContentLoaded", () => {
     currentOrder = snapshot.val();
     updateStaticOrderDetails(orderId, currentOrder);
 
+    const thankYouMessage = document.getElementById("thank-you-message");
+
     // Limpa o listener do entregador se o status não for 'em_entrega'
     if (currentOrder.status !== "em_entrega" && entregadorListener) {
       cleanupPreviousState();
     }
 
     if (currentOrder.status === "em_entrega") {
+      if (thankYouMessage) thankYouMessage.style.display = "none";
       mapContainer.style.display = "block";
 
       // Inicia o listener do entregador (se ainda não estiver ativo)
@@ -224,12 +227,20 @@ document.addEventListener("DOMContentLoaded", () => {
       // Redesenha o mapa com os dados mais recentes
       await redrawMap();
     } else {
+      // Para qualquer outro status que não seja 'em_entrega'
       mapContainer.style.display = "none";
       if (entregadorListener) {
         entregadorListener(); // Para o listener
         entregadorListener = null;
       }
       mapInitPromise.then(() => Map.clearMap());
+
+      // Mostra a mensagem de agradecimento se o status for 'entregue'
+      if (currentOrder.status === "entregue") {
+        if (thankYouMessage) thankYouMessage.style.display = "block";
+      } else {
+        if (thankYouMessage) thankYouMessage.style.display = "none";
+      }
     }
   }
 
@@ -247,25 +258,26 @@ document.addEventListener("DOMContentLoaded", () => {
   async function redrawMap() {
     await mapInitPromise;
     Map.invalidateMapSize();
-    Map.clearMap();
 
     // 1. Desenha marcador do cliente
     if (clientCoordinates && !clientCoordinates.error) {
       Map.updateClientMarkerOnMap(clientCoordinates);
+    } else {
+      Map.updateClientMarkerOnMap(null); // Garante que o marcador seja removido se não houver coordenadas
     }
 
     // 2. Desenha marcador do entregador
     if (deliveryPersonLocation) {
       Map.updateDeliveryMarkerOnMap(deliveryPersonLocation, clientCoordinates);
+    } else {
+      Map.updateDeliveryMarkerOnMap(null); // Garante que o marcador seja removido
     }
 
     // 3. Desenha a rota
-    if (
-      currentOrder &&
-      currentOrder.entrega &&
-      currentOrder.entrega.geometria
-    ) {
+    if (currentOrder && currentOrder.entrega && currentOrder.entrega.geometria) {
       Map.drawMainRoute(currentOrder.entrega.geometria);
+    } else {
+      Map.drawMainRoute(null); // Garante que a rota seja limpa se não houver geometria
     }
 
     // 4. Ajusta o zoom

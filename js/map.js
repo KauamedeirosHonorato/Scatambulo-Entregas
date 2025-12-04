@@ -334,7 +334,14 @@ export async function initializeMap(
 }
 
 export function updateDeliveryMarkerOnMap(location, destination) {
-  if (!map || !location) return;
+  if (!map) return;
+  if (!location) {
+    if (deliveryMarker) {
+      deliveryMarker.remove();
+      deliveryMarker = null;
+    }
+    return;
+  }
   const latLng = [location.longitude, location.latitude];
 
   if (deliveryMarker) deliveryMarker.remove();
@@ -961,8 +968,20 @@ export function forceClearAllRoutes() {
 }
 // Desenha uma rota principal a partir de uma geometria GeoJSON ou array de coordenadas
 export function drawMainRoute(geometry) {
-  if (!map || !geometry) return;
+  if (!map) return;
 
+  // Se a geometria for nula, limpa a rota existente
+  if (!geometry) {
+    try {
+      if (map.getSource && map.getSource("main-route")) {
+        map.getSource("main-route").setData({ type: "FeatureCollection", features: [] });
+      }
+    } catch (e) {
+      console.warn("Erro ao limpar a linha da rota principal:", e);
+    }
+    return;
+  }
+  
   // Se o estilo ainda não foi carregado, espera pelo evento 'load' antes de adicionar fontes/layers.
   if (map.isStyleLoaded && !map.isStyleLoaded()) {
     map.once("load", () => drawMainRoute(geometry));
