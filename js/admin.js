@@ -443,9 +443,9 @@ window.addEventListener("load", () => {
       const modalBody = labelsContainer; // O container das etiquetas é o que queremos imprimir
 
       const handlePrint = () => {
-        modalBody.classList.add("print-container");
+        document.body.classList.add("printing-active");
         window.print();
-        modalBody.classList.remove("print-container");
+        document.body.classList.remove("printing-active");
       };
 
       printConfirmBtn.onclick = handlePrint; // Usamos .onclick para substituir qualquer listener anterior
