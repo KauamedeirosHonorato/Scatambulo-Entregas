@@ -423,7 +423,7 @@ function generatePrintPageForOrder(order, orderId) {
 
         const content = `
             <div style="font-family: Arial, sans-serif; padding: 20px; font-size: 16px; width: 210mm; height: 297mm; box-sizing: border-box; page-break-after: always;">
-                <h2>Angela Confeitaria v2</h2>
+                <h2>Angela Confeitaria</h2>
                 <p><strong>NUMERO DO PEDIDO:</strong> ${orderId}</p>
                 <p><strong>CLIENTE:</strong> ${order.nomeCliente || ''}</p>
                 <p><strong>ENDERECO:</strong> ${order.rua || ''}, ${order.numero || ''}, ${order.bairro || ''} - ${order.cidade || ''} - CEP: ${order.cep || ''}</p>

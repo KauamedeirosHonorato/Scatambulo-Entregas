@@ -18,7 +18,7 @@ function loadHtml2PdfScript() {
 function generatePdfContent(order) {
     return `
         <div style="font-family: Arial; padding: 20px; font-size: 16px;">
-            <h2>Angela Confeitaria v2</h2>
+            <h2>Angela Confeitaria </h2>
 
             <p><strong>NUMERO DO PEDIDO:</strong> ${order.numero}</p>
             <p><strong>CLIENTE:</strong> ${order.cliente}</p>
@@ -58,7 +58,7 @@ export function showPrintPreviewModal(order) {
 
     const mainContentHTML = `
         <div style="font-family: Arial; padding: 10px; font-size: 14px;">
-            <h2 style="text-align: center;">Angela Confeitaria v2</h2>
+            <h2 style="text-align: center;">Angela Confeitaria </h2>
 
             <p><strong>NUMERO DO PEDIDO:</strong> ${order.id || ''}</p>
             <p><strong>CLIENTE:</strong> ${order.nomeCliente || ''}</p>
@@ -73,6 +73,34 @@ export function showPrintPreviewModal(order) {
         </div>
     `;
     printContent.innerHTML = mainContentHTML;
+    
+    // Check if order.observacao exists and parse it
+    if (order.observacao) {
+        const dados = parseMensagem(order.observacao);
+
+        // Populate input fields if they exist
+        const nomeClienteInput = document.getElementById("nomeCliente");
+        if (nomeClienteInput) nomeClienteInput.value = dados.nome;
+
+        const dataEntregaInput = document.getElementById("dataEntrega");
+        if (dataEntregaInput) dataEntregaInput.value = dados.dataEntrega;
+
+        const horarioEntregaInput = document.getElementById("horarioEntrega");
+        if (horarioEntregaInput) horarioEntregaInput.value = dados.horarioEntrega;
+
+        const cepInput = document.getElementById("cep");
+        if (cepInput) cepInput.value = dados.cep;
+
+        const ruaInput = document.getElementById("rua");
+        if (ruaInput) ruaInput.value = dados.endereco;
+
+        const bairroInput = document.getElementById("bairro");
+        if (bairroInput) bairroInput.value = dados.bairro;
+
+        const cidadeInput = document.getElementById("cidade");
+        if (cidadeInput) cidadeInput.value = dados.cidade;
+    }
+
     
     const trackingUrl = `https://scatambulo-entregas-iivh.vercel.app/rastreio.html?id=${order.id.toLowerCase()}`;
     loadQrCodeLibrary(() => {
@@ -145,4 +173,39 @@ export function showPrintPreviewModal(order) {
     } else {
         console.error("Botão de PDF #pdf-button não encontrado no modal.");
     }
+}
+
+function normalizarMensagem(msg) {
+    return msg
+        .replace(/--- DADOS PARA ENTREGA ---/i, "\n")
+        .replace(/Nome:/i, "\nNome:")
+        .replace(/Vela de brinde\?:/i, "\nBrinde:")
+        .replace(/Data de entrega:/i, "\nData:")
+        .replace(/Horário para entrega:/i, "\nHorario:")
+        .replace(/CEP:/i, "\nCEP:")
+        .replace(/Endereço:/i, "\nEndereco:")
+        .replace(/Bairro:/i, "\nBairro:")
+        .replace(/Cidade:/i, "\nCidade:")
+        .trim();
+}
+
+function getCampo(campo, texto) {
+    const regex = new RegExp(`${campo}:\\s*([^\\n]+)`, "i");
+    const m = texto.match(regex);
+    return m ? m[1].trim() : "";
+}
+
+function parseMensagem(msgOriginal) {
+    const msg = normalizarMensagem(msgOriginal);
+
+    return {
+        nome: getCampo("Nome", msg),
+        brinde: getCampo("Brinde", msg),
+        dataEntrega: getCampo("Data", msg),
+        horarioEntrega: getCampo("Horario", msg),
+        cep: getCampo("CEP", msg),
+        endereco: getCampo("Endereco", msg),
+        bairro: getCampo("Bairro", msg),
+        cidade: getCampo("Cidade", msg),
+    };
 }
