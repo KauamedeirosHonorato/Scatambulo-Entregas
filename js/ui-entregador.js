@@ -433,7 +433,9 @@ export function showHistoryModal(show, orders = []) {
   const listContainer = document.getElementById("history-list-container");
   const closeButton = modal.querySelector(".close-button");
 
-  const hide = () => modal.classList.remove("active");
+  const hide = () => {
+    if (modal) modal.classList.remove("active");
+  };
 
   if (show) {
     listContainer.innerHTML = ""; // Limpa a lista
@@ -454,16 +456,6 @@ export function showHistoryModal(show, orders = []) {
             })
           : "Data indisponível";
 
-        // Cria o botão de "Ver Nota Fiscal"
-        const viewInvoiceButton = document.createElement("button");
-        viewInvoiceButton.className = "btn-secondary history-invoice-btn";
-        viewInvoiceButton.innerHTML = `<i class="ph ph-receipt"></i> Ver Nota Fiscal`;
-        viewInvoiceButton.onclick = (e) => {
-          e.stopPropagation(); // Impede que o clique se propague
-          // Reutiliza a função de impressão de etiqueta para mostrar o modal
-          printLabel(order, orderId);
-        };
-
         item.innerHTML = `
           <div class="history-item-header">
             <strong>#${orderId.substring(0, 5).toUpperCase()}</strong>
@@ -474,15 +466,33 @@ export function showHistoryModal(show, orders = []) {
             <p><strong>Item:</strong> ${order.nomeBolo}</p>
           </div>
         `;
-        item.appendChild(viewInvoiceButton); // Adiciona o botão ao item
         listContainer.appendChild(item);
       });
     }
 
-    closeButton.onclick = hide;
+    if (closeButton) closeButton.onclick = hide;
     modal.classList.add("active");
   } else {
     hide();
+  }
+}
+
+/**
+ * Mostra ou esconde o modal de pedidos agendados.
+ * @param {boolean} show - True para mostrar, false para esconder.
+ */
+export function showScheduledOrdersModal(show) {
+  const modal = document.getElementById("scheduled-orders-modal");
+  if (!modal) {
+    console.error("Modal de pedidos agendados não encontrado!");
+    showToast("Erro ao abrir agendamentos.", "error");
+    return;
+  }
+
+  if (show) {
+    modal.classList.add("active");
+  } else {
+    modal.classList.remove("active");
   }
 }
 
@@ -555,18 +565,22 @@ export function renderScheduledOrders(scheduledOrders, onStartNavigation) {
         </div>
       `;
 
-      // Adiciona o listener para o botão "Iniciar"
-      const startBtn = row.querySelector(".start-scheduled-btn");
-      startBtn.addEventListener("click", () => {
-        // Passa o elemento do botão como terceiro argumento
-        if (onStartNavigation) {
-          onStartNavigation(orderId, order, startBtn);
-        }
-      });
-
       dayGroup.appendChild(row);
     });
 
     listContainer.appendChild(dayGroup);
   }
+
+  // Usa delegação de eventos para os botões "Iniciar"
+  listContainer.addEventListener('click', (event) => {
+    const startBtn = event.target.closest('.start-scheduled-btn');
+    if (startBtn && onStartNavigation) {
+      const orderId = startBtn.dataset.orderId;
+      const orderData = scheduledOrders.find(([id]) => id === orderId);
+      if (orderData) {
+        const [, order] = orderData;
+        onStartNavigation(orderId, order, startBtn);
+      }
+    }
+  });
 }

@@ -27,8 +27,6 @@ export function loadComponents(containerSelector, componentPaths = []) {
       "components/modal-suggestion.html", // Modal de sugestão de nova rota
       "components/modal-historico-entregas.html", // Novo modal de histórico
       "components/modal-agendados.html", // Modal de pedidos agendados
-      "components/modal-print-all-em-preparo.html", // Adicionado para garantir o carregamento
-      "components/modal-print-preview.html",
     ];
 
     // Usa Set para garantir que não haja caminhos duplicados

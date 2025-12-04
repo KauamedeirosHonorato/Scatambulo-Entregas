@@ -31,6 +31,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c; // Distância em metros
 }
 
+// Definição do estilo de satélite movida para o escopo global para fácil acesso.
 const satelliteStyle = {
   version: 8,
   sources: {
@@ -54,249 +55,282 @@ const satelliteStyle = {
   ],
 };
 
+const osmStyle = {
+  version: 8,
+  sources: {
+    "raster-tiles": {
+      type: "raster",
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "&copy; OpenStreetMap Contributors",
+    },
+  },
+  layers: [
+    {
+      id: "simple-tiles",
+      type: "raster",
+      source: "raster-tiles",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
+
 export async function initializeMap(
   elementId,
   center = [-51.9375, -23.4273],
   zoom = 15,
   initialSatelliteMode = false
 ) {
-  if (map) return map;
+  try {
+    if (map) return map;
 
-  if (typeof maplibregl === "undefined") {
-    console.error("Erro: A biblioteca MapLibre GL JS não foi carregada.");
-    return;
-  }
+    if (typeof maplibregl === "undefined") {
+      console.error("Erro: A biblioteca MapLibre GL JS não foi carregada.");
+      return;
+    }
 
-  // Define o estilo padrão do OpenStreetMap
-  const osmStyle = {
-    version: 8,
-    sources: {
-      "raster-tiles": {
-        type: "raster",
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        attribution: "&copy; OpenStreetMap Contributors",
-      },
-    },
-    layers: [
-      {
-        id: "simple-tiles",
-        type: "raster",
-        source: "raster-tiles",
-        minzoom: 0,
-        maxzoom: 19,
-      },
-    ],
-  };
+    // Decide qual estilo usar na inicialização
+    const initialStyle = initialSatelliteMode ? satelliteStyle : osmStyle;
 
-  // Decide qual estilo usar na inicialização
-  const initialStyle = initialSatelliteMode ? satelliteStyle : osmStyle;
-  if (initialSatelliteMode) {
-    satelliteMode = true; // Seta o estado global
-  }
+    map = new maplibregl.Map({
+      interactive: false, // Inicia o mapa como não interativo
+      container: elementId,
+      center: center,
+      zoom: zoom,
+      pitch: 0,
+      style: initialStyle, // Usa o estilo decidido na criação
+    });
 
-  map = new maplibregl.Map({
-    interactive: false, // Inicia o mapa como não interativo
-    container: elementId,
-    center: center,
-    zoom: zoom,
-    pitch: 0,
-    style: initialStyle, // Usa o estilo decidido
-  });
+    // Lógica para o overlay de interação e tela cheia
+    const mapContainer = document.getElementById(elementId)?.parentElement;
+    if (mapContainer) {
+      // Adiciona um elemento de vídeo para a funcionalidade de tela cheia no iPhone
+      const videoEl = document.createElement("video");
+      videoEl.id = "iphone-fullscreen-video";
+      videoEl.setAttribute("playsinline", ""); // Impede que o vídeo seja reproduzido em tela cheia automaticamente
+      videoEl.style.display = "none"; // O vídeo não precisa ser visível
+      mapContainer.appendChild(videoEl);
 
-  // Lógica para o overlay de interação e tela cheia
-  const mapContainer = document.getElementById(elementId)?.parentElement;
-  if (mapContainer) {
-    // Adiciona um elemento de vídeo para a funcionalidade de tela cheia no iPhone
-    const videoEl = document.createElement("video");
-    videoEl.id = "iphone-fullscreen-video";
-    videoEl.setAttribute("playsinline", ""); // Impede que o vídeo seja reproduzido em tela cheia automaticamente
-    videoEl.style.display = "none"; // O vídeo não precisa ser visível
-    mapContainer.appendChild(videoEl);
+      const interactionOverlay = mapContainer.querySelector(
+        ".map-interaction-overlay"
+      );
+      const loadingOverlay = mapContainer.querySelector(".map-loading-overlay");
+      const fullscreenBtn = document.getElementById("map-fullscreen-btn");
 
-    const interactionOverlay = mapContainer.querySelector(
-      ".map-interaction-overlay"
-    );
-    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
+      if (interactionOverlay && fullscreenBtn) {
+        // Detecção mais robusta para iPhone/iPad/iPod
+        const isIos =
+          /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-    if (interactionOverlay && fullscreenBtn) {
-      // Detecção mais robusta para iPhone/iPad/iPod
-      const isIos =
-        /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-      const toggleFullscreen = () => {
-        if (isIos) {
-          // Usa o elemento de vídeo para entrar em tela cheia no iOS
-          if (videoEl.webkitDisplayingFullscreen) {
-            videoEl.webkitExitFullscreen();
-          } else {
-            videoEl.webkitRequestFullscreen();
+        const handleIosFullscreen = () => {
+          // Envolve a lógica em um try-catch para capturar exceções do DOM no iOS.
+          try {
+            // Verifica se o modo de tela cheia é suportado pelo elemento de vídeo
+            if (videoEl.webkitSupportsFullscreen) {
+              if (document.webkitFullscreenElement) {
+                document.webkitExitFullscreen();
+              } else {
+                videoEl.webkitEnterFullscreen();
+              }
+            } else {
+              // Fallback para o método padrão se a API de vídeo não for suportada
+              toggleStandardFullscreen();
+            }
+          } catch (e) {
+            console.error("Erro ao alternar tela cheia no iOS:", e);
+            // Tenta o método padrão como último recurso em caso de erro
+            toggleStandardFullscreen();
           }
-        } else {
-          // Lógica padrão de tela cheia para outros dispositivos
-          toggleStandardFullscreen();
-        }
-      };
+        };
 
-      const toggleStandardFullscreen = () => {
-        const isFullscreen =
-          document.fullscreenElement ||
-          document.webkitFullscreenElement ||
-          document.mozFullScreenElement ||
-          document.msFullscreenElement;
-
-        if (!isFullscreen) {
-          if (mapContainer.requestFullscreen) mapContainer.requestFullscreen();
-          else if (mapContainer.webkitRequestFullscreen)
-            mapContainer.webkitRequestFullscreen(); // Safari
-          else if (mapContainer.mozRequestFullScreen)
-            mapContainer.mozRequestFullScreen(); // Firefox
-          else if (mapContainer.msRequestFullscreen)
-            mapContainer.msRequestFullscreen(); // IE/Edge
-        } else {
-          if (document.exitFullscreen) document.exitFullscreen();
-          else if (document.webkitExitFullscreen)
-            document.webkitExitFullscreen();
-          else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-          else if (document.msExitFullscreen) document.msExitFullscreen();
-        }
-      };
-
-      fullscreenBtn.addEventListener("click", toggleFullscreen);
-      interactionOverlay.addEventListener("click", toggleFullscreen);
-
-      // Handler para mudança de estado de tela cheia
-      const onFullscreenChange = () => {
-        let isFullscreen;
-        if (isIos) {
-          // Para iOS, verificamos o estado do elemento de vídeo
-          isFullscreen = videoEl.webkitDisplayingFullscreen;
-          // Adiciona/remove a classe de simulação para manter a estilização
-          mapContainer.classList.toggle("fullscreen-iphone", isFullscreen);
-        } else {
-          // Para outros dispositivos, usamos a API padrão
-          isFullscreen = !!(
+        const toggleStandardFullscreen = () => {
+          const isFullscreen =
             document.fullscreenElement ||
             document.webkitFullscreenElement ||
             document.mozFullScreenElement ||
-            document.msFullscreenElement
-          );
+            document.msFullscreenElement;
+    
+          if (!isFullscreen) {
+            if (mapContainer.requestFullscreen) mapContainer.requestFullscreen();
+            else if (mapContainer.webkitRequestFullscreen)
+              mapContainer.webkitRequestFullscreen(); // Safari
+            else if (mapContainer.mozRequestFullScreen)
+              mapContainer.mozRequestFullScreen(); // Firefox
+            else if (mapContainer.msRequestFullscreen)
+              mapContainer.msRequestFullscreen(); // IE/Edge
+          } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen)
+              document.webkitExitFullscreen();
+            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+          }
+        };
+
+        const toggleFullscreen = isIos ? handleIosFullscreen : toggleStandardFullscreen;
+
+        // Adiciona os listeners de forma segura
+        if (fullscreenBtn) {
+          fullscreenBtn.addEventListener("click", toggleFullscreen);
+        }
+        if (interactionOverlay) {
+          interactionOverlay.addEventListener("click", toggleFullscreen);
         }
 
-        const icon = fullscreenBtn.querySelector("i");
+        // Handler para mudança de estado de tela cheia
+        const onFullscreenChange = () => {
+          let isFullscreen;
+          if (isIos) {
+            // Para iOS, verificamos o estado do elemento de vídeo
+            isFullscreen = videoEl.webkitDisplayingFullscreen;
+            // Adiciona/remove a classe de simulação para manter a estilização
+            mapContainer.classList.toggle("fullscreen-iphone", isFullscreen);
+          } else {
+            // Para outros dispositivos, usamos a API padrão
+            isFullscreen = !!(
+              document.fullscreenElement ||
+              document.webkitFullscreenElement ||
+              document.mozFullScreenElement ||
+              document.msFullscreenElement
+            );
+          }
 
-        // Atualiza a UI com base no estado de tela cheia
-        if (isFullscreen) {
-          setMapInteractive(true);
-          interactionOverlay.classList.add("hidden");
-          if (icon) icon.className = "ph ph-arrows-in";
-        } else {
-          setMapInteractive(false);
-          interactionOverlay.classList.remove("hidden");
-          if (icon) icon.className = "ph ph-arrows-out";
-        }
-        // Redimensiona o mapa em ambos os casos para garantir o ajuste correto
-        map.resize();
-      };
+          const icon = fullscreenBtn.querySelector("i");
 
-      // Adiciona listeners para os eventos de tela cheia
-      document.addEventListener("fullscreenchange", onFullscreenChange);
-      document.addEventListener("webkitfullscreenchange", onFullscreenChange);
-      document.addEventListener("mozfullscreenchange", onFullscreenChange);
-      document.addEventListener("MSFullscreenChange", onFullscreenChange);
+          // Atualiza a UI com base no estado de tela cheia
+          if (isFullscreen) {
+            setMapInteractive(true);
+            interactionOverlay.classList.add("hidden");
+            if (icon) icon.className = "ph ph-arrows-in";
+          } else {
+            setMapInteractive(false);
+            interactionOverlay.classList.remove("hidden");
+            if (icon) icon.className = "ph ph-arrows-out";
+          }
+          // Redimensiona o mapa em ambos os casos para garantir o ajuste correto
+          map.resize();
+        };
 
-      // Adiciona listeners específicos do WebKit para o elemento de vídeo no iOS
-      videoEl.addEventListener("webkitbeginfullscreen", onFullscreenChange);
-      videoEl.addEventListener("webkitendfullscreen", onFullscreenChange);
+        // Adiciona listeners para os eventos de tela cheia
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+        document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+        document.addEventListener("mozfullscreenchange", onFullscreenChange);
+        document.addEventListener("MSFullscreenChange", onFullscreenChange);
+
+        // Adiciona listeners específicos do WebKit para o elemento de vídeo no iOS
+        videoEl.addEventListener("webkitbeginfullscreen", onFullscreenChange);
+        videoEl.addEventListener("webkitendfullscreen", onFullscreenChange);
+      }
     }
-  }
 
-  // Aguarda o carregamento do estilo antes de continuar
-  await new Promise((resolve) => {
-    map.once("load", () => {
-      mapStyleLoaded = true;
-      // Se o estilo original não for satélite, armazena para poder voltar
-      if (!initialSatelliteMode) {
-        mapOriginalStyle = map.getStyle();
-      } else {
-        mapOriginalStyle = osmStyle; // Garante que temos o osmStyle para alternar
+    const hideLoadingOverlay = () => {
+      const loadingOverlay = document.querySelector(`#${elementId}`).parentElement.querySelector('.map-loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.classList.remove("active");
       }
-      console.log("Map style is loaded.");
-      resolve();
-    });
-    // fallback: se isStyleLoaded já estiver true
-    if (map.isStyleLoaded && map.isStyleLoaded()) {
-      mapStyleLoaded = true;
-      if (!initialSatelliteMode) {
-        mapOriginalStyle = map.getStyle();
-      } else {
-        mapOriginalStyle = osmStyle;
-      }
-      resolve();
-    }
-  });
+    };
 
-  // Create the main-route source and layer once after the style is loaded.
-  // This implements the "create-once and setData" pattern to avoid creating
-  // and removing layers repeatedly which causes ghost layers to persist.
-  const ensureRouteSource = () => {
-    try {
-      if (!map.getSource("main-route")) {
-        map.addSource("main-route", {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
-      }
-      if (!map.getLayer("main-route-line")) {
-        map.addLayer({
-          id: "main-route-line",
-          type: "line",
-          source: "main-route",
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: {
-            "line-color": "#1b9af7",
-            "line-width": 5,
-            "line-opacity": 0.9,
-          },
-        });
-      }
-    } catch (e) {
-      console.warn("initializeMap: não foi possível criar main-route:", e);
-    }
-  };
-
-  if (map.isStyleLoaded && map.isStyleLoaded()) {
-    ensureRouteSource();
-  } else {
-    map.on("style.load", ensureRouteSource);
-  }
-
-  // Instancia o plugin de direções somente depois do style carregar
-  if (typeof MapLibreGlDirections !== "undefined") {
-    try {
-      directions = new MapLibreGlDirections(map, {
-        api: "https://router.project-osrm.org/route/v1",
-        profile: "driving",
-        interactive: false,
-        controls: { instructions: false, inputs: false },
+    // Aguarda o carregamento do estilo antes de continuar
+    await new Promise((resolve) => {
+      map.once("load", () => {
+        mapStyleLoaded = true;
+        hideLoadingOverlay();
+        console.log("Map style is loaded.");
+        resolve();
       });
-    } catch (e) {
-      console.warn("Erro ao inicializar MapLibreGlDirections:", e);
+      if (map.isStyleLoaded()) {
+        hideLoadingOverlay();
+        resolve();
+      }
+    });
+
+    // Create the main-route source and layer once after the style is loaded.
+    // This implements the "create-once and setData" pattern to avoid creating
+    // and removing layers repeatedly which causes ghost layers to persist.
+    const ensureRouteSource = () => {
+      try {
+        if (!map.getSource("main-route")) {
+          map.addSource("main-route", {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] },
+          });
+        }
+        if (!map.getLayer("main-route-line")) {
+          map.addLayer({
+            id: "main-route-line",
+            type: "line",
+            source: "main-route",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: {
+              "line-color": "#1b9af7",
+              "line-width": 5,
+              "line-opacity": 0.9,
+            },
+          });
+        }
+
+        // Adiciona a fonte e a camada de satélite, mas as mantém ocultas.
+        if (!map.getSource("sat-tiles")) {
+          map.addSource("sat-tiles", satelliteStyle.sources["sat-tiles"]);
+        }
+        if (!map.getLayer("sat-tiles")) {
+          map.addLayer({
+            id: "sat-tiles",
+            type: "raster",
+            source: "sat-tiles",
+            layout: {
+              visibility: "none", // Começa invisível
+            },
+          });
+          // Move a camada de rota para cima da camada de satélite
+          if (map.getLayer("main-route-line"))
+            map.moveLayer("main-route-line", "sat-tiles");
+        }
+      } catch (e) {
+        console.warn("initializeMap: não foi possível criar main-route:", e);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      ensureRouteSource();
+    } else {
+      map.on("style.load", hideLoadingOverlay); // Garante que o overlay suma mesmo se o estilo for trocado
+      map.on("style.load", ensureRouteSource);
     }
-  } else {
-    console.warn("Aviso: Plugin MapLibreGlDirections não carregado.");
-  }
 
-  // Tenta adicionar controles e camadas 3D caso possível
-  map.addControl(new maplibregl.NavigationControl(), "top-right");
-  map.addControl(new maplibregl.ScaleControl(), "bottom-right");
-  try {
-    add3DBuildings();
-  } catch (e) {
-    console.warn("3D buildings não disponíveis:", e);
-  }
+    // Instancia o plugin de direções somente depois do style carregar
+    if (typeof MapLibreGlDirections !== "undefined") {
+      try {
+        directions = new MapLibreGlDirections(map, {
+          api: "https://router.project-osrm.org/route/v1",
+          profile: "driving",
+          interactive: false,
+          controls: { instructions: false, inputs: false },
+        });
+      } catch (e) {
+        console.warn("Erro ao inicializar MapLibreGlDirections:", e);
+      }
+    } else {
+      console.warn("Aviso: Plugin MapLibreGlDirections não carregado.");
+    }
 
-  return map;
+    // Tenta adicionar controles e camadas 3D caso possível
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.ScaleControl(), "bottom-right");
+    try {
+      add3DBuildings();
+    } catch (e) {
+      console.warn("3D buildings não disponíveis:", e);
+    }
+
+    return map;
+  } catch (error) {
+    console.error("Erro fatal ao inicializar o mapa:", error);
+    // You might want to show a user-facing error message here
+    // For example: UI.showToast("Não foi possível carregar o mapa. Tente novamente.", "error");
+    return null; // Ensure that 'map' is null if initialization fails
+  }
 }
 /**
  * Ativa ou desativa a interatividade do mapa.
@@ -337,7 +371,10 @@ export function updateDeliveryMarkerOnMap(location, destination) {
   el.style.backgroundRepeat = "no-repeat";
 
   if (location.heading) {
-    el.style.transform = `rotate(${location.heading}deg)`;
+    // Ajusta a rotação. O ícone original aponta para a direita (90 graus).
+    // O 'heading' do GPS é 0 para o Norte. Subtraímos 90 para alinhar o ícone.
+    const rotation = location.heading - 90;
+    el.style.transform = `rotate(${rotation}deg)`;
   }
 
   deliveryMarker = new maplibregl.Marker({ element: el })
@@ -360,9 +397,13 @@ function checkProximityToDestination(deliveryLocation) {
     destinationCoords.lon
   );
 
-  if (distance <= 5) {
-    // 5 metros
-    alert("O entregador está a 5 metros do destino!");
+  if (distance <= 50) {
+    // 50 metros
+    // Dispara um evento personalizado em vez de um alert()
+    const proximityEvent = new CustomEvent("proximity-alert", {
+      detail: { distance: Math.round(distance) },
+    });
+    window.dispatchEvent(proximityEvent);
     hasProximityAlertBeenShown = true;
   }
 }
@@ -1031,82 +1072,33 @@ export function drawMainRoute(geometry) {
  * Habilita/Desabilita modo satélite (troca o estilo do mapa).
  */
 export function setSatelliteMode(enabled) {
-  if (!map) return;
-  if (enabled === !!satelliteMode) return;
+  if (!map || !map.isStyleLoaded()) return;
+  if (enabled === satelliteMode) return;
+
   satelliteMode = !!enabled;
 
   try {
-    if (satelliteMode) {
-      map.setStyle(satelliteStyle);
-    } else if (mapOriginalStyle) {
-      map.setStyle(mapOriginalStyle);
+    const satLayer = "sat-tiles";
+    const baseLayer = "simple-tiles";
+
+    if (enabled) {
+      // Mostra satélite e esconde o mapa base
+      if (map.getLayer(satLayer))
+        map.setLayoutProperty(satLayer, "visibility", "visible");
+      if (map.getLayer(baseLayer))
+        map.setLayoutProperty(baseLayer, "visibility", "none");
+    } else {
+      // Mostra o mapa base e esconde o satélite
+      if (map.getLayer(satLayer))
+        map.setLayoutProperty(satLayer, "visibility", "none");
+      if (map.getLayer(baseLayer))
+        map.setLayoutProperty(baseLayer, "visibility", "visible");
     }
 
-    // Após trocar o estilo, re-adiciona a rota e camadas necessárias
-    map.once("load", async () => {
-      try {
-        console.debug(
-          "setSatelliteMode: style loaded — attempting to restore directions plugin and route"
-        );
-
-        // Recreate directions plugin instance after style change if available
-        try {
-          if (typeof MapLibreGlDirections !== "undefined") {
-            try {
-              if (directions && typeof directions.remove === "function") {
-                try {
-                  directions.remove();
-                } catch (e) {}
-              }
-            } catch (e) {}
-            try {
-              directions = new MapLibreGlDirections(map, {
-                api: "https://router.project-osrm.org/route/v1",
-                profile: "driving",
-                interactive: false,
-                controls: { instructions: false, inputs: false },
-              });
-              console.debug(
-                "setSatelliteMode: directions plugin reinstantiated"
-              );
-            } catch (e) {
-              console.warn("Erro ao reinstanciar MapLibreGlDirections:", e);
-            }
-          }
-        } catch (e) {
-          console.warn("Erro ao tentar reinstanciar plugin de direções:", e);
-        }
-
-        // If we have an origin+destination saved, re-request the route
-        // so the route geometry and plugin sources/layers are recreated
-        // under the new style. Falls back to drawing stored geometry.
-        if (lastRouteOrigin && lastRouteDestination) {
-          try {
-            console.debug(
-              "setSatelliteMode: requesting route recalculation",
-              lastRouteOrigin,
-              lastRouteDestination
-            );
-            const route = await requestRoute(
-              lastRouteOrigin,
-              lastRouteDestination
-            );
-            console.debug("setSatelliteMode: requestRoute result", route);
-            if (!route && currentRouteGeometry)
-              drawMainRoute(currentRouteGeometry);
-          } catch (e) {
-            // if recalculation fails, draw existing geometry
-            console.warn("setSatelliteMode: route recalculation failed:", e);
-            if (currentRouteGeometry) drawMainRoute(currentRouteGeometry);
-          }
-        } else if (currentRouteGeometry) {
-          drawMainRoute(currentRouteGeometry);
-        }
-        add3DBuildings();
-      } catch (e) {
-        console.warn("Após troca de estilo: erro ao restaurar camadas:", e);
-      }
-    });
+    // Garante que a camada de rota esteja sempre visível e no topo
+    if (map.getLayer("main-route-line")) {
+      map.moveLayer("main-route-line"); // Move para o topo das camadas
+    }
   } catch (e) {
     console.warn("Erro ao trocar modo satélite:", e);
   }

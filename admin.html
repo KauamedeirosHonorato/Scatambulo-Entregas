@@ -3,10 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com https://cdnjs.cloudflare.com https://server.arcgisonline.com https://*.arcgisonline.com https://cdn.jsdelivr.net; font-src 'self' https://unpkg.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm; img-src 'self' data: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.arcgisonline.com blob:; connect-src 'self' wss://*.firebaseio.com https://viacep.com.br https://nominatim.openstreetmap.org https://*.openstreetmap.org https://router.project-osrm.org https://unpkg.com https://server.arcgisonline.com https://*.arcgisonline.com blob: https://www.gstatic.com https://cdnjs.cloudflare.com; worker-src 'self' blob:;"
-    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Scatambulo" />
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png" />
+    <meta http-equiv="Content-Security-Policy"
+      content="
+    default-src 'self';
+    frame-src https://*.firebaseio.com;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://cdnjs.cloudflare.com https://server.arcgisonline.com https://*.arcgisonline.com;
+    font-src *;
+    img-src 'self' data: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.arcgisonline.com blob:;
+    connect-src 'self' wss://*.firebaseio.com https://www.gstatic.com https://viacep.com.br https://nominatim.openstreetmap.org https://*.openstreetmap.org https://router.project-osrm.org https://unpkg.com https://server.arcgisonline.com https://*.arcgisonline.com blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+    worker-src 'self' blob:;
+  ">
 
     <link
       href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
@@ -84,6 +95,10 @@
       <section id="map-section">
         <h2><i class="ph ph-map-pin"></i> Rastreamento Entregador</h2>
         <div id="map-container" aria-label="Mapa de acompanhamento">
+          <div class="map-loading-overlay active">
+            <div class="map-spinner"></div>
+            <span>Carregando mapa...</span>
+          </div>
           <div id="map"></div>
           <div class="map-interaction-overlay" id="map-overlay">
             <p>Clique para interagir com o mapa</p>
@@ -213,6 +228,42 @@
         }
       }
 
+      /* Estilos para o loading do mapa */
+      #map-container {
+        position: relative; /* Necessário para o overlay */
+      }
+      .map-loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #eef0f2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        border-radius: 8px;
+        transition: opacity 0.5s ease;
+        opacity: 1;
+        color: var(--cor-texto-secundario, #555);
+        font-weight: 500;
+      }
+      .map-loading-overlay:not(.active) {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .map-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #ccc;
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+      }
+
       /* Estilos para o loading da lista de pedidos */
       #orders-section {
         position: relative; /* Necessário para o posicionamento do overlay */
@@ -239,12 +290,12 @@
       }
       /* === NOVOS ESTILOS GERAIS === */
       body {
-        background-color: #f0f2f5; /* Fundo suave para destacar os cards */
+        background-color: var(--cor-fundo-suave, #f0f2f5); /* Fundo suave para destacar os cards */
       }
 
       h2 {
         font-size: 22px;
-        color: #333;
+        color: var(--cor-texto-principal, #333);
         padding-bottom: 8px;
         border-bottom: 1px solid #e0e0e0;
         margin-bottom: 20px;
@@ -252,11 +303,11 @@
 
       /* === ESTILIZAÇÃO DA LISTA DE PEDIDOS === */
       .status-group-wrapper {
-        background-color: #fff;
-        border-radius: 12px;
+        background-color: var(--cor-principal, #fff);
+        border-radius: var(--raio-borda-padrao, 12px);
         padding: 20px;
         margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        box-shadow: var(--sombra-card, 0 4px 12px rgba(0, 0, 0, 0.05));
       }
 
       .orders-table-header {
@@ -264,9 +315,9 @@
         grid-template-columns: 80px 1fr 1fr 120px 180px;
         gap: 15px;
         padding: 0 15px 10px;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--cor-borda-suave, #eee);
         font-weight: 600;
-        color: #888;
+        color: var(--cor-texto-suave, #888);
         font-size: 13px;
         text-transform: uppercase;
       }
@@ -276,15 +327,15 @@
         grid-template-columns: 80px 1fr 1fr 120px 180px;
         gap: 15px;
         align-items: center;
-        padding: 15px;
-        border-bottom: 1px solid #f0f0f0;
+        padding: 15px;        
+        border-bottom: 1px solid var(--cor-borda-suave, #f0f0f0);
         transition: background-color 0.2s ease;
       }
       .order-row:last-child {
         border-bottom: none;
       }
       .order-row:hover {
-        background-color: #f9f9f9;
+        background-color: var(--cor-fundo-hover, #f9f9f9);
       }
 
       .order-data-item {
@@ -343,7 +394,7 @@
         justify-content: flex-start;
       }
       .action-icon-btn {
-        background: #f0f2f5;
+        background: var(--cor-fundo-suave, #f0f2f5);
         border: none;
         border-radius: 8px;
         width: 36px;
@@ -355,11 +406,11 @@
         transition: background-color 0.2s ease;
       }
       .action-icon-btn:hover {
-        background-color: #e4e6eb;
+        background-color: var(--cor-fundo-interativo-hover, #e4e6eb);
       }
       .action-icon-btn i {
         font-size: 18px;
-        color: #555;
+        color: var(--cor-texto-secundario, #555);
       }
 
       /* Estilos para o badge no botão de imprimir */
@@ -387,8 +438,8 @@
       /* Estilo para o contador de pedidos na coluna */
       .column-count-badge {
         display: inline-block;
-        background-color: #e0e0e0;
-        color: #555;
+        background-color: var(--cor-borda-neutra, #e0e0e0);
+        color: var(--cor-texto-secundario, #555);
         font-size: 13px;
         font-weight: 600;
         padding: 2px 8px;
@@ -438,7 +489,7 @@
         .order-data-item .label {
           display: block; /* Mostra o label */
           font-size: 11px;
-          color: #888;
+          color: var(--cor-texto-suave, #888);
           font-weight: 600;
           margin-bottom: 3px;
           text-transform: uppercase;
@@ -469,8 +520,13 @@
       }
     </style>
 
-    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module" src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/firebase.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/map.js"></script>
     <script type="module" src="js/componentLoader.js"></script>
     <script type="module" src="js/admin.js"></script>
 
@@ -508,5 +564,6 @@
         }
       });
     </script>
+
   </body>
 </html>

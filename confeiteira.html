@@ -3,10 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://cdnjs.cloudflare.com https://server.arcgisonline.com https://*.arcgisonline.com; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' wss://*.firebaseio.com https://viacep.com.br https://www.gstatic.com https://cdnjs.cloudflare.com;"
-    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Scatambulo" />
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png" />
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+      frame-src https://*.firebaseio.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com;
+      style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://cdnjs.cloudflare.com https://server.arcgisonline.com https://*.arcgisonline.com;
+      font-src *;
+      img-src 'self' data:;
+      connect-src 'self' wss://*.firebaseio.com https://viacep.com.br https://www.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"&gt;
 
     <link rel="stylesheet" href="css/style.css" />
 
@@ -64,8 +72,17 @@
     <div id="modal-container"></div>
     <div id="toast-container"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/firebase.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/ui-confeiteira.js"></script>
     <script type="module" src="js/componentLoader.js"></script>
     <script type="module" src="js/confeiteira.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>
+      eruda.init();
+    </script>
   </body>
 </html>

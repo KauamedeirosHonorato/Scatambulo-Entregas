@@ -6,15 +6,24 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://*.firebaseio.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' wss://*.firebaseio.com https://www.gstatic.com;"
-    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Scatambulo" />
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png" />
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+      frame-src https://*.firebaseio.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://*.firebaseio.com https://www.gstatic.com;
+      style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+      font-src *;
+      img-src 'self' data:;
+      connect-src 'self' wss://*.firebaseio.com https://*.firebaseio.com https://www.gstatic.com https://cdn.jsdelivr.net;"&gt;
+
     <title>Login - Scatambulo Confeitaria</title>
 
     <link rel="stylesheet" href="css/style.css" />
 
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script type="module" src="https://unpkg.com/@phosphor-icons/web"></script>
   </head>
   <body class="login-page">
     <div class="login-container">
@@ -83,6 +92,10 @@
       </div>
     </div>
 
-    <script type="module" src="js/login.js"></script>
+    <script src="js/login.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>
+      eruda.init();
+    </script>
   </body>
 </html>

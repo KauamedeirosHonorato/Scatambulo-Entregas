@@ -22,6 +22,20 @@ import {
 } from "./ui.js";
 import { showPrintPreviewModal } from './modal-print-preview.js';
 
+let map;
+let entregadorLocation = null;
+let activeDelivery = null;
+let clientCoords = null;
+let isFollowingEntregador = true;
+// mirror removed: admin will use the shared Map module to display deliverer
+
+const deliveryCompletedSound = new Audio(
+  "audio/NotificacaoPedidoEntregue.mp3"
+);
+let knownOrderStatuses = {};
+let isFirstLoad = true;
+let userInteracted = false;
+
 window.addEventListener("load", () => {
   // ======= 1. Validação de Usuário =======
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
@@ -32,20 +46,6 @@ window.addEventListener("load", () => {
 
   // Inicia a aplicação
   initializeApp();
-
-  let map;
-  let entregadorLocation = null;
-  let activeDelivery = null;
-  let clientCoords = null;
-  let isFollowingEntregador = true;
-  // mirror removed: admin will use the shared Map module to display deliverer
-
-  const deliveryCompletedSound = new Audio(
-    "audio/NotificacaoPedidoEntregue.mp3"
-  );
-  let knownOrderStatuses = {};
-  let isFirstLoad = true;
-  let userInteracted = false;
 
   function handleToggleFollow() {
     isFollowingEntregador = !isFollowingEntregador;
@@ -110,8 +110,25 @@ window.addEventListener("load", () => {
       });
     }
 
+    // Listeners específicos do mapa que não estão no ui.js
+    // Moved here to ensure 'map' is initialized
+    map.on("dragstart", () => {
+      isFollowingEntregador = false;
+      Map.setFollowMode(false);
+      document
+        .getElementById("follow-entregador-button")
+        ?.classList.remove("active");
+    });
+    document
+      .getElementById("follow-entregador-button")
+      ?.addEventListener("click", handleToggleFollow);
+
     // Espera o carregamento dos componentes (modais) antes de configurar os listeners
-    await loadComponents("#modal-container");
+    await loadComponents("#modal-container", [
+      // Carrega o modal de impressão de todas as etiquetas especificamente para o admin
+      "components/modal-print-all-em-preparo.html",
+      "components/modal-print-preview.html",
+    ]);
 
     // Agora que os modais existem, podemos configurar todos os listeners
     setupUIEventListeners();
@@ -443,4 +460,3 @@ window.addEventListener("load", () => {
     }
   }
 });
-

@@ -17,6 +17,7 @@ import {
   handleCepInput,
 } from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
+import { showPrintPreviewModal } from "./modal-print-preview.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   // ======= 1. Validação de Usuário =======
@@ -34,13 +35,42 @@ document.addEventListener("DOMContentLoaded", () => {
   let knownOrderIds = new Set();
   let knownDeliveredOrderIds = new Set();
   let isFirstLoad = true;
+  let userInteracted = false;
 
   // ======= 3. Inicialização =======
   initializeApp();
 
+  function tryPlaySound(audio) {
+    if (!audio) return;
+    if (userInteracted) {
+      audio.play().catch(() => {});
+      return;
+    }
+
+    // If the user hasn't interacted yet, schedule play on first interaction
+    const handler = () => {
+      try {
+        audio.play().catch(() => {});
+      } catch (e) {
+        /* ignore */
+      }
+      userInteracted = true;
+      window.removeEventListener("click", handler);
+      window.removeEventListener("touchstart", handler);
+      window.removeEventListener("keydown", handler);
+    };
+
+    window.addEventListener("click", handler, { once: true });
+    window.addEventListener("touchstart", handler, { once: true });
+    window.addEventListener("keydown", handler, { once: true });
+  }
+
   async function initializeApp() {
     // 3.1. Carregar Modais e Componentes
-    await loadComponents("#modal-container");
+    await loadComponents("#modal-container", [
+      "components/modal-print-all-em-preparo.html",
+      "components/modal-print-preview.html",
+    ]);
 
     // 3.2. Configurar Listeners de UI
     setupUIEventListeners();
@@ -84,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
     processNotifications(pedidos);
 
     // 5.2. Renderizar Kanban
-    UI.renderBoard(pedidos, updatePedidoStatus, UI.printLabel);
+    UI.renderBoard(pedidos, updatePedidoStatus, UI.printLabel, handlePrintPdf);
   }
 
   function handleError(error) {
@@ -114,6 +144,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function handlePrintPdf(pedido, pedidoId) {
+    const orderData = {
+      id: pedidoId,
+      customerName: pedido.nomeCliente,
+      address: pedido.endereco,
+      item: pedido.nomeBolo,
+      status: pedido.status,
+    };
+    showPrintPreviewModal(orderData);
+  }
+
   function processNotifications(pedidos) {
     if (isFirstLoad) {
       knownOrderIds = new Set(
@@ -131,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
       (id) => pedidos[id].status === "pendente" && !knownOrderIds.has(id)
     );
     if (newPendingOrders.length > 0) {
-      newOrderSound.play().catch(console.warn);
+      tryPlaySound(newOrderSound);
       newPendingOrders.forEach((id) => {
         knownOrderIds.add(id);
         CommonUI.showToast(
@@ -147,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
         pedidos[id].status === "entregue" && !knownDeliveredOrderIds.has(id)
     );
     if (newDeliveredOrders.length > 0) {
-      deliveryCompleteSound.play().catch(console.warn);
+      tryPlaySound(deliveryCompleteSound);
       newDeliveredOrders.forEach((id) => {
         knownDeliveredOrderIds.add(id);
         CommonUI.showToast(

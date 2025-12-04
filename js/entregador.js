@@ -16,6 +16,7 @@ import {
   updateSpeedDisplay,
   showConfirmDeliveryModal,
   setFollowMeButtonState,
+  showScheduledOrdersModal,
 } from "./ui-entregador.js";
 import {
   showToast,
@@ -46,15 +47,46 @@ window.addEventListener("load", () => {
   let isFollowingDeliveryPerson = true;
   let hasArrived = false;
   let initialLocationSet = false;
-
-  const notificationSound = new Audio("/audio/NotificacaoPedidoEntregue.mp3");
+  // Caminho relativo para garantir que o áudio seja encontrado
+  const notificationSound = new Audio("audio/NotificacaoPedidoEntregue.mp3");
   let knownReadyOrderIds = new Set();
+  let userInteracted = false;
 
   // ======= 3. Inicialização =======
   initializeApp();
 
+  function tryPlaySound(audio) {
+    if (!audio) return;
+    if (userInteracted) {
+      audio.play().catch(() => {});
+      return;
+    }
+
+    // If the user hasn't interacted yet, schedule play on first interaction
+    const handler = () => {
+      try {
+        audio.play().catch(() => {});
+      } catch (e) {
+        /* ignore */
+      }
+      userInteracted = true;
+      window.removeEventListener("click", handler);
+      window.removeEventListener("touchstart", handler);
+      window.removeEventListener("keydown", handler);
+    };
+
+    window.addEventListener("click", handler, { once: true });
+    window.addEventListener("touchstart", handler, { once: true });
+    window.addEventListener("keydown", handler, { once: true });
+  }
+
   async function initializeApp() {
     map = await Map.initializeMap("map", undefined, undefined, true); // Start in satellite mode
+    if (!map) {
+      console.error("Map initialization failed. Deliverer page might not function correctly.");
+      updateLocationStatus("Erro ao carregar o mapa. Por favor, recarregue a página.", "error");
+      return; // Stop further initialization if map failed
+    }
 
     setupMapEventListeners();
     checkGeolocationPermission();
@@ -64,6 +96,9 @@ window.addEventListener("load", () => {
     await loadComponents("#modal-container");
     // Configura todos os listeners de ações (modais, botões da ilha, etc.)
     setupActionListeners();
+
+    // Garante que o mapa tenha o tamanho correto após o carregamento da UI
+    Map.invalidateMapSize();
 
     setFollowMeButtonState(isFollowingDeliveryPerson);
     Map.setFollowMode(isFollowingDeliveryPerson);
@@ -108,25 +143,6 @@ window.addEventListener("load", () => {
       );
       if (followBtnMobile)
         followBtnMobile.addEventListener("click", handleToggleFollowMe);
-    }
-    const satBtn = document.getElementById("satellite-toggle");
-    const toggle3dBtn = document.getElementById("toggle-3d");
-    let satelliteOn = false;
-    let threeDOn = false;
-
-    if (satBtn) {
-      satBtn.addEventListener("click", () => {
-        satelliteOn = !satelliteOn;
-        Map.setSatelliteMode(satelliteOn);
-        satBtn.classList.toggle("active", satelliteOn);
-      });
-    }
-    if (toggle3dBtn) {
-      toggle3dBtn.addEventListener("click", () => {
-        threeDOn = !threeDOn;
-        Map.set3DMode(threeDOn);
-        toggle3dBtn.classList.toggle("active", threeDOn);
-      });
     }
 
     // Botões da Ilha Dinâmica
@@ -183,7 +199,17 @@ window.addEventListener("load", () => {
         }
       });
     }
+
+    // Listener para o alerta de proximidade do mapa
+    window.addEventListener("proximity-alert", (e) => {
+      const distance = e.detail.distance;
+      showToast(`Você está a ${distance}m do destino!`, "success");
+    }
+  
+    );
   }
+
+    
 
   function handleLogout() {
     localStorage.removeItem("currentUser");
@@ -216,31 +242,32 @@ window.addEventListener("load", () => {
   }
 
   function handleShowScheduled() {
-    const modal = document.getElementById("scheduled-orders-modal");
-    if (modal) {
-      modal.classList.add("active");
-    } else {
-      console.error("Modal de pedidos agendados não encontrado!");
-      showToast("Erro ao abrir agendamentos.", "error");
-    }
+    showScheduledOrdersModal(true);
   }
 
   // ======= 5. Geolocalização =======
   function checkGeolocationPermission() {
     if (!window.isSecureContext) {
-      UI.updateLocationStatus("Erro de segurança: HTTPS necessário.", "error");
+      updateLocationStatus("Erro de segurança: HTTPS necessário para geolocalização.", "error");
+      console.error("Geolocation requires HTTPS. Current context is not secure.");
       return;
     }
     navigator.permissions.query({ name: "geolocation" }).then((result) => {
+      console.log("Geolocation permission query result:", result.state); // Added logging
       if (result.state === "granted" || result.state === "prompt") {
         startWatchingLocation();
       } else {
-        UI.updateLocationStatus("Permissão de localização negada.", "error");
+        updateLocationStatus(`Permissão de localização ${result.state}. Por favor, conceda acesso à sua localização.`, "error");
+        console.warn(`Geolocation permission ${result.state}. User needs to grant access.`);
       }
+    }).catch(error => {
+        console.error("Error querying geolocation permission:", error);
+        updateLocationStatus("Erro ao verificar permissão de localização.", "error");
     });
   }
 
   function startWatchingLocation() {
+    console.log("Attempting to start watching geolocation..."); // Added logging
     const watchOptions = {
       enableHighAccuracy: true,
       timeout: 20000, // Aumentado para 20 segundos para mais tolerância
@@ -278,13 +305,22 @@ window.addEventListener("load", () => {
   }
 
   function handleLocationError(error) {
-    console.error("Erro de geolocalização:", error.code, error.message);
+    console.error("Erro de geolocalização:", error); // Log the full error object
     let userMessage = "Erro ao obter localização.";
-    if (error.code === 3) {
-      // TIMEOUT
-      userMessage = "Sinal de GPS fraco. Tente em um local com céu aberto.";
+    if (error.code === error.PERMISSION_DENIED) {
+      userMessage = "Permissão de localização negada. Por favor, ative a localização nas configurações do seu dispositivo.";
+    } else if (error.code === error.POSITION_UNAVAILABLE) {
+      userMessage = "Localização indisponível. Verifique suas configurações de GPS.";
+    } else if (error.code === error.TIMEOUT) {
+      userMessage = "Tempo esgotado ao tentar obter localização. Sinal de GPS fraco ou lento.";
     }
-
+    
+    // Check if on iOS and provide specific guidance if relevant
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS && error.code === error.PERMISSION_DENIED) {
+      userMessage += " Em iOS, certifique-se de que a permissão de localização está definida como 'Durante o Uso do App' ou 'Sempre' nas configurações de privacidade.";
+    }
+    
     updateLocationStatus(userMessage, "error");
     showToast(userMessage, "error");
   }
@@ -328,7 +364,7 @@ window.addEventListener("load", () => {
       });
     }
 
-    UI.updateSpeedDisplay(entregadorLocation.speed || 0);
+    updateSpeedDisplay(entregadorLocation.speed || 0);
     // updateLocationStatus("Localização ativa.", "success"); // Comentado para reduzir toasts
   }
 
@@ -682,11 +718,7 @@ window.addEventListener("load", () => {
         (id) => !knownReadyOrderIds.has(id)
       );
       if (newReadyOrders.length && knownReadyOrderIds.size) {
-        try {
-          notificationSound.play();
-        } catch (e) {
-          console.warn(e);
-        }
+        tryPlaySound(notificationSound);
       }
       knownReadyOrderIds = new Set(Object.keys(readyOrders));
 
@@ -744,11 +776,7 @@ window.addEventListener("load", () => {
       }
     }
     if (newStatus === "entregue") {
-      try {
-        notificationSound.play();
-      } catch (e) {
-        console.warn(e);
-      }
+      tryPlaySound(notificationSound);
       showToast(
         `Pedido #${pedidoId
           .substring(0, 5)
