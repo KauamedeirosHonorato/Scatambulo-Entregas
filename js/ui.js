@@ -399,7 +399,6 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf) {
     { id: "feito", title: "Feito" },
     { id: "pronto_para_entrega", title: "Pronto para Entrega" },
     { id: "em_entrega", title: "Em Entrega" },
-    { id: "entregue", title: "Entregue" },
   ];
 
   statuses.forEach((statusInfo) => {

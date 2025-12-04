@@ -163,6 +163,14 @@ window.addEventListener("load", () => {
       handleCepInput // onCepInput
     );
 
+    // Listener para o clique no marcador do cliente no mapa
+    document.addEventListener("client-marker-click", (e) => {
+      const order = e.detail.order;
+      if (order) {
+        showPrintPreviewModal(order);
+      }
+    });
+
     // Listeners específicos do mapa que não estão no ui.js
     map.on("dragstart", () => {
       isFollowingEntregador = false;
@@ -294,7 +302,7 @@ window.addEventListener("load", () => {
         }
         activeDelivery.oldId = activeDelivery.id;
 
-        Map.updateClientMarkerOnMap(clientCoords);
+        Map.updateClientMarkerOnMap(clientCoords, activeDelivery);
         if (orderData.entrega && orderData.entrega.geometria) {
           Map.drawMainRoute(orderData.entrega.geometria);
         } else if (entregadorLocation && clientCoords) {
@@ -399,11 +407,9 @@ window.addEventListener("load", () => {
       UI.updateAdminMapInfo(null);
       return;
     }
-    const entregaData = activeDelivery.entrega;
-    if (entregaData) {
-      const currentSpeed = entregaData.velocidade || 0;
-      UI.updateAdminMapInfo(activeDelivery, entregaData, currentSpeed);
-    }
+    const entregaData = activeDelivery.entrega || {}; // Garante que o objeto exista, mesmo que vazio
+    const currentSpeed = entregadorLocation.speed || 0; // Pega a velocidade da localização do entregador
+    UI.updateAdminMapInfo(activeDelivery, entregaData, currentSpeed);
   }
 
 // Helper function to generate a single printable page for an order

@@ -10,7 +10,7 @@
             <meta http-equiv="Content-Security-Policy"
       content="
         default-src 'self';
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com;
         style-src 'self' 'unsafe-inline' https:;
         img-src 'self' data: blob: https:;
         font-src 'self' data: https:;
@@ -19,7 +19,7 @@
           blob:
           wss:
           https:;
-        frame-src https://*.firebaseio.com;
+        frame-src https://*.firebaseio.com https://vercel.live;
         worker-src 'self' blob:;
       ">
     <title>Painel Entregador - Scatambulo</title>

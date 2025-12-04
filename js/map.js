@@ -94,7 +94,7 @@ export async function initializeMap(
     const initialStyle = initialSatelliteMode ? satelliteStyle : osmStyle;
 
     map = new maplibregl.Map({
-      interactive: false, // Inicia o mapa como não interativo
+      interactive: true, // Inicia o mapa como interativo, a sobreposição controla o clique
       container: elementId,
       center: center,
       zoom: zoom,
@@ -200,11 +200,11 @@ export async function initializeMap(
 
           // Atualiza a UI com base no estado de tela cheia
           if (isFullscreen) {
-            setMapInteractive(true);
+            // A interatividade agora é controlada pela sobreposição
             interactionOverlay.classList.add("hidden");
             if (icon) icon.className = "ph ph-arrows-in";
           } else {
-            setMapInteractive(false);
+            // A interatividade agora é controlada pela sobreposição
             interactionOverlay.classList.remove("hidden");
             if (icon) icon.className = "ph ph-arrows-out";
           }
@@ -332,30 +332,6 @@ export async function initializeMap(
     return null; // Ensure that 'map' is null if initialization fails
   }
 }
-/**
- * Ativa ou desativa a interatividade do mapa.
- * @param {boolean} interactive - True para ativar, false para desativar.
- */
-function setMapInteractive(interactive) {
-  if (!map) return;
-  isInteractive = interactive;
-
-  const methods = [
-    "boxZoom",
-    "doubleClickZoom",
-    "dragPan",
-    "dragRotate",
-    "keyboard",
-    "scrollZoom",
-    "touchZoomRotate",
-  ];
-
-  methods.forEach((method) => {
-    if (map[method]) {
-      interactive ? map[method].enable() : map[method].disable();
-    }
-  });
-}
 
 export function updateDeliveryMarkerOnMap(location, destination) {
   if (!map || !location) return;
@@ -449,7 +425,7 @@ export function updateCameraForLocation(location) {
   }
 }
 
-export function updateClientMarkerOnMap(coords) {
+export function updateClientMarkerOnMap(coords, orderData = null) {
   if (!map) return;
 
   if (coords) {
@@ -461,10 +437,24 @@ export function updateClientMarkerOnMap(coords) {
     el.style.width = "40px";
     el.style.height = "40px";
     el.style.backgroundSize = "contain";
+    el.style.cursor = "pointer";
+    el.title = "Ver detalhes do pedido";
 
     clientMarker = new maplibregl.Marker({ element: el })
       .setLngLat(clientLatLng)
       .addTo(map);
+
+    // Adiciona o listener de clique apenas se houver dados do pedido
+    if (orderData) {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation(); // Impede que o clique se propague para o mapa
+        const event = new CustomEvent("client-marker-click", {
+          bubbles: true, // Permite que o evento "borbulhe" até o document
+          detail: { order: orderData },
+        });
+        el.dispatchEvent(event);
+      });
+    }
   } else if (clientMarker) {
     clientMarker.remove();
     clientMarker = null;
