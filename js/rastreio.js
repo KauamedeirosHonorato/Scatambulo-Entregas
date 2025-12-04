@@ -111,28 +111,34 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateStatusFlow(currentStatus) {
-    const steps = document.querySelectorAll(".status-step");
-    const statusOrder = Array.from(steps).map((step) => step.dataset.status);
-    const currentIndex = statusOrder.indexOf(currentStatus);
+    const steps = document.querySelectorAll('.status-step');
+    const statusOrderOnTimeline = Array.from(steps).map(step => step.dataset.status);
 
-    // Itera sobre cada passo para definir seu estado (ativo, piscando ou inativo)
+    // Mapeia os status internos do sistema para os passos visíveis na timeline
+    const statusMap = {
+      'pendente': -1, // Antes da timeline começar
+      'em_preparo': statusOrderOnTimeline.indexOf('em_preparo'),
+      'feito': statusOrderOnTimeline.indexOf('em_preparo'), // 'feito' significa que 'em_preparo' foi concluído
+      'pronto_para_entrega': statusOrderOnTimeline.indexOf('pronto_para_entrega'),
+      'em_entrega': statusOrderOnTimeline.indexOf('em_entrega'),
+      'entregue': statusOrderOnTimeline.indexOf('entregue')
+    };
+
+    const currentIndex = statusMap[currentStatus] ?? -1;
+
     steps.forEach((step, index) => {
-      // Limpa a classe 'blink' de todos os passos para garantir que apenas o correto pisque
-      step.classList.remove("blink");
+      step.classList.remove('active', 'completed');
 
       if (index < currentIndex) {
-        // Ativa todos os passos até o status atual
-        step.classList.add("active");
+        step.classList.add('completed');
       } else if (index === currentIndex) {
-        // Ativa o passo do status atual, mas sem piscar
-        step.classList.add("active");
-      } else if (index === currentIndex + 1) {
-        // Faz o próximo passo piscar e o deixa esmaecido (sem a classe 'active')
-        step.classList.remove("active");
-        step.classList.add("blink");
-      } else {
-        // Desativa todos os passos futuros
-        step.classList.remove("active");
+        // Se o status real for 'feito', o passo 'em_preparo' está apenas concluído, não ativo.
+        // Caso contrário, o passo atual está ativo.
+        if (currentStatus === 'feito') {
+          step.classList.add('completed');
+        } else {
+          step.classList.add('active');
+        }
       }
     });
   }
@@ -270,7 +276,8 @@ document.addEventListener("DOMContentLoaded", () => {
     ) {
       Map.fitMapToBounds(deliveryPersonLocation, clientCoordinates);
     } else if (clientCoordinates && !clientCoordinates.error) {
-      Map.fitMapToBounds(clientCoordinates, clientCoordinates, 14);
+      // Se apenas a localização do cliente estiver disponível, centraliza o mapa nela.
+      Map.panMapTo({ latitude: clientCoordinates.lat, longitude: clientCoordinates.lon });
     }
   }
 });
