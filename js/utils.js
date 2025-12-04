@@ -127,33 +127,20 @@ export function calculateDistance(loc1, loc2) {
 /**
  * Analisa uma mensagem de WhatsApp para extrair dados de pedido.
  * Esta função foi refinada para ser mais robusta.
- * @param {string} text - O texto completo da mensagem.
+ * @param {string} originalText - O texto completo da mensagem.
  * @returns {object} Os dados do pedido.
  */
-export function parseWhatsappMessage(text) {
-  if (!text) return {};
+export function parseWhatsappMessage(originalText) {
+  if (!originalText) return {};
 
   const extractedData = {};
 
-  // Helper to extract a value based on a label
-  const extractField = (labelText, targetKey, transform = (v) => v) => {
-    const regex = new RegExp(`${labelText}:\\s*([^\\n\\r]*)`, 'im');
-    const match = text.match(regex);
-    if (match && match[1]) {
-      extractedData[targetKey] = transform(match[1].trim());
-    } else {
-      extractedData[targetKey] = ''; // Ensure field always exists
-    }
-  };
-
-  // Extract ITENS DO PEDIDO
-  const itemsSectionMatch = text.match(/--- ITENS DO PEDIDO ---\s*([\s\S]*?)(?=\n---|\n\n|$)/im);
+  // --- 1. Extrair Nome do Bolo (mantendo a lógica existente para ITENS DO PEDIDO) ---
+  const itemsSectionMatch = originalText.match(/--- ITENS DO PEDIDO ---\s*([\s\S]*?)(?=\nSubtotal dos Itens|\n--- DADOS PARA ENTREGA ---|$)/im);
   if (itemsSectionMatch && itemsSectionMatch[1]) {
     const itemLines = itemsSectionMatch[1].split('\n').map(line => line.trim()).filter(line => line.length > 0);
     if (itemLines.length > 0) {
-      // Assuming the first non-empty line after ITENS DO PEDIDO is the main item
       let firstItem = itemLines[0].replace(/^-/, '').trim();
-      // Remove content in parentheses, e.g., "(Oval 1kg (sem custo))"
       firstItem = firstItem.replace(/\s*\(.*\)/g, '').trim();
       extractedData.nomeBolo = firstItem;
     } else {
@@ -163,34 +150,68 @@ export function parseWhatsappMessage(text) {
     extractedData.nomeBolo = '';
   }
 
-  // Extract DADOS PARA ENTREGA
-  extractField('Nome', 'nomeCliente');
-  extractField('Data de entrega', 'dataEntrega', (dateStr) => {
-    // Convert DD/MM/YYYY to YYYY-MM-DD
-    if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-      const [day, month, year] = dateStr.split('/');
-      return `${year}-${month}-${day}`;
-    }
-    return dateStr;
-  });
-  extractField('Horário para entrega', 'horarioEntrega');
-  extractField('CEP', 'cep');
-  extractField('Endereço', 'enderecoCompleto');
-  extractField('Bairro', 'bairro');
-  extractField('Cidade', 'cidade');
+  // --- 2. Normalizar a mensagem ---
+  const normalizarMensagem = (msg) => {
+    return msg
+      .replace(/--- DADOS PARA ENTREGA ---/i, "\n") // Replace header with newline
+      .replace(/Nome:/i, "\nNome:")
+      .replace(/Vela de brinde\?:/i, "\nBrinde:")
+      .replace(/Data de entrega:/i, "\nData:")
+      .replace(/Horário para entrega:/i, "\nHorario:")
+      .replace(/CEP:/i, "\nCEP:")
+      .replace(/Endereço:/i, "\nEndereco:")
+      .replace(/Bairro:/i, "\nBairro:")
+      .replace(/Cidade:/i, "\nCidade:")
+      .replace(/Estado:/i, "\nEstado:") // Added State for completeness
+      .replace(/Complemento:/i, "\nComplemento:") // Added Complemento
+      .trim();
+  };
+  const normalizedMsg = normalizarMensagem(originalText);
 
-  // Derive Rua and Número from Endereço
-  let rua = extractedData.enderecoCompleto || '';
+  // --- 3. Função para extrair campo de forma segura ---
+  const getCampo = (campo, texto) => {
+    const regex = new RegExp(`${campo}:\\s*([^\\n]+)`, "i");
+    const m = texto.match(regex);
+    return m ? m[1].trim() : "";
+  };
+
+  // --- 4. Extrair campos usando a normalização ---
+  const rawNome = getCampo("Nome", normalizedMsg);
+  const rawDataEntrega = getCampo("Data", normalizedMsg);
+  const rawHorarioEntrega = getCampo("Horario", normalizedMsg);
+  const rawCep = getCampo("CEP", normalizedMsg);
+  const rawEndereco = getCampo("Endereco", normalizedMsg);
+  const rawBairro = getCampo("Bairro", normalizedMsg);
+  const rawCidade = getCampo("Cidade", normalizedMsg);
+  const rawEstado = getCampo("Estado", normalizedMsg); // Extract State
+  const rawComplemento = getCampo("Complemento", normalizedMsg); // Extract Complemento
+
+  extractedData.nomeCliente = rawNome;
+  extractedData.cep = rawCep;
+  extractedData.bairro = rawBairro;
+  extractedData.cidade = rawCidade;
+  extractedData.estado = rawEstado;
+  extractedData.complemento = rawComplemento;
+
+  // Convert DD/MM/YYYY to YYYY-MM-DD
+  if (rawDataEntrega.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+    const [day, month, year] = rawDataEntrega.split('/');
+    extractedData.dataEntrega = `${year}-${month}-${day}`;
+  } else {
+    extractedData.dataEntrega = rawDataEntrega;
+  }
+  extractedData.horarioEntrega = rawHorarioEntrega;
+
+  // --- 5. Derivar Rua e Número do Endereço Normalizado ---
+  let rua = rawEndereco || '';
   let numero = '';
 
-  // Try to extract a number from the end of the address string, preceded by common number indicators or just a space/comma
-  const numeroRegex = /(?:,\s*|\s*)[Nn]º?\s*(\d+[a-zA-Z]?)\s*$/; // e.g., ", Nº 259" or " Nº259" or " 259" at the end
+  const numeroRegex = /(?:,\s*|\s*)[Nn]º?\s*(\d+[a-zA-Z]?)\s*$/;
   const matchNumeroEnd = rua.match(numeroRegex);
 
   if (matchNumeroEnd) {
     numero = matchNumeroEnd[1].trim();
-    rua = rua.substring(0, matchNumeroEnd.index).trim(); // Remove the number part from rua
-    // Clean up trailing commas from rua if any
+    rua = rua.substring(0, matchNumeroEnd.index).trim();
     if (rua.endsWith(',')) {
       rua = rua.slice(0, -1).trim();
     }
@@ -198,14 +219,9 @@ export function parseWhatsappMessage(text) {
   extractedData.rua = rua;
   extractedData.numero = numero;
 
-  // Set default empty values for fields not found in the example
-  extractedData.emailCliente = '';
-  extractedData.whatsapp = ''; // Assuming WhatsApp number is not in this specific message format
-  extractedData.estado = ''; // Not in message example
-  extractedData.complemento = ''; // Not in message example
-
-  // Clean up any extra properties
-  delete extractedData.enderecoCompleto;
+  // --- 6. Campos que podem não estar na mensagem (ou não foram solicitados) ---
+  extractedData.emailCliente = ''; // Not in message example
+  extractedData.whatsapp = '';     // Not in message example
 
   return extractedData;
 }
