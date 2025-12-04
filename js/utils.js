@@ -131,7 +131,6 @@ export function calculateDistance(loc1, loc2) {
  * @returns {object} Os dados do pedido.
  */
 export function parseWhatsappMessage(text) {
-  console.log("parseWhatsappMessage: Original text received:", text);
   if (!text) return {};
 
   const extractedData = {};
@@ -140,7 +139,6 @@ export function parseWhatsappMessage(text) {
   const extractField = (labelText, targetKey, transform = (v) => v) => {
     const regex = new RegExp(`${labelText}:\\s*([^\\n\\r]*)`, 'im');
     const match = text.match(regex);
-    console.log(`parseWhatsappMessage: Attempting to extract '${labelText}'. Match:`, match ? match[1] : "No match");
     if (match && match[1]) {
       extractedData[targetKey] = transform(match[1].trim());
     } else {
@@ -150,7 +148,6 @@ export function parseWhatsappMessage(text) {
 
   // Extract ITENS DO PEDIDO
   const itemsSectionMatch = text.match(/--- ITENS DO PEDIDO ---\s*([\s\S]*?)(?=\n---|\n\n|$)/im);
-  console.log("parseWhatsappMessage: itemsSectionMatch:", itemsSectionMatch);
   if (itemsSectionMatch && itemsSectionMatch[1]) {
     const itemLines = itemsSectionMatch[1].split('\n').map(line => line.trim()).filter(line => line.length > 0);
     if (itemLines.length > 0) {
@@ -159,7 +156,6 @@ export function parseWhatsappMessage(text) {
       // Remove content in parentheses, e.g., "(Oval 1kg (sem custo))"
       firstItem = firstItem.replace(/\s*\(.*\)/g, '').trim();
       extractedData.nomeBolo = firstItem;
-      console.log("parseWhatsappMessage: Extracted nomeBolo:", firstItem);
     } else {
       extractedData.nomeBolo = '';
     }
@@ -186,10 +182,18 @@ export function parseWhatsappMessage(text) {
   // Derive Rua and Número from Endereço
   let rua = extractedData.enderecoCompleto || '';
   let numero = '';
-  const addressPartsMatch = rua.match(/(.*(?:rua|avenida|travessa|alameda|estrada).*?),?\s*(?:nº?|número)?\s*(\d+.*)/i);
-  if (addressPartsMatch) {
-    rua = addressPartsMatch[1].trim();
-    numero = addressPartsMatch[2].trim();
+
+  // Try to extract a number from the end of the address string, preceded by common number indicators or just a space/comma
+  const numeroRegex = /(?:,\s*|\s*)[Nn]º?\s*(\d+[a-zA-Z]?)\s*$/; // e.g., ", Nº 259" or " Nº259" or " 259" at the end
+  const matchNumeroEnd = rua.match(numeroRegex);
+
+  if (matchNumeroEnd) {
+    numero = matchNumeroEnd[1].trim();
+    rua = rua.substring(0, matchNumeroEnd.index).trim(); // Remove the number part from rua
+    // Clean up trailing commas from rua if any
+    if (rua.endsWith(',')) {
+      rua = rua.slice(0, -1).trim();
+    }
   }
   extractedData.rua = rua;
   extractedData.numero = numero;
@@ -203,7 +207,6 @@ export function parseWhatsappMessage(text) {
   // Clean up any extra properties
   delete extractedData.enderecoCompleto;
 
-  console.log("parseWhatsappMessage: Final extractedData:", extractedData);
   return extractedData;
 }
 
