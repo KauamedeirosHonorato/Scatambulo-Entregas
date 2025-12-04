@@ -297,3 +297,34 @@ export function debounce(func, delay) {
     timeout = setTimeout(() => func.apply(context, args), delay);
   };
 }
+
+/**
+ * Imprime o conteúdo HTML em um iframe oculto para não abrir nova janela.
+ * @param {string} content - O HTML a ser impresso.
+ */
+export function printViaIframe(content) {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'absolute';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.visibility = 'hidden';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open();
+  doc.write(content);
+  doc.close();
+
+  // A slight delay is sometimes necessary for the document to be fully parsed in the iframe.
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    
+    // The timeout for removal is a workaround for some browsers where 
+    // the print dialog blocks script execution.
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 500);
+  }, 50);
+}

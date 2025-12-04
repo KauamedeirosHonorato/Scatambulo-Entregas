@@ -45,9 +45,9 @@ export function setupEventListeners(
 /**
  * Renderiza o Kanban Board. Reutiliza a função genérica e passa `isAdmin = false`.
  */
-export function renderBoard(pedidos, onStatusUpdate, onPrintLabel) {
+export function renderBoard(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf) {
   // A confeiteira só vê 3 colunas (Pendente, Em Preparo, Pronto para Envio) e Entregue (apenas para referência)
-  genericRenderBoard(pedidos, onStatusUpdate, onPrintLabel, false);
+  genericRenderBoard(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf);
 }
 
 /**

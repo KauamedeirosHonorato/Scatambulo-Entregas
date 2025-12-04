@@ -1,93 +1,148 @@
-// Lógica para o modal de visualização de impressão
+import { loadQrCodeLibrary } from './ui.js';
+import { printViaIframe } from './utils.js';
 
-import { loadQrCodeLibrary } from '../js/ui.js';
+function loadHtml2PdfScript() {
+    return new Promise((resolve, reject) => {
+        if (typeof html2pdf === 'function') {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+function generatePdfContent(order) {
+    return `
+        <div style="font-family: Arial; padding: 20px; font-size: 16px;">
+            <h2>Angela Confeitaria v2</h2>
+
+            <p><strong>NUMERO DO PEDIDO:</strong> ${order.numero}</p>
+            <p><strong>CLIENTE:</strong> ${order.cliente}</p>
+
+            <p><strong>ENDERECO:</strong> ${order.endereco}</p>
+
+            <p><strong>COMPLEMENTO:</strong> ${order.complemento || ''}</p>
+
+            <p><strong>SABOR:</strong> ${order.sabor}</p>
+
+            <p><strong>STATUS:</strong> ${order.status}</p>
+
+            <p>Obrigado pela preferência!</p>
+
+            <p><strong>QRCODE:</strong></p>
+            <img src="${order.qrcode}" style="width: 180px; margin-top: 10px;" />
+
+            <p style="margin-top: 20px; font-size: 13px;">
+                ${new Date().toLocaleString("pt-BR")}
+            </p>
+        </div>
+    `;
+}
 
 export function showPrintPreviewModal(order) {
     const modal = document.getElementById('modal-print-preview');
-    const printContent = document.getElementById('print-content');
-
-    // Preenche as informações do pedido
-    printContent.innerHTML = `
-        <p><strong>ID do Pedido:</strong> ${order.id}</p>
-        <p><strong>Cliente:</strong> ${order.customerName}</p>
-        <p><strong>Endereço:</strong> ${order.address}</p>
-        <p><strong>Item:</strong> ${order.item}</p>
-        <p><strong>Status:</strong> ${order.status}</p>
-    `;
-
-    // Gere o QR Code
-    const qrContainer = document.getElementById('print-qrcode-container');
-    if (qrContainer) {
-        const trackingUrl = `https://scatambulo-entregas-iivh.vercel.app/rastreio.html?id=${order.id.toLowerCase()}`;
-        loadQrCodeLibrary(() => {
-            try {
-                const qr = qrcode(0, 'M'); // Nível de correção de erro M
-                qr.addData(trackingUrl);
-                qr.make();
-                qrContainer.innerHTML = qr.createImgTag(4, 8); // cellSize=4, margin=8
-            } catch (e) {
-                console.error("Erro ao gerar QR Code:", e);
-                qrContainer.innerHTML = "Erro QR";
-            }
-        });
+    if (!modal) {
+        console.error("Elemento #modal-print-preview não encontrado.");
+        return;
     }
 
+    const printContent = document.getElementById('print-content');
+    const qrContainer = document.getElementById('print-qrcode-container');
 
-    modal.style.display = 'block';
+    printContent.innerHTML = '';
+    qrContainer.innerHTML = '';
 
-    const closeModal = () => {
-        modal.style.display = 'none';
-        window.removeEventListener('click', closeOnOutsideClick);
-    };
+    const mainContentHTML = `
+        <div style="font-family: Arial; padding: 10px; font-size: 14px;">
+            <h2 style="text-align: center;">Angela Confeitaria v2</h2>
 
-    const closeOnOutsideClick = (event) => {
+            <p><strong>NUMERO DO PEDIDO:</strong> ${order.id || ''}</p>
+            <p><strong>CLIENTE:</strong> ${order.nomeCliente || ''}</p>
+
+            <p><strong>ENDERECO:</strong> ${order.rua || ''}, ${order.numero || ''}, ${order.bairro || ''} - ${order.cidade || ''} - CEP: ${order.cep || ''}</p>
+
+            <p><strong>COMPLEMENTO:</strong> ${order.complemento || ''}</p>
+
+            <p><strong>SABOR:</strong> ${order.nomeBolo || ''}</p>
+
+            <p><strong>STATUS:</strong> ${(order.status || '').toUpperCase()}</p>
+        </div>
+    `;
+    printContent.innerHTML = mainContentHTML;
+    
+    const trackingUrl = `https://scatambulo-entregas-iivh.vercel.app/rastreio.html?id=${order.id.toLowerCase()}`;
+    loadQrCodeLibrary(() => {
+        try {
+            const qr = qrcode(0, 'M');
+            qr.addData(trackingUrl);
+            qr.make();
+            qrContainer.innerHTML = qr.createImgTag(5, 4);
+        } catch (e) {
+            console.error("Erro ao gerar QR Code no modal:", e);
+            qrContainer.innerHTML = "Erro QR";
+        }
+    });
+
+    modal.classList.add('active');
+
+    const closeModal = () => modal.classList.remove('active');
+    const closeButton = modal.querySelector('.close-button');
+    closeButton.onclick = closeModal;
+    window.onclick = (event) => {
         if (event.target === modal) {
             closeModal();
         }
     };
 
-    // Configura o botão de fechar
-    const closeButton = modal.querySelector('.close-button');
-    closeButton.onclick = closeModal;
-
-    // Configura o botão de imprimir
     const printButton = document.getElementById('print-button');
-    printButton.onclick = function() {
-        document.body.classList.add('printing-active');
-        window.onafterprint = function() {
-            document.body.classList.remove('printing-active');
-        };
-        window.print();
-    };
+    if (printButton) {
+        printButton.onclick = () => window.print();
+    } else {
+        console.error("Botão de imprimir #print-button não encontrado no modal.");
+    }
 
-    // Configura o botão de gerar PDF
     const pdfButton = document.getElementById('pdf-button');
-    pdfButton.onclick = function() {
-        loadHtml2PdfScript(() => {
-            const element = document.getElementById('print-content-wrapper');
-            const opt = {
-                margin:       [0.5, 0, 0, 0],
-                filename:     `pedido-${order.id}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    if (pdfButton) {
+        pdfButton.onclick = async function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+            this.disabled = true;
+
+            await new Promise(resolve => loadQrCodeLibrary(resolve));
+
+            const mappedOrder = {
+                numero: order.id,
+                cliente: order.nomeCliente,
+                whatsapp: order.whatsapp,
+                email: order.emailCliente,
+                endereco: `${order.rua || ''}, ${order.numero || ''}, ${order.bairro || ''} - ${order.cidade || ''} - CEP: ${order.cep || ''}`,
+                complemento: order.complemento,
+                sabor: order.nomeBolo,
+                status: (order.status || '').toUpperCase(),
+                qrcode: ''
             };
 
-            html2pdf().set(opt).from(element).save();
-        });
-    };
+            const trackingUrl = `https://scatambulo-entregas-iivh.vercel.app/rastreio.html?id=${order.id.toLowerCase()}`;
+            try {
+                const qr = qrcode(0, 'M');
+                qr.addData(trackingUrl);
+                qr.make();
+                mappedOrder.qrcode = qr.createDataURL(4, 4);
+            } catch (e) {
+                console.error("Erro ao gerar QR Code para PDF:", e);
+            }
 
-    // Fecha o modal se o usuário clicar fora dele
-    window.addEventListener('click', closeOnOutsideClick);
-}
+            const content = generatePdfContent(mappedOrder);
+            
+            printViaIframe(content);
 
-function loadHtml2PdfScript(callback) {
-    if (typeof html2pdf === 'function') {
-        callback();
-        return;
+            this.innerHTML = '<i class="fas fa-file-pdf"></i> Salvar PDF';
+            this.disabled = false;
+        };
+    } else {
+        console.error("Botão de PDF #pdf-button não encontrado no modal.");
     }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-    script.onload = callback;
-    document.head.appendChild(script);
 }

@@ -1,5 +1,5 @@
 import { createNewOrder } from "./firebase.js";
-import { parseWhatsappMessage, debounce } from "./utils.js";
+import { parseWhatsappMessage, debounce, printViaIframe } from "./utils.js";
 
 // Cache para resultados de CEP
 const cepCache = new Map();
@@ -413,7 +413,8 @@ export function renderBoard(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf) {
         pedidoId,
         pedido,
         onStatusUpdate,
-        onPrintLabel
+        onPrintLabel,
+        onPrintPdf
       );
       column.appendChild(card);
     }
@@ -633,7 +634,8 @@ export function createOrderCard(
   pedidoId,
   pedido,
   onStatusUpdate,
-  onPrintLabel
+  onPrintLabel,
+  onPrintPdf
 ) {
   const card = document.createElement("div");
   card.className = "order-card";
@@ -689,6 +691,15 @@ export function createOrderCard(
       };
       actions.appendChild(button);
     });
+  }
+
+  if (onPrintPdf) {
+    const pdfBtn = document.createElement("button");
+		pdfBtn.className = "action-icon-btn";
+		pdfBtn.title = "Imprimir PDF";
+		pdfBtn.innerHTML = '<i class="ph ph-file-pdf"></i>';
+    pdfBtn.onclick = () => onPrintPdf(pedido, pedidoId);
+    actions.appendChild(pdfBtn);
   }
 
   // Adiciona a lógica de copiar ao clicar no ID
@@ -852,9 +863,7 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
         <button id="preview-print-btn" class="btn-primary" style="flex: 1;">
           <i class="ph ph-printer"></i> Imprimir
         </button>
-        <button id="preview-pdf-btn" class="btn-primary" style="flex: 1;">
-          <i class="ph ph-file-pdf"></i> Gerar PDF
-        </button>
+       
       </div>
     </div>
   `;
@@ -877,36 +886,6 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
   modal
     .querySelector("#preview-print-btn")
     .addEventListener("click", printAndClose);
-
-  // Novo listener para o botão Gerar PDF
-  modal.querySelector("#preview-pdf-btn").addEventListener("click", async () => {
-    console.log("PDF button clicked.");
-    const content = modal.querySelector("#label-preview-content");
-    console.log("Content for PDF:", content);
-    const opt = {
-      margin: 10,
-      filename: 'etiqueta_pedido.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    console.log("html2pdf options:", opt);
-    try {
-      showToast("Gerando PDF, aguarde...", "info");
-      console.log("Starting PDF generation...");
-      await html2pdf().set(opt).from(content).save();
-      showToast("PDF gerado com sucesso!", "success");
-      console.log("PDF generated successfully.");
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      showToast("Erro ao gerar PDF.", "error");
-    } finally {
-      closeModal(); // Fecha o modal após gerar o PDF
-      console.log("PDF generation process finished.");
-    }
-  });
-
-
 
   // Fecha ao clicar no backdrop
   modal.addEventListener("click", (e) => {
@@ -1022,24 +1001,17 @@ export async function printLabel(pedido, pedidoId) {
   // Mostra o modal de pré-visualização
   showLabelPreviewModal(printContent, () => {
     // Esta função é chamada quando o botão "Imprimir" do modal é clicado
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(`
+    const fullHtml = `
       <html>
         <head>
           <title>Etiqueta do Pedido</title>
           <style>${printStyles}</style>
         </head>
         <body>
-    `);
-    printWindow.document.write(printContent);
-    printWindow.document.write(`
-          <script>
-            window.print();
-            window.close();
-          </script>
+          ${printContent}
         </body>
-      </html>`);
-    printWindow.document.close();
+      </html>`;
+    printViaIframe(fullHtml);
   });
 }
 

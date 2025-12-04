@@ -145,13 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handlePrintPdf(pedido, pedidoId) {
-    const orderData = {
-      id: pedidoId,
-      customerName: pedido.nomeCliente,
-      address: pedido.endereco,
-      item: pedido.nomeBolo,
-      status: pedido.status,
-    };
+    const orderData = { ...pedido, id: pedidoId };
     showPrintPreviewModal(orderData);
   }
 

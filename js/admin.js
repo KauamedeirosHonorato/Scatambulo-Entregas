@@ -11,7 +11,7 @@ import {
   resetAllActiveDeliveries,
   clearAllOrders, // Adicionada a importação que faltava
 } from "./firebase.js";
-import { parseWhatsappMessage, geocodeAddress } from "./utils.js";
+import { parseWhatsappMessage, geocodeAddress, printViaIframe } from "./utils.js";
 import { loadComponents } from "./componentLoader.js";
 import * as Map from "./map.js"; // UI.showToast será usado aqui
 import * as UI from "./ui.js";
@@ -126,7 +126,7 @@ window.addEventListener("load", () => {
     // Espera o carregamento dos componentes (modais) antes de configurar os listeners
     await loadComponents("#modal-container", [
       // Carrega o modal de impressão de todas as etiquetas especificamente para o admin
-      "components/modal-print-all-em-preparo.html",
+      "components/modal-print-all.html",
       "components/modal-print-preview.html",
     ]);
 
@@ -354,13 +354,7 @@ window.addEventListener("load", () => {
   }
 
   function handlePrintPdf(pedido, pedidoId) {
-    const orderData = {
-      id: pedidoId,
-      customerName: pedido.nomeCliente,
-      address: pedido.endereco,
-      item: pedido.nomeBolo,
-      status: pedido.status,
-    };
+    const orderData = { ...pedido, id: pedidoId };
     showPrintPreviewModal(orderData);
   }
 
@@ -409,51 +403,152 @@ window.addEventListener("load", () => {
     }
   }
 
+// Helper function to generate a single printable page for an order
+function generatePrintPageForOrder(order, orderId) {
+    return new Promise(resolve => {
+        const trackingUrl = `https://scatambulo-entregas-iivh.vercel.app/rastreio.html?id=${orderId.toLowerCase()}`;
+        let qrImgTag = '<p>Erro ao gerar QR Code</p>';
+
+        try {
+            const qr = qrcode(0, 'M');
+            qr.addData(trackingUrl);
+            qr.make();
+            qrImgTag = qr.createImgTag(5, 4); 
+        } catch (e) {
+            console.error(`Erro ao gerar QR Code para o pedido ${orderId}:`, e);
+        }
+
+        const content = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; font-size: 16px; width: 210mm; height: 297mm; box-sizing: border-box; page-break-after: always;">
+                <h2>Angela Confeitaria v2</h2>
+                <p><strong>NUMERO DO PEDIDO:</strong> ${orderId}</p>
+                <p><strong>CLIENTE:</strong> ${order.nomeCliente || ''}</p>
+                <p><strong>ENDERECO:</strong> ${order.rua || ''}, ${order.numero || ''}, ${order.bairro || ''} - ${order.cidade || ''} - CEP: ${order.cep || ''}</p>
+                <p><strong>COMPLEMENTO:</strong> ${order.complemento || ''}</p>
+                <p><strong>SABOR:</strong> ${order.nomeBolo || ''}</p>
+                <p><strong>STATUS:</strong> ${(order.status || '').toUpperCase()}</p>
+                <p>Obrigado pela preferência!</p>
+                <div style="margin-top: 15px;">
+                    <strong>QRCODE DE RASTREIO:</strong>
+                    <div style="margin-top: 5px;">${qrImgTag}</div>
+                </div>
+                <p style="margin-top: 20px; font-size: 13px;">
+                    ${new Date().toLocaleString("pt-BR")}
+                </p>
+            </div>
+        `;
+        resolve(content);
+    });
+}
+
+
   async function printAllEmPreparoLabels() {
-    try {
-      const snapshot = await get(ref(db, "pedidos"));
-      const pedidos = snapshot.val() || {};
-      const pedidosEmPreparo = Object.entries(pedidos).filter(
-        ([, p]) => p.status === "em_preparo"
-      );
+    // 1. Close mobile menu if open
+    const mobileNav = document.querySelector(".mobile-nav");
+    const hamburgerMenu = document.querySelector(".hamburger-menu");
+    if (mobileNav && mobileNav.classList.contains("open")) {
+      mobileNav.classList.remove("open");
+    }
+    if (hamburgerMenu && hamburgerMenu.classList.contains("open")) {
+      hamburgerMenu.classList.remove("open");
+    }
+    
+    // 2. Get Modal Elements
+    const modal = document.getElementById("print-all-labels-modal");
+    const messageEl = document.getElementById("print-all-message");
+    const confirmBtn = document.getElementById("print-all-confirm-btn");
+    const cancelBtn = document.getElementById("print-all-cancel-btn");
+    const closeButton = modal.querySelector(".close-button");
 
-      if (pedidosEmPreparo.length === 0) {
-        UI.showToast("Não há pedidos em preparo para imprimir.", "info");
+    if (!modal || !messageEl || !confirmBtn || !cancelBtn || !closeButton) {
+        UI.showToast("Erro ao encontrar elementos do modal de impressão.", "error");
         return;
-      }
+    }
 
-      // Gera o HTML para cada etiqueta de forma assíncrona (com QR Codes)
-      const labelPromises = pedidosEmPreparo.map(([id, pedido]) =>
-        UI.createLabelHTML(pedido, id)
-      );
-      const labelHtmls = await Promise.all(labelPromises);
+    // 3. Setup Modal Controls
+    const openModal = () => modal.classList.add("active");
+    const closeModal = () => modal.classList.remove("active");
 
-      // Cria um container temporário para as etiquetas para impressão
-      const tempPrintContainer = document.createElement("div");
-      tempPrintContainer.id = "temp-print-container";
-      tempPrintContainer.innerHTML = labelHtmls.join("");
+    cancelBtn.onclick = closeModal;
+    closeButton.onclick = closeModal;
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
 
-      // Estilo para garantir que o container temporário seja invisível mas printável
-      tempPrintContainer.style.position = "absolute";
-      tempPrintContainer.style.left = "-9999px"; // Move para fora da tela
-      tempPrintContainer.style.width = "100%"; // Ocupa a largura total para impressão
-      tempPrintContainer.style.zIndex = "-1"; // Garante que não interfira com a UI
+    confirmBtn.disabled = true;
 
-      document.body.appendChild(tempPrintContainer);
+    try {
+        // 4. Fetch and Filter Data
+        const snapshot = await get(ref(db, "pedidos"));
+        const pedidos = snapshot.val() || {};
+        const pedidosEmPreparo = Object.entries(pedidos)
+            .filter(([, p]) => p.status && p.status.trim().toLowerCase() === "em_preparo")
+            .sort(([, a], [, b]) => (a.timestamp || 0) - (b.timestamp || 0));
 
-      // Adiciona a classe para ativar os estilos de impressão do CSS
-      document.body.classList.add("printing-active");
+        // 5. Update Modal UI based on data
+        if (pedidosEmPreparo.length === 0) {
+            messageEl.textContent = 'Não há pedidos "Em Preparo" para imprimir.';
+        } else {
+            messageEl.textContent = `${pedidosEmPreparo.length} pedido(s) "Em Preparo" encontrado(s). Pronto para imprimir?`;
+            confirmBtn.disabled = false;
+        }
 
-      // Chama a função de impressão do navegador
-      window.print();
+        openModal();
 
-      // Remove a classe e o container temporário após a impressão
-      document.body.classList.remove("printing-active");
-      document.body.removeChild(tempPrintContainer);
+        // 6. Set up Print Confirmation Action
+        confirmBtn.onclick = async () => {
+            const originalBtnHTML = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Gerando...`;
+            confirmBtn.disabled = true;
+
+            try {
+                // Ensure QR code library is loaded
+                await new Promise(resolve => UI.loadQrCodeLibrary(resolve));
+
+                let allPagesHtml = '';
+                for (const [id, pedido] of pedidosEmPreparo) {
+                    const pageHtml = await generatePrintPageForOrder(pedido, id);
+                    allPagesHtml += pageHtml;
+                }
+                
+                const finalHtml = `
+                    <html>
+                        <head>
+                            <title>Etiquetas de Pedidos</title>
+                            <style>
+                                @media print {
+                                    body { margin: 0; }
+                                    .print-page { 
+                                        page-break-after: always; 
+                                        width: 210mm;
+                                        height: 297mm;
+                                    }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            ${allPagesHtml}
+                        </body>
+                    </html>
+                `;
+
+                printViaIframe(finalHtml);
+
+            } catch (printError) {
+                console.error("Erro ao gerar documento para impressão:", printError);
+                UI.showToast("Falha ao gerar documento para impressão.", "error");
+            } finally {
+                // Restore button and close modal
+                confirmBtn.innerHTML = originalBtnHTML;
+                confirmBtn.disabled = false;
+                closeModal();
+            }
+        };
 
     } catch (error) {
-      console.error("Erro ao preparar etiquetas para impressão:", error);
-      UI.showToast("Erro ao gerar etiquetas.", "error");
+        console.error("Erro ao preparar etiquetas para impressão:", error);
+        UI.showToast("Erro ao buscar pedidos para impressão.", "error");
+        closeModal();
     }
   }
 });
