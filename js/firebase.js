@@ -183,3 +183,14 @@ export function updatePedido(pedidoId, data) {
     throw error;
   }
 }
+
+// Retorna todos os pedidos
+export async function getAllOrders() {
+  try {
+    const snapshot = await get(ref(db, "pedidos"));
+    return snapshot.val() || {};
+  } catch (error) {
+    console.error("Erro ao buscar todos os pedidos:", error);
+    throw error;
+  }
+}

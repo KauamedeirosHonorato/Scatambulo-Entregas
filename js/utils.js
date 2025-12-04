@@ -128,158 +128,78 @@ export function calculateDistance(loc1, loc2) {
  * Analisa uma mensagem de WhatsApp para extrair dados de pedido.
  * Esta função foi refinada para ser mais robusta.
  * @param {string} text - O texto completo da mensagem.
- * @returns {object} Os dados do pedido (cliente, items, raw).
+ * @returns {object} Os dados do pedido.
  */
 export function parseWhatsappMessage(text) {
   if (!text) return {};
 
-  // Função para extrair valor de uma linha com base em um prefixo (ex: "Nome: ...")
-  const extractValue = (prefix) => {
-    const regex = new RegExp(`^${prefix}\\s*(.+)`, "im");
+  const extractedData = {};
+
+  // Helper to extract a value based on a label
+  const extractField = (labelText, targetKey, transform = (v) => v) => {
+    const regex = new RegExp(`${labelText}:\\s*(.*?)(?=\\n\\S|\\n\\n|$)`, 'im');
     const match = text.match(regex);
-    return match ? match[1].trim() : "";
+    if (match && match[1]) {
+      extractedData[targetKey] = transform(match[1].trim());
+    } else {
+      extractedData[targetKey] = ''; // Ensure field always exists
+    }
   };
 
-  // Extrai os dados usando a função auxiliar
-  const nomeCliente = extractValue("Nome:");
-  const cep = extractValue("CEP:");
-  const enderecoCompleto = extractValue("Endereço:");
-  const bairro = extractValue("Bairro:");
-  const cidade = extractValue("Cidade:");
-  let dataEntrega = extractValue("Data de entrega:");
-  const horarioEntrega = extractValue("Horário para entrega:");
-
-  // Converte a data para o formato YYYY-MM-DD, se ela existir
-  if (dataEntrega) {
-    const parts = dataEntrega.split("/");
-    if (parts.length === 3) {
-      // Formato: DD/MM/YYYY -> YYYY-MM-DD
-      dataEntrega = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-  }
-
-  // Extrai os itens do pedido
-  const itemsSectionMatch = text.match(
-    /--- ITENS DO PEDIDO ---\s*([\s\S]*?)\s*---/
-  );
-  let nomeBolo = "Item não extraído";
+  // Extract ITENS DO PEDIDO
+  const itemsSectionMatch = text.match(/--- ITENS DO PEDIDO ---\s*([\s\S]*?)(?=\n---|\n\n|$)/im);
   if (itemsSectionMatch && itemsSectionMatch[1]) {
-    const itemsText = itemsSectionMatch[1];
-    const itemLines = itemsText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.startsWith("-"));
+    const itemLines = itemsSectionMatch[1].split('\n').map(line => line.trim()).filter(line => line.length > 0);
     if (itemLines.length > 0) {
-      // Pega o nome do primeiro item, removendo o traço inicial e detalhes em parênteses
-      nomeBolo = itemLines[0]
-        .replace(/^-/, "")
-        .replace(/\(.*\)/, "")
-        .trim();
+      // Assuming the first non-empty line after ITENS DO PEDIDO is the main item
+      let firstItem = itemLines[0].replace(/^-/, '').trim();
+      // Remove content in parentheses, e.g., "(Oval 1kg (sem custo))"
+      firstItem = firstItem.replace(/\s*\(.*\)/g, '').trim();
+      extractedData.nomeBolo = firstItem;
+    } else {
+      extractedData.nomeBolo = '';
     }
+  } else {
+    extractedData.nomeBolo = '';
   }
 
-  // Separa a rua e o número do endereço completo
-  let rua = enderecoCompleto;
-  let numero = "";
-  const numeroMatch = enderecoCompleto.match(
-    /(,?\s*(?:Nº|N|Numero|Número)\s*\.?\s*)(\d+.*)/i
-  );
-  if (numeroMatch) {
-    rua = enderecoCompleto
-      .substring(0, numeroMatch.index)
-      .replace(/,$/, "")
-      .trim();
-    numero = numeroMatch[2].trim();
-  }
-
-  // Retorna um objeto plano, compatível com a função `fillOrderForm`
-  return {
-    nomeCliente,
-    cep,
-    rua,
-    numero,
-    bairro,
-    cidade,
-    nomeBolo, // Mapeado para o campo 'item' no formulário
-    dataEntrega,
-    horarioEntrega,
-  };
-}
-
-function extractPhoneNumber(text) {
-  // Regex para (XX) 9XXXX-XXXX ou XX 9XXXX-XXXX ou +XX XX XXXXX-XXXX, etc.
-  const phoneMatch = text.match(
-    /(\+?\d{2}\s?)?(\(?\d{2}\)?\s?)?9?\d{4}-?\d{4}/
-  );
-  return phoneMatch ? phoneMatch[0] : null;
-}
-
-function extractClientName(text, lines) {
-  // Tenta extrair nome se houver um prefixo "Nome:" ou "Cliente:"
-  const nameMatch = text.match(/nome[:\\-]\\s*([A-Za-zÀ-ú ]{2,40})/i);
-  if (nameMatch) return nameMatch[1].trim();
-
-  // Se não encontrar, assume que a primeira linha é o nome, a menos que pareça um item de pedido
-  if (lines.length > 0) {
-    const firstLine = lines[0].trim();
-    if (
-      !firstLine.match(/^(\d+)\s?[x×]/i) && // Não começa com quantidade x
-      !firstLine.match(/^-\s*/) // Não começa com traço
-    ) {
-      return firstLine;
+  // Extract DADOS PARA ENTREGA
+  extractField('Nome', 'nomeCliente');
+  extractField('Data de entrega', 'dataEntrega', (dateStr) => {
+    // Convert DD/MM/YYYY to YYYY-MM-DD
+    if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+      const [day, month, year] = dateStr.split('/');
+      return `${year}-${month}-${day}`;
     }
-  }
-
-  return "Cliente";
-}
-
-function extractAddress(text, lines) {
-  // Regex para Rua, Av, Avenida, Rodovia, etc. (mais específico)
-  const addrMatch = text.match(
-    /(rua|av|avenida|rodovia|rod|travessa|endereco)[:\\s]+([^\\n]+)/i
-  );
-  if (addrMatch) return addrMatch[2].trim();
-
-  // Fallback: Procura por uma linha que contenha uma palavra-chave de endereço
-  const addressKeywords = /(rua|av|avenida|rodovia|travessa|cep)/i;
-  const addressLine = lines.find((l) => addressKeywords.test(l));
-
-  return addressLine ? addressLine.trim() : null;
-}
-
-function extractItems(text, lines) {
-  let items = [];
-
-  // Tenta pegar itens com "x" ou "-"
-  lines.forEach((l) => {
-    // 1x Bolo de Morango
-    const m1 = l.match(/^(\\d+)\\s?[x×]\\s?(.+)/i);
-    // - Bolo de Morango
-    const m2 = l.match(/^-\\s*(.+)/);
-
-    if (m1) {
-      const qty = parseInt(m1[1]);
-      const nomeItem = m1[2].trim();
-      items.push({ nome: nomeItem, qty, price: 0 });
-    } else if (m2) {
-      const nomeItem = m2[1].trim();
-      items.push({ nome: nomeItem, qty: 1, price: 0 });
-    }
+    return dateStr;
   });
+  extractField('Horário para entrega', 'horarioEntrega');
+  extractField('CEP', 'cep');
+  extractField('Endereço', 'enderecoCompleto');
+  extractField('Bairro', 'bairro');
+  extractField('Cidade', 'cidade');
 
-  // Se não encontrar itens, pode ser que a mensagem seja apenas um bolo
-  if (items.length === 0 && lines.length > 0) {
-    const isCake = lines.some((l) => /bolo|torta|doce/i.test(l));
-    if (isCake) {
-      items.push({
-        nome: lines.find((l) => /bolo|torta|doce/i.test(l)).trim(),
-        qty: 1,
-        price: 0,
-      });
-    }
+  // Derive Rua and Número from Endereço
+  let rua = extractedData.enderecoCompleto || '';
+  let numero = '';
+  const numeroMatch = rua.match(/(,\s*Nº?\s*|\s+Nº?\s*)(\d+[a-zA-Z]?)(?:\s*(?:-|e|complemento|apto|bloco).*|$)/i);
+  if (numeroMatch) {
+    numero = numeroMatch[2].trim();
+    rua = rua.substring(0, numeroMatch.index).replace(/,$/, '').trim();
   }
+  extractedData.rua = rua;
+  extractedData.numero = numero;
 
-  return items.filter((item) => item.nome); // Remove itens vazios
+  // Set default empty values for fields not found in the example
+  extractedData.emailCliente = '';
+  extractedData.whatsapp = ''; // Assuming WhatsApp number is not in this specific message format
+  extractedData.estado = ''; // Not in message example
+  extractedData.complemento = ''; // Not in message example
+
+  // Clean up any extra properties
+  delete extractedData.enderecoCompleto;
+
+  return extractedData;
 }
 
 /**

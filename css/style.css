@@ -491,6 +491,10 @@ header {
   z-index: 499; /* Below HUD controls (z-index 500) but above the map */
 }
 
+.map-interaction-overlay.hidden {
+  display: none;
+}
+
 #map {
   width: 100%;
   height: 100%;

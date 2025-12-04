@@ -12,6 +12,7 @@ export function setupEventListeners(
   onClearDelivered,
   onResetActiveDeliveries,
   onClearAllOrders,
+  onHistory,
   onNewOrderSubmit, // Movido para o final para consistência
   onReadMessageSubmit, // Movido para o final
   onCepInput
@@ -68,6 +69,11 @@ export function setupEventListeners(
     resetDeliveriesBtn.addEventListener("click", onResetActiveDeliveries); // Adiciona o listener
   if (clearAllBtn && onClearAllOrders)
     clearAllBtn.addEventListener("click", onClearAllOrders);
+
+  const historyBtn = document.getElementById("order-history-button");
+  if (historyBtn && onHistory) {
+    historyBtn.addEventListener("click", onHistory);
+  }
 
   closeButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -224,8 +230,8 @@ export function handleReadMessageSubmit(e) {
   const messageText = document.getElementById("message-text").value;
   const parsedData = parseWhatsappMessage(messageText);
 
-  if (!parsedData || !parsedData.cliente.enderecoRaw) {
-    showToast("Não foi possível extrair dados da mensagem.", "error");
+  if (!parsedData || (!parsedData.nomeCliente && !parsedData.nomeBolo)) {
+    showToast("Não foi possível extrair dados essenciais da mensagem.", "error");
     return;
   }
 
@@ -448,7 +454,6 @@ function renderGroupedOrders(pedidos, onStatusUpdate, onPrintLabel, onPrintPdf) 
     { id: "feito", title: "Feitos" },
     { id: "pronto_para_entrega", title: "Prontos para Entrega" },
     { id: "em_entrega", title: "Em Rota" },
-    { id: "entregue", title: "Entregues" },
     { id: "cancelado", title: "Cancelados" },
   ];
 
@@ -794,15 +799,19 @@ export function highlightClosestOrder(closestOrder) {
 export function fillOrderForm(data) {
   // Mapeia os nomes de dados para os IDs dos campos do formulário
   const fields = {
-    nomeBolo: document.getElementById("item"), // CORREÇÃO: ID correto é 'item'
-    nomeCliente: document.getElementById("cliente-nome"), // CORREÇÃO: ID correto é 'cliente-nome'
+    nomeBolo: document.getElementById("item"),
+    nomeCliente: document.getElementById("cliente-nome"),
     cep: document.getElementById("cep"),
     rua: document.getElementById("rua"),
     bairro: document.getElementById("bairro"),
     numero: document.getElementById("numero"),
     complemento: document.getElementById("complemento"),
-    whatsapp: document.getElementById("telefone"), // CORREÇÃO: ID correto é 'telefone'
+    whatsapp: document.getElementById("telefone"),
     emailCliente: document.getElementById("email-cliente"),
+    dataEntrega: document.getElementById("data-entrega"), // Novo campo
+    horarioEntrega: document.getElementById("horario-entrega"), // Novo campo
+    cidade: document.getElementById("cidade"), // Já existe, mas garantir
+    estado: document.getElementById("estado"), // Novo campo
   };
   for (const key of Object.keys(fields)) {
     if (Object.prototype.hasOwnProperty.call(fields, key) && data[key]) {

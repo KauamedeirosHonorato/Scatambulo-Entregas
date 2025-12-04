@@ -10,8 +10,9 @@ import {
   clearDeliveredOrders,
   resetAllActiveDeliveries,
   clearAllOrders, // Adicionada a importação que faltava
+  getAllOrders,
 } from "./firebase.js";
-import { parseWhatsappMessage, geocodeAddress, printViaIframe } from "./utils.js";
+import { parseWhatsappMessage, geocodeAddress, printViaIframe, debounce } from "./utils.js";
 import { loadComponents } from "./componentLoader.js";
 import * as Map from "./map.js"; // UI.showToast será usado aqui
 import * as UI from "./ui.js";
@@ -128,6 +129,7 @@ window.addEventListener("load", () => {
       // Carrega o modal de impressão de todas as etiquetas especificamente para o admin
       "components/modal-print-all.html",
       "components/modal-print-preview.html",
+      "components/modal-order-history.html",
     ]);
 
     // Agora que os modais existem, podemos configurar todos os listeners
@@ -153,6 +155,7 @@ window.addEventListener("load", () => {
       handleClearDeliveredOrders, // onClearDelivered
       handleResetActiveDeliveries, // onResetActiveDeliveries
       handleClearAllOrders, // onClearAllOrders
+      showOrderHistoryModal, // onHistory
 
       // Callbacks de Formulários
       handleNewOrderSubmit, // onNewOrderSubmit
@@ -549,6 +552,159 @@ function generatePrintPageForOrder(order, orderId) {
         console.error("Erro ao preparar etiquetas para impressão:", error);
         UI.showToast("Erro ao buscar pedidos para impressão.", "error");
         closeModal();
+    }
+  }
+
+  async function showOrderHistoryModal() {
+    const modal = document.getElementById("order-history-modal");
+    const container = document.getElementById("history-list-container");
+    const searchInput = document.getElementById("history-search-input");
+    const closeButton = modal.querySelector(".close-button");
+    const modalBody = modal.querySelector(".modal-body");
+
+    if (!modal || !container || !searchInput || !closeButton || !modalBody) {
+      UI.showToast("Erro ao encontrar elementos do modal de histórico.", "error");
+      return;
+    }
+
+    let allOrders = []; // Cache for all orders
+    let filteredOrders = [];
+    let currentPage = 1;
+    const ordersPerPage = 10;
+
+    // Create pagination container
+    let paginationContainer = document.getElementById('history-pagination-container');
+    if (!paginationContainer) {
+        paginationContainer = document.createElement('div');
+        paginationContainer.id = 'history-pagination-container';
+        paginationContainer.style.textAlign = 'center';
+        paginationContainer.style.marginTop = '15px';
+        modalBody.appendChild(paginationContainer);
+    }
+
+    const openModal = () => modal.classList.add("active");
+    const closeModal = () => modal.classList.remove("active");
+
+    closeButton.onclick = closeModal;
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    const renderHistoryList = () => {
+        container.innerHTML = "";
+        
+        const startIndex = (currentPage - 1) * ordersPerPage;
+        const endIndex = startIndex + ordersPerPage;
+        const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+        if (paginatedOrders.length === 0) {
+            container.innerHTML = "<p>Nenhum pedido encontrado.</p>";
+            return;
+        }
+
+        paginatedOrders.forEach(([id, order]) => {
+            const item = document.createElement("div");
+            item.className = "history-item";
+            const orderDate = new Date(order.timestamp).toLocaleDateString('pt-BR');
+            const statusText = (order.status || "pendente").replace(/_/g, " ");
+
+            item.innerHTML = `
+                <div class="history-item-info">
+                    <strong>${order.nomeCliente || 'Cliente não informado'}</strong>
+                    <span>ID: ${id} - ${orderDate}</span>
+                </div>
+                <div class="history-item-status">
+                    <span class="status-pill status-${order.status || 'pendente'}">${statusText}</span>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    };
+
+    const renderPagination = () => {
+        paginationContainer.innerHTML = "";
+        const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+
+        if (totalPages <= 1 || filteredOrders.length < 20) {
+            return;
+        }
+
+        // Previous button
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Anterior';
+        prevButton.className = 'btn-secondary';
+        prevButton.disabled = currentPage === 1;
+        prevButton.onclick = () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderHistoryList();
+                renderPagination();
+            }
+        };
+        paginationContainer.appendChild(prevButton);
+
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.className = 'btn-secondary';
+            if (i === currentPage) {
+                pageButton.classList.add('active-page');
+            }
+            pageButton.disabled = i === currentPage;
+            pageButton.onclick = () => {
+                currentPage = i;
+                renderHistoryList();
+                renderPagination();
+            };
+            paginationContainer.appendChild(pageButton);
+        }
+
+        // Next button
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Próximo';
+        nextButton.className = 'btn-secondary';
+        nextButton.disabled = currentPage === totalPages;
+        nextButton.onclick = () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderHistoryList();
+                renderPagination();
+            }
+        };
+        paginationContainer.appendChild(nextButton);
+    };
+    
+    const filterAndRender = (filter = "") => {
+        const lowerCaseFilter = filter.toLowerCase();
+        filteredOrders = allOrders.filter(([id, order]) => {
+            return (
+                id.toLowerCase().includes(lowerCaseFilter) ||
+                (order.nomeCliente && order.nomeCliente.toLowerCase().includes(lowerCaseFilter)) ||
+                (order.nomeBolo && order.nomeBolo.toLowerCase().includes(lowerCaseFilter)) ||
+                (order.status && order.status.toLowerCase().includes(lowerCaseFilter))
+            );
+        });
+        currentPage = 1;
+        renderHistoryList();
+        renderPagination();
+    };
+
+    searchInput.addEventListener("input", debounce((e) => {
+        filterAndRender(e.target.value);
+    }, 300));
+
+    openModal();
+    container.innerHTML = "<p>Carregando histórico...</p>";
+
+    try {
+        const orders = await getAllOrders();
+        allOrders = Object.entries(orders).sort(([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0));
+        filterAndRender(searchInput.value);
+    } catch (error) {
+        console.error("Erro ao carregar histórico de pedidos:", error);
+        container.innerHTML = "<p>Erro ao carregar o histórico. Tente novamente mais tarde.</p>";
+        UI.showToast("Erro ao carregar o histórico.", "error");
     }
   }
 });

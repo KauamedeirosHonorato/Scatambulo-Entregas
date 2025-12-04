@@ -1,0 +1,64 @@
+/* css/modal-order-history.css */
+
+#order-history-modal .modal-content {
+    max-width: 800px;
+}
+
+#history-controls {
+    margin-bottom: 15px;
+}
+
+#history-search-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+#history-list-container .history-item {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#history-list-container .history-item:last-child {
+    border-bottom: none;
+}
+
+#history-list-container .history-item-info {
+    flex-grow: 1;
+}
+
+#history-list-container .history-item-info strong {
+    font-size: 1rem;
+    display: block;
+}
+
+#history-list-container .history-item-info span {
+    font-size: 0.85rem;
+    color: var(--cor-texto-secundario);
+}
+
+#history-list-container .history-item-status .status-pill {
+    font-size: 0.75rem;
+}
+
+#history-pagination-container {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 20px;
+}
+
+#history-pagination-container button {
+    min-width: 40px;
+}
+
+#history-pagination-container .active-page {
+    background-color: var(--cor-destaque);
+    color: white;
+    border-color: var(--cor-destaque);
+}
