@@ -131,6 +131,7 @@ export function calculateDistance(loc1, loc2) {
  * @returns {object} Os dados do pedido.
  */
 export function parseWhatsappMessage(text) {
+  console.log("parseWhatsappMessage: Original text received:", text);
   if (!text) return {};
 
   const extractedData = {};
@@ -139,6 +140,7 @@ export function parseWhatsappMessage(text) {
   const extractField = (labelText, targetKey, transform = (v) => v) => {
     const regex = new RegExp(`${labelText}:\\s*(.*?)(?=\\n\\S|\\n\\n|$)`, 'im');
     const match = text.match(regex);
+    console.log(`parseWhatsappMessage: Attempting to extract '${labelText}'. Match:`, match ? match[1] : "No match");
     if (match && match[1]) {
       extractedData[targetKey] = transform(match[1].trim());
     } else {
@@ -148,6 +150,7 @@ export function parseWhatsappMessage(text) {
 
   // Extract ITENS DO PEDIDO
   const itemsSectionMatch = text.match(/--- ITENS DO PEDIDO ---\s*([\s\S]*?)(?=\n---|\n\n|$)/im);
+  console.log("parseWhatsappMessage: itemsSectionMatch:", itemsSectionMatch);
   if (itemsSectionMatch && itemsSectionMatch[1]) {
     const itemLines = itemsSectionMatch[1].split('\n').map(line => line.trim()).filter(line => line.length > 0);
     if (itemLines.length > 0) {
@@ -156,6 +159,7 @@ export function parseWhatsappMessage(text) {
       // Remove content in parentheses, e.g., "(Oval 1kg (sem custo))"
       firstItem = firstItem.replace(/\s*\(.*\)/g, '').trim();
       extractedData.nomeBolo = firstItem;
+      console.log("parseWhatsappMessage: Extracted nomeBolo:", firstItem);
     } else {
       extractedData.nomeBolo = '';
     }
@@ -199,6 +203,7 @@ export function parseWhatsappMessage(text) {
   // Clean up any extra properties
   delete extractedData.enderecoCompleto;
 
+  console.log("parseWhatsappMessage: Final extractedData:", extractedData);
   return extractedData;
 }
 
