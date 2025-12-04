@@ -880,7 +880,9 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
 
   // Novo listener para o botão Gerar PDF
   modal.querySelector("#preview-pdf-btn").addEventListener("click", async () => {
+    console.log("PDF button clicked.");
     const content = modal.querySelector("#label-preview-content");
+    console.log("Content for PDF:", content);
     const opt = {
       margin: 10,
       filename: 'etiqueta_pedido.pdf',
@@ -888,15 +890,19 @@ function showLabelPreviewModal(labelHtml, onPrintConfirm) {
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
+    console.log("html2pdf options:", opt);
     try {
       showToast("Gerando PDF, aguarde...", "info");
+      console.log("Starting PDF generation...");
       await html2pdf().set(opt).from(content).save();
       showToast("PDF gerado com sucesso!", "success");
+      console.log("PDF generated successfully.");
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       showToast("Erro ao gerar PDF.", "error");
     } finally {
       closeModal(); // Fecha o modal após gerar o PDF
+      console.log("PDF generation process finished.");
     }
   });
 
