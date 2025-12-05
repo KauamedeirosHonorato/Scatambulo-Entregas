@@ -140,6 +140,10 @@ window.addEventListener("load", () => {
     // Botões do HUD do mapa
     const followBtn = document.getElementById("follow-me-button");
     if (followBtn) followBtn.addEventListener("click", handleToggleFollowMe);
+    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
+    if (fullscreenBtn) {
+      fullscreenBtn.addEventListener("click", handleToggleFullscreen);
+    }
     else {
       const followBtnMobile = document.getElementById(
         "follow-me-button-mobile"
@@ -232,6 +236,44 @@ window.addEventListener("load", () => {
       const distance = e.detail.distance;
       showToast(`Você está a ${distance}m do destino!`, "success");
     });
+  }
+
+  // Funções para controlar o "fullscreen fake" compatível com iOS
+  function handleToggleFullscreen() {
+    const mapContainer = document.getElementById("map-container");
+    if (!mapContainer) return;
+
+    if (mapContainer.classList.contains("fullscreen-iphone")) {
+      exitFakeFullscreen();
+    } else {
+      enterFakeFullscreen();
+    }
+  }
+
+  function enterFakeFullscreen() {
+    const mapContainer = document.getElementById("map-container");
+    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
+    if (!mapContainer || mapContainer.classList.contains("fullscreen-iphone")) return;
+
+    mapContainer.classList.add("fullscreen-iphone");
+    if (fullscreenBtn) {
+      fullscreenBtn.innerHTML = '<i class="ph ph-arrows-in"></i>';
+      fullscreenBtn.title = "Sair da Tela Cheia";
+    }
+    setTimeout(() => map && map.resize(), 150); // Delay para renderização do CSS
+  }
+
+  function exitFakeFullscreen() {
+    const mapContainer = document.getElementById("map-container");
+    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
+    if (!mapContainer || !mapContainer.classList.contains("fullscreen-iphone")) return;
+
+    mapContainer.classList.remove("fullscreen-iphone");
+    if (fullscreenBtn) {
+      fullscreenBtn.innerHTML = '<i class="ph ph-arrows-out"></i>';
+      fullscreenBtn.title = "Tela Cheia";
+    }
+    setTimeout(() => map && map.resize(), 150); // Delay para renderização do CSS
   }
 
   function handleLogout() {
@@ -576,6 +618,8 @@ window.addEventListener("load", () => {
       }
 
       Map.fitMapToBounds(entregadorLocation, geocodeResult);
+      // Ativa o modo de tela cheia fake para iOS
+      enterFakeFullscreen();
     } else {
       showToast(
         "Localização do entregador não disponível — aguardando GPS.",
@@ -632,7 +676,7 @@ window.addEventListener("load", () => {
   }
 
   function stopNavigation() {
-    Map.exitFullscreen(); // Sai do modo de tela cheia
+    exitFakeFullscreen(); // Usa a função de fullscreen fake
     Map.resetProximityAlert(); // Resetar o alerta de proximidade ao parar a navegação
     // Use a more aggressive clear to remove quaisquer rotas fantasmas
     if (Map.forceClearAllRoutes) {

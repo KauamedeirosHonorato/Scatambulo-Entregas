@@ -1,5 +1,4 @@
 import { showToast, printLabel } from "./ui.js"; // Importa showToast e printLabel
-import { enterFullscreen } from "./map.js";
 
 export function setupEventListeners(
   onLogout,
@@ -170,7 +169,6 @@ function createOrderCard(
       onCancelNavigation();
     } else {
       onStartNavigation(orderId, order);
-      enterFullscreen();
     }
   });
 
@@ -689,7 +687,6 @@ export function renderScheduledOrders(scheduledOrders, onStartNavigation) {
       if (orderData) {
         const [, order] = orderData;
         onStartNavigation(orderId, order, startBtn);
-        enterFullscreen();
       }
     }
   });
