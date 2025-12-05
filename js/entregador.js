@@ -286,6 +286,12 @@ window.addEventListener("load", () => {
     fullscreenTarget.appendChild(mapContainerElement);
     fullscreenModal.classList.add("active");
 
+    // Permite a interação com o mapa em tela cheia, desativando eventos no overlay
+    const overlay = document.getElementById('map-overlay');
+    if (overlay) {
+      overlay.style.pointerEvents = 'none';
+    }
+
     const fullscreenBtn = document.getElementById("map-fullscreen-btn");
     if (fullscreenBtn) {
       fullscreenBtn.innerHTML = '<i class="ph ph-arrows-in"></i>';
@@ -302,6 +308,12 @@ window.addEventListener("load", () => {
     // Move o container do mapa de volta para seu local original
     originalMapParent.appendChild(mapContainerElement);
     fullscreenModal.classList.remove("active");
+
+    // Restaura a capacidade de clique no overlay para reabrir a tela cheia
+    const overlay = document.getElementById('map-overlay');
+    if (overlay) {
+      overlay.style.pointerEvents = 'auto';
+    }
 
     const fullscreenBtn = document.getElementById("map-fullscreen-btn");
     if (fullscreenBtn) {
