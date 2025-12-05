@@ -47,6 +47,12 @@ window.addEventListener("load", () => {
   let currentRoutes = [];
   let routeRecalculationInterval = null;
 
+  // Novas variáveis para o controle de tela cheia
+  let mapContainerElement;
+  let originalMapParent;
+  let fullscreenModal;
+  let fullscreenTarget;
+
   let isFollowingDeliveryPerson = true;
   let hasArrived = false;
   let initialLocationSet = false;
@@ -91,6 +97,12 @@ window.addEventListener("load", () => {
       return; // Stop further initialization if map failed
     }
 
+    // Inicializa elementos de tela cheia
+    mapContainerElement = document.getElementById("map-container");
+    originalMapParent = mapContainerElement.parentElement;
+    fullscreenModal = document.getElementById("map-fullscreen-modal");
+    fullscreenTarget = document.getElementById("fullscreen-map-target");
+
     setupMapEventListeners();
     checkGeolocationPermission();
     listenToFirebaseOrders();
@@ -115,6 +127,20 @@ window.addEventListener("load", () => {
       isFollowingDeliveryPerson = false;
       setFollowMeButtonState(isFollowingDeliveryPerson);
     });
+
+    // Listener para abrir o mapa em tela cheia ao clicar nele
+    if (mapContainerElement) {
+      mapContainerElement.addEventListener("click", (e) => {
+        // Só ativa se o clique não for em um botão, link ou na ilha dinâmica
+        if (e.target.closest("button, a, .dynamic-island")) {
+          return;
+        }
+        // Só abre se não já estiver em tela cheia
+        if (!fullscreenModal.classList.contains("active")) {
+          enterFakeFullscreen();
+        }
+      });
+    }
   }
 
   /**
@@ -142,7 +168,10 @@ window.addEventListener("load", () => {
     if (followBtn) followBtn.addEventListener("click", handleToggleFollowMe);
     const fullscreenBtn = document.getElementById("map-fullscreen-btn");
     if (fullscreenBtn) {
-      fullscreenBtn.addEventListener("click", handleToggleFullscreen);
+      fullscreenBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Impede que o clique no botão propague para o container do mapa
+        handleToggleFullscreen();
+      });
     }
     else {
       const followBtnMobile = document.getElementById(
@@ -240,10 +269,9 @@ window.addEventListener("load", () => {
 
   // Funções para controlar o "fullscreen fake" compatível com iOS
   function handleToggleFullscreen() {
-    const mapContainer = document.getElementById("map-container");
-    if (!mapContainer) return;
+    if (!fullscreenModal) return;
 
-    if (mapContainer.classList.contains("fullscreen-iphone")) {
+    if (fullscreenModal.classList.contains("active")) {
       exitFakeFullscreen();
     } else {
       enterFakeFullscreen();
@@ -251,29 +279,37 @@ window.addEventListener("load", () => {
   }
 
   function enterFakeFullscreen() {
-    const mapContainer = document.getElementById("map-container");
-    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
-    if (!mapContainer || mapContainer.classList.contains("fullscreen-iphone")) return;
+    if (!mapContainerElement || !fullscreenModal || !fullscreenTarget) return;
+    if (fullscreenModal.classList.contains("active")) return;
 
-    mapContainer.classList.add("fullscreen-iphone");
+    // Move o container do mapa para dentro do modal
+    fullscreenTarget.appendChild(mapContainerElement);
+    fullscreenModal.classList.add("active");
+
+    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
     if (fullscreenBtn) {
       fullscreenBtn.innerHTML = '<i class="ph ph-arrows-in"></i>';
       fullscreenBtn.title = "Sair da Tela Cheia";
     }
-    setTimeout(() => map && map.resize(), 150); // Delay para renderização do CSS
+    // Redimensiona o mapa após um pequeno delay para garantir que o DOM foi atualizado
+    setTimeout(() => map && map.resize(), 150);
   }
 
   function exitFakeFullscreen() {
-    const mapContainer = document.getElementById("map-container");
-    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
-    if (!mapContainer || !mapContainer.classList.contains("fullscreen-iphone")) return;
+    if (!mapContainerElement || !fullscreenModal || !originalMapParent) return;
+    if (!fullscreenModal.classList.contains("active")) return;
 
-    mapContainer.classList.remove("fullscreen-iphone");
+    // Move o container do mapa de volta para seu local original
+    originalMapParent.appendChild(mapContainerElement);
+    fullscreenModal.classList.remove("active");
+
+    const fullscreenBtn = document.getElementById("map-fullscreen-btn");
     if (fullscreenBtn) {
       fullscreenBtn.innerHTML = '<i class="ph ph-arrows-out"></i>';
       fullscreenBtn.title = "Tela Cheia";
     }
-    setTimeout(() => map && map.resize(), 150); // Delay para renderização do CSS
+    // Redimensiona o mapa
+    setTimeout(() => map && map.resize(), 150);
   }
 
   function handleLogout() {

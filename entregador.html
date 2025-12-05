@@ -193,6 +193,18 @@
     <div id="modal-container"></div>
     <div id="toast-container"></div>
 
+    <!-- Novo Modal para Mapa em Tela Cheia -->
+    <div
+      id="map-fullscreen-modal"
+      class="map-fullscreen-modal-container"
+      aria-modal="true"
+      role="dialog"
+    >
+      <div id="fullscreen-map-target">
+        <!-- O #map-container será movido para cá via JS -->
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script type="module" src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
     <!-- Importa o plugin MapLibre GL Directions como módulo e expõe globalmente -->

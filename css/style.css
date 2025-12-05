@@ -1710,22 +1710,72 @@ header {
   gap: 8px;
 }
 
-/* Estilos para o modo tela cheia no iPhone, aplicado via JS */
-.fullscreen-iphone {
+/* =========================================
+   PAINEL ENTREGADOR - LISTAS DE PEDIDOS
+   ========================================= */
+
+/* Lista horizontal para "Prontos para Entrega" */
+#ready-for-delivery-list {
+  display: flex;
+  flex-wrap: nowrap; /* Garante que os itens não quebrem a linha */
+  overflow-x: auto; /* Habilita o scroll horizontal */
+  -webkit-overflow-scrolling: touch; /* Melhora a experiência de scroll no iOS */
+  gap: 15px; /* Espaçamento entre os cards */
+  /* Padding e margem para criar um efeito de scroll de ponta a ponta dentro do container */
+  padding: 10px 20px 20px 20px;
+  margin-left: -20px;
+  margin-right: -20px;
+  scroll-snap-type: x mandatory; /* Efeito de "ímã" no scroll */
+  scrollbar-width: none; /* Firefox */
+}
+
+#ready-for-delivery-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Ajustes nos cards dentro da lista horizontal */
+#ready-for-delivery-list .order-card {
+  flex: 0 0 85%; /* O card ocupa 85% da largura da viewport, não encolhe */
+  max-width: 340px; /* Uma largura máxima para telas maiores */
+  scroll-snap-align: start; /* Alinha o card no início ao parar o scroll */
+}
+
+/* Lista vertical para "Em Rota" (mantém o comportamento padrão) */
+#in-route-list {
+  display: grid;
+  gap: 15px;
+}
+
+/* =========================================
+   MODAL DE TELA CHEIA PARA O MAPA (iOS Fake Fullscreen)
+   ========================================= */
+.map-fullscreen-modal-container {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100dvh; /* Usa a altura dinâmica da viewport, corrigindo bugs do Safari */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  z-index: 9999; /* Garante que o mapa esteja acima de todos os outros elementos */
-  background-color: var(--cor-principal); /* Garante um fundo sólido */
-  /* Adicionalmente, forçar aceleração de hardware */
-  -webkit-transform: translate3d(0, 0, 0);
-  transform: translate3d(0, 0, 0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  inset: 0;
+  background-color: var(--cor-principal);
+  z-index: 9990; /* Abaixo de modais de confirmação e da ilha dinâmica */
+  display: none; /* Controlado por JS */
+}
+
+.map-fullscreen-modal-container.active {
+  display: block;
+}
+
+#fullscreen-map-target {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Quando o #map-container é movido para dentro do modal de tela cheia */
+#fullscreen-map-target > #map-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  /* Garante que ocupe o espaço seguro no iOS */
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
 }
 /* ===== IPHONE FIXES ===== */
 
