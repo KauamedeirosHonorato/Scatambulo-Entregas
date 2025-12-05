@@ -1,0 +1,50 @@
+/*
+ * Estilos para o Modal de Imprimir Todas as Etiquetas
+ * Herda de .modal-backdrop, .modal-content de style.css
+ */
+
+#print-all-labels-modal .modal-content {
+    /* O modal já herda o estilo base, mas podemos ajustar o tamanho */
+    max-width: 420px;
+}
+
+#print-all-labels-modal .modal-body {
+    text-align: center;
+    padding: 20px 0;
+}
+
+#print-all-labels-modal .print-all-icon {
+    margin-bottom: 20px;
+}
+
+#print-all-labels-modal .print-all-icon i {
+    font-size: 60px;
+    color: var(--cor-destaque);
+    line-height: 1;
+}
+
+#print-all-labels-modal #print-all-message {
+    font-size: 1rem;
+    color: var(--cor-texto-secundario);
+    margin: 0;
+    line-height: 1.5;
+}
+
+#print-all-labels-modal .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+/* O estilo dos botões .btn-primary e .btn-secondary já vem do style.css */
+#print-all-labels-modal #print-all-confirm-btn {
+    gap: 8px; /* Espaço entre ícone e texto */
+}
+
+#print-all-labels-modal #print-all-confirm-btn:disabled {
+    background-color: var(--cor-secundaria);
+    color: var(--cor-texto-secundario);
+    cursor: not-allowed;
+    box-shadow: none;
+}

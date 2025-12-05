@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Scatambulo" />
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png" />
+    <meta http-equiv="Content-Security-Policy"
+      content="
+    default-src 'self';
+    frame-src https://*.firebaseio.com https://vercel.live;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://cdnjs.cloudflare.com https://server.arcgisonline.com https://*.arcgisonline.com;
+    font-src * data:;
+    img-src 'self' data: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.arcgisonline.com blob: https://firebasestorage.googleapis.com;
+    connect-src 'self' wss://*.firebaseio.com https://www.gstatic.com https://viacep.com.br https://nominatim.openstreetmap.org https://*.openstreetmap.org https://router.project-osrm.org https://unpkg.com https://server.arcgisonline.com https://*.arcgisonline.com blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://firebasestorage.googleapis.com;
+    worker-src 'self' blob:;
+  ">
+
+    <link
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/modal-print-all.css" />
+    <link rel="stylesheet" href="css/modal-order-history.css" />
+    <link rel="stylesheet" href="css/chat.css" />
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  </head>
+  <body>
+    <header>
+      <div class="header-container">
+        <h1>Painel da Ângela</h1>
+        <div class="desktop-nav">
+          <button id="new-order-button" class="btn-primary">
+            <i class="ph ph-plus-circle"></i> Novo Pedido
+          </button>
+          <button id="print-all-em-preparo-button" class="btn-secondary">
+            <i class="ph ph-printer"></i>
+            <span class="btn-text">Imprimir Etiquetas</span>
+            <span class="badge" style="display: none"></span>
+          </button>
+          <button id="order-history-button" class="btn-secondary">
+            <i class="ph ph-clock-counter-clockwise"></i> Histórico
+          </button>
+          <button id="chat-button" class="btn-primary" style="position: relative;">
+            <i class="ph ph-chat-dots"></i> Conversas
+            <span class="badge" style="display: none;">!</span>
+          </button>
+          <button id="logout-button" class="btn-secondary">
+            <i class="ph ph-sign-out"></i> Sair
+          </button>
+        </div>
+
+        <button class="hamburger-menu" aria-label="Menu">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="mobile-nav">
+      <div class="divider"></div>
+    </nav>
+
+    <main class="container">
+      <section id="admin-actions-section" style="margin-bottom: 20px">
+        <h2 class="section-subtitle">Ações de Manutenção</h2>
+        <div class="ios-form-group" style="padding: 10px">
+          <button
+            id="clear-delivered-button"
+            class="btn-admin-action clear-delivered"
+          >
+            <i class="ph ph-archive" style="font-size: 20px"></i> Limpar
+            Entregues
+          </button>
+          <div class="divider"></div>
+          <button
+            id="reset-active-deliveries-button"
+            class="btn-admin-action reset-deliveries"
+          >
+            <i class="ph ph-x-circle" style="font-size: 20px"></i> Resetar
+            Entregas Ativas
+          </button>
+          <div class="divider"></div>
+          <button
+            id="clear-all-orders-button"
+            class="btn-admin-action clear-all-orders"
+          >
+            <i class="ph ph-trash" style="font-size: 20px"></i> Limpar TODOS os
+            Pedidos (CUIDADO)
+          </button>
+        </div>
+      </section>
+
+      <section id="map-section">
+        <h2><i class="ph ph-map-pin"></i> Rastreamento Entregador</h2>
+        <div id="map-container" aria-label="Mapa de acompanhamento">
+          <div class="map-loading-overlay active">
+            <div class="map-spinner"></div>
+          </div>
+          <div id="map"></div>
+          <div class="map-interaction-overlay" id="map-overlay">
+          </div>
+
+          <div id="map-overlay-top" class="map-overlay-top-entregador">
+            <div class="map-info-item map-info-item-border-right">
+              <div id="distance-display" class="map-info-value">-- km</div>
+              <div class="map-info-label">Distância</div>
+            </div>
+            <div class="map-info-item">
+              <div id="eta-display" class="map-info-value">-- min</div>
+              <div class="map-info-label">ETA</div>
+            </div>
+            <div class="map-info-item map-info-item-border-left">
+              <div id="speed-display" class="map-info-value">-- km/h</div>
+              <div class="map-info-label">Veloc.</div>
+            </div>
+          </div>
+
+          <!-- HUD de Navegação (Seguir / Satélite / 3D) -->
+          <div id="nav-hud" class="nav-hud-admin">
+            <div class="hud-controls">
+              <button
+                id="map-fullscreen-btn"
+                class="btn-secondary"
+                title="Tela Cheia"
+              >
+                <i class="ph ph-arrows-out"></i>
+              </button>
+              <button
+                id="follow-entregador-button"
+                class="btn-secondary"
+                title="Seguir Entregador"
+              >
+                <i class="ph ph-compass"></i>
+              </button>
+              <button
+                id="satellite-toggle"
+                class="btn-secondary"
+                title="Modo Satélite"
+              >
+                <i class="ph ph-globe"></i>
+              </button>
+              <button
+                id="toggle-3d"
+                class="btn-secondary"
+                title="Visualização 3D"
+              >
+                <i class="ph ph-cube"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="orders-section" style="margin-top: 30px">
+        <h2><i class="ph ph-list-checks"></i> Pedidos</h2>
+        <!-- Os pedidos serão renderizados aqui em grupos por status -->
+        <div class="loading-overlay" id="orders-loading-overlay">
+          <div class="loading-indicator">
+            <div class="spinner"></div>
+            <span>Atualizando pedidos...</span>
+          </div>
+        </div>
+        <div id="orders-by-status-container"></div>
+      </section>
+    </main>
+
+    <div id="modal-container"></div>
+    <div id="modal-print-preview-container"></div>
+    <div id="toast-container"></div>
+    <div id="chat-component-container"></div>
+
+    <style>
+      body {
+        overflow-x: hidden;
+      }
+
+      .order-id-copy {
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+        text-underline-offset: 3px;
+        color: var(--ios-link);
+      }
+      .order-id-copy.copied {
+        color: var(--success-color);
+        text-decoration: none;
+        background-color: #e0f8e0; /* Fundo verde claro */
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 500;
+        transition: background-color 0.2s ease-in-out;
+      }
+
+      /* Estilos para o indicador de carregamento do CEP */
+      .cep-group {
+        position: relative;
+      }
+      .loading-indicator {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        font-size: 0.8em;
+        color: var(--ios-text-sec);
+      }
+      .loading-indicator .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #ccc;
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+      }
+      .input-error-message {
+        color: var(--ios-red);
+        font-size: 0.8em;
+        margin-top: 4px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Estilos para o loading do mapa */
+      #map-container {
+        position: relative; /* Necessário para o overlay */
+      }
+      .map-loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #eef0f2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        border-radius: 8px;
+        transition: opacity 0.5s ease;
+        opacity: 1;
+        color: var(--cor-texto-secundario, #555);
+        font-weight: 500;
+      }
+      .map-loading-overlay:not(.active) {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .map-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #ccc;
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+      }
+
+      /* Estilos para o loading da lista de pedidos */
+      #orders-section {
+        position: relative; /* Necessário para o posicionamento do overlay */
+      }
+      .loading-overlay {
+        position: absolute;
+        top: 60px; /* Abaixo do título da seção */
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        border-radius: 12px;
+        transition: opacity 0.3s ease;
+        opacity: 0;
+        pointer-events: none; /* Não interfere com cliques quando invisível */
+      }
+      .loading-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+      }
+      /* === NOVOS ESTILOS GERAIS === */
+      body {
+        background-color: var(--cor-fundo-suave, #f0f2f5); /* Fundo suave para destacar os cards */
+      }
+
+      h2 {
+        font-size: 22px;
+        color: var(--cor-texto-principal, #333);
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e0e0e0;
+        margin-bottom: 20px;
+      }
+
+      /* === ESTILIZAÇÃO DA LISTA DE PEDIDOS === */
+      .status-group-wrapper {
+        background-color: var(--cor-principal, #fff);
+        border-radius: var(--raio-borda-padrao, 12px);
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: var(--sombra-card, 0 4px 12px rgba(0, 0, 0, 0.05));
+      }
+
+      .orders-table-header {
+        display: grid;
+        grid-template-columns: 80px 1fr 1fr 120px 180px;
+        gap: 15px;
+        padding: 0 15px 10px;
+        border-bottom: 1px solid var(--cor-borda-suave, #eee);
+        font-weight: 600;
+        color: var(--cor-texto-suave, #888);
+        font-size: 13px;
+        text-transform: uppercase;
+      }
+
+      .order-row {
+        display: grid;
+        grid-template-columns: 80px 1fr 1fr 120px 180px;
+        gap: 15px;
+        align-items: center;
+        padding: 15px;        
+        border-bottom: 1px solid var(--cor-borda-suave, #f0f0f0);
+        transition: background-color 0.2s ease;
+      }
+      .order-row:last-child {
+        border-bottom: none;
+      }
+      .order-row:hover {
+        background-color: var(--cor-fundo-hover, #f9f9f9);
+      }
+
+      .order-data-item {
+        font-size: 15px;
+        color: #333;
+      }
+
+      /* Esconde os labels em telas maiores */
+      .order-data-item .label {
+        display: none;
+      }
+
+      /* === PÍLULAS DE STATUS === */
+      .status-pill {
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: capitalize;
+        display: inline-block;
+        text-align: center;
+      }
+      .status-pendente {
+        background-color: #ffe0b2;
+        color: #e65100;
+      }
+      .status-em_preparo {
+        background-color: #bbdefb;
+        color: #0d47a1;
+      }
+      .status-feito {
+        background-color: #c8e6c9;
+        color: #1b5e20;
+      }
+      .status-pronto_para_entrega {
+        background-color: #d1c4e9;
+        color: #311b92;
+      }
+      .status-em_entrega {
+        background-color: #b2ebf2;
+        color: #006064;
+      }
+      .status-entregue {
+        background-color: #e0e0e0;
+        color: #424242;
+      }
+      .status-cancelado {
+        background-color: #ffcdd2;
+        color: #b71c1c;
+      }
+
+      /* === BOTÕES DE AÇÃO NA LINHA DO PEDIDO === */
+      .order-actions-mini {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-start;
+      }
+      .action-icon-btn {
+        background: var(--cor-fundo-suave, #f0f2f5);
+        border: none;
+        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease;
+      }
+      .action-icon-btn:hover {
+        background-color: var(--cor-fundo-interativo-hover, #e4e6eb);
+      }
+      .action-icon-btn i {
+        font-size: 18px;
+        color: var(--cor-texto-secundario, #555);
+      }
+
+      /* Estilos para o badge no botão de imprimir */
+      #print-all-em-preparo-button {
+        position: relative;
+        overflow: visible; /* Garante que o badge seja visível */
+      }
+      .badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background-color: var(--ios-red);
+        color: white;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        border: 2px solid white;
+      }
+
+      /* Estilo para o contador de pedidos na coluna */
+      .column-count-badge {
+        display: inline-block;
+        background-color: var(--cor-borda-neutra, #e0e0e0);
+        color: var(--cor-texto-secundario, #555);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 12px;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+      .status-group-wrapper h3 {
+        display: flex;
+        align-items: center;
+      }
+
+      /* Animação de piscar para o contador de novos pedidos */
+      @keyframes blink {
+        0%,
+        100% {
+          transform: scale(1);
+          background-color: #ffe0b2; /* Cor de fundo normal do status pendente */
+          color: #e65100;
+        }
+        50% {
+          transform: scale(1.2);
+          background-color: var(--ios-red); /* Cor de destaque para piscar */
+          color: white;
+        }
+      }
+      .column-count-badge.blink {
+        animation: blink 1.2s infinite;
+      }
+
+      /* === MEDIA QUERIES PARA RESPONSIVIDADE DA TABELA === */
+      @media (max-width: 768px) {
+        .orders-table-header {
+          display: none; /* Esconde o cabeçalho em telas pequenas */
+        }
+        .order-row {
+          grid-template-columns: 1fr 1fr; /* Duas colunas */
+          padding: 15px;
+          border: 1px solid #eee;
+          border-radius: 10px;
+          margin-bottom: 10px;
+        }
+        .order-data-item {
+          display: flex;
+          flex-direction: column;
+        }
+        .order-data-item .label {
+          display: block; /* Mostra o label */
+          font-size: 11px;
+          color: var(--cor-texto-suave, #888);
+          font-weight: 600;
+          margin-bottom: 3px;
+          text-transform: uppercase;
+        }
+        /* Coloca ID e Status na mesma linha */
+        .order-row .order-data-item:nth-child(1),
+        .order-row .order-data-item:nth-child(4) {
+          grid-column: span 1;
+        }
+        /* Cliente e Item ocupam a linha toda */
+        .order-row .order-data-item:nth-child(2),
+        .order-row .order-data-item:nth-child(3) {
+          grid-column: span 2;
+        }
+        /* Ações ocupam a linha toda */
+        .order-row .order-data-item:nth-child(5) {
+          grid-column: span 2;
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px solid #f0f0f0;
+        }
+        .order-actions-mini {
+          justify-content: flex-end;
+        }
+        .action-text-btn {
+          flex-grow: 1;
+        }
+      }
+    </style>
+
+    <script type="module" src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/firebase.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/map.js"></script>
+    <script type="module" src="js/componentLoader.js"></script>
+    <script type="module" src="js/admin.js"></script>
+
+    <script>
+      // Adiciona a funcionalidade de copiar o código do pedido ao clicar
+      document.addEventListener("DOMContentLoaded", () => {
+        const ordersContainer = document.getElementById(
+          "orders-by-status-container"
+        );
+
+        if (ordersContainer) {
+          ordersContainer.addEventListener("click", (event) => {
+            const target = event.target.closest(".order-id-copy");
+            if (!target) return;
+
+            const orderId = target.dataset.orderId;
+            navigator.clipboard
+              .writeText(orderId)
+              .then(() => {
+                // Exibe a mensagem "Copiado"
+                const originalText = target.innerHTML;
+                target.innerHTML = `Copiado!`;
+                target.classList.add("copied");
+
+                // Volta ao texto original após 2 segundos
+                setTimeout(() => {
+                  target.innerHTML = originalText;
+                  target.classList.remove("copied");
+                }, 2000);
+              })
+              .catch((err) => {
+                console.error("Falha ao copiar o código do pedido: ", err);
+              });
+          });
+        }
+      });
+    </script>
+
+  </body>
+</html>

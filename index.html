@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Scatambulo" />
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png" />
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+      frame-src https://*.firebaseio.com https://vercel.live;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://*.firebaseio.com https://www.gstatic.com https://cdn.jsdelivr.net;
+      style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+      font-src * data:;
+      img-src 'self' data: https://firebasestorage.googleapis.com;
+      connect-src 'self' wss://*.firebaseio.com https://*.firebaseio.com https://www.gstatic.com https://cdn.jsdelivr.net https://firebasestorage.googleapis.com;">
+
+    <title>Login - Scatambulo Confeitaria</title>
+
+    <link rel="stylesheet" href="css/style.css" />
+
+    <script type="module" src="https://unpkg.com/@phosphor-icons/web"></script>
+  </head>
+  <body class="login-page">
+    <div class="login-container">
+      <div class="login-content">
+        <div class="brand-header">
+          <div class="icon-logo">
+            <i class="ph-fill ph-cake"></i>
+          </div>
+          <h1>Scatambulo</h1>
+          <p class="subtitle">Confeitaria Artesanal</p>
+        </div>
+
+        <form id="login-form" novalidate>
+          <div class="ios-form-group">
+            <div class="input-row">
+              <i class="ph ph-user input-icon"></i>
+              <label for="username" class="sr-only"></label>
+              <input
+                type="text"
+                id="username"
+                placeholder="Usuário"
+                required
+                autocomplete="username"
+              />
+            </div>
+            <div class="divider"></div>
+            <div class="input-row">
+              <i class="ph ph-lock-key input-icon"></i>
+              <label for="password" class="sr-only"></label>
+              <input
+                type="password"
+                id="password"
+                placeholder="Senha"
+                required
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                id="toggle-password-visibility"
+                class="password-toggle-btn"
+                aria-label="Mostrar senha"
+              >
+                <i class="ph ph-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <p id="login-error" class="error-message"></p>
+
+          <button type="submit" id="login-button" class="btn-primary">
+            <span>Entrar</span>
+            <i class="ph-bold ph-arrow-right"></i>
+          </button>
+
+          <div class="login-footer">
+            <a href="rastreio.html">Rastrear meu pedido</a>
+          </div>
+        </form>
+      </div>
+
+      <div
+        class="app-version"
+        style="color: var(--ios-text-sec); margin-top: 20px"
+      >
+        Versão 2.0
+      </div>
+    </div>
+
+    <script src="js/login.js"></script>    
+  </body>
+</html>

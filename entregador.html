@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Scatambulo" />
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png" />
+    <meta http-equiv="Content-Security-Policy"
+      content="
+    default-src 'self';
+    frame-src https://*.firebaseio.com https://vercel.live;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://cdnjs.cloudflare.com https://server.arcgisonline.com https://*.arcgisonline.com;
+    font-src * data:;
+    img-src 'self' data: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.arcgisonline.com blob: https://firebasestorage.googleapis.com;
+    connect-src 'self' wss://*.firebaseio.com https://www.gstatic.com https://viacep.com.br https://nominatim.openstreetmap.org https://*.openstreetmap.org https://router.project-osrm.org https://unpkg.com https://server.arcgisonline.com https://*.arcgisonline.com blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://firebasestorage.googleapis.com;
+    worker-src 'self' blob:;
+  ">
+    <title>Painel Entregador - Scatambulo</title>
+
+    <link
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://unpkg.com/@maplibre/maplibre-gl-directions@0.7.1/dist/maplibre-gl-directions.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/chat.css" />
+    <style>
+      .floating-chat-btn {
+        position: absolute;
+        bottom: 160px; /* Acima da dynamic island e controles */
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(45deg, var(--cor-destaque), var(--primary-color));
+        color: white;
+        border-radius: 50%;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        z-index: 1050;
+        transition: transform 0.2s ease-out, opacity 0.3s ease;
+      }
+      .floating-chat-btn.visible {
+        animation: pulse-chat-btn 2s infinite;
+      }
+      .floating-chat-btn:hover {
+        transform: scale(1.05);
+      }
+      .floating-chat-btn i {
+        font-size: 32px;
+      }
+
+      /* Estilos para o badge de notificação */
+      .floating-chat-btn .badge {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 24px;
+        height: 24px;
+        background-color: var(--cor-erro, #ff3b30);
+        color: white;
+        border-radius: 50%;
+        display: none; /* JS controla a visibilidade */
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        border: 2px solid white;
+        pointer-events: none; /* Não interfere no clique do botão */
+      }
+
+      @keyframes pulse-chat-btn {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+        }
+        50% {
+          transform: scale(1.1);
+          box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+        }
+      }
+    </style>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  </head>
+  <body>
+    <header>
+      <div class="header-container">
+        <h1>Painel Entregador</h1>
+        <div class="desktop-nav">
+          <button id="scheduled-orders-button" class="btn-secondary">
+            <i class="ph ph-calendar-check"></i> Ver Agendados
+          </button>
+          <button id="history-button" class="btn-secondary">
+            <i class="ph ph-scroll"></i> Histórico
+          </button>
+          <button id="chat-button" class="btn-primary">
+            <i class="ph ph-chat-dots"></i> Conversas
+          </button>
+          <button id="logout-button" class="btn-secondary">
+            <i class="ph ph-sign-out"></i> Sair
+          </button>
+        </div>
+
+        <button class="hamburger-menu" aria-label="Menu">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="mobile-nav">
+      <div class="mobile-nav-header">
+        <h3>Menu</h3>
+      </div>
+      <!-- Os botões do desktop-nav serão movidos para cá em telas menores -->
+    </nav>
+
+    <main class="container">
+      <section id="map-section">
+        <h2><i class="ph ph-map-pin"></i> Mapa de Entregas</h2>
+        <div id="map-container">
+          <div class="map-loading-overlay active">
+            <div class="map-spinner"></div>
+          </div>
+          <div id="map"></div>
+          <div class="map-interaction-overlay" id="map-overlay">
+          </div>
+
+          <div id="map-overlay-top" class="map-overlay-top-entregador">
+            <div class="map-info-item map-info-item-border-right">
+              <div id="distance-display" class="map-info-value">-- km</div>
+              <div class="map-info-label">Distância</div>
+            </div>
+            <div class="map-info-item">
+              <div id="eta-display" class="map-info-value">-- min</div>
+              <div class="map-info-label">Tempo</div>
+            </div>
+            <div class="map-info-item map-info-item-border-left">
+              <div id="speed-display" class="map-info-value">-- km/h</div>
+              <div class="map-info-label">Veloc.</div>
+            </div>
+          </div>
+
+          <div id="nav-hud" class="nav-hud-entregador">
+            <div class="hud-controls">
+              <button
+                id="map-fullscreen-btn"
+                class="btn-secondary"
+                title="Tela Cheia"
+              >
+                <i class="ph ph-arrows-out"></i>
+              </button>
+              <button
+                id="follow-me-button"
+                class="btn-secondary"
+                title="Seguir Entregador"
+                style="width: 44px; height: 44px; border-radius: 50%"
+              >
+                <i class="ph ph-compass"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Island (movida para o final para garantir que fique na frente) -->
+          <div id="dynamic-island-wrapper">
+            <div id="dynamic-island" class="dynamic-island" tabindex="0" aria-label="Detalhes da entrega atual">
+              <div class="island-compact-view">
+                <div class="island-icon">
+                  <i class="ph-fill ph-moped"></i>
+                </div>
+                <div class="dynamic-island-content">
+                  <strong id="dynamic-island-client">Entregador</strong>
+                  <span id="dynamic-island-address">Aguardando entrega</span>
+                </div>
+              </div>
+              <div class="island-expanded-content">
+                <div class="expanded-details">
+                  <p>
+                    <strong>Bolo:</strong> <span id="expanded-island-item">--</span>
+                  </p>
+                  <p>
+                    <strong>Endereço:</strong>
+                    <span id="expanded-island-address">--</span>
+                  </p>
+                  <div class="expanded-route-info">
+                    <p>
+                      <i class="ph ph-path"></i>
+                      <strong>Distância:</strong>
+                      <span id="expanded-island-distance">-- km</span>
+                    </p>
+                    <p>
+                      <i class="ph ph-clock"></i>
+                      <strong>Tempo:</strong>
+                      <span id="expanded-island-eta">-- min</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="island-navigation-actions">
+                  <button id="open-gmaps-btn" class="btn-island-action btn-nav-app" title="Abrir no Google Maps">
+                    <i class="ph ph-map-trifold"></i> Maps
+                  </button>
+                  <button id="open-waze-btn" class="btn-island-action btn-nav-app" title="Abrir no Waze">
+                    <i class="ph ph-car"></i> Waze
+                  </button>
+                </div>
+                <div class="island-actions">
+                  <button id="dynamic-island-cancel-btn" class="btn-island-action btn-island-cancel">
+                    <i class="ph ph-x"></i> Cancelar
+                  </button>
+                  <button id="dynamic-island-finish-btn" class="btn-island-action btn-island-finish">
+                    <i class="ph ph-check"></i> Finalizar
+                  </button>
+                </div>
+              </div>
+              <!-- Nova Visão de Confirmação -->
+              <div class="island-confirmation-view">
+                <p id="island-confirmation-message">Tem certeza?</p>
+                <div class="island-actions">
+                  <button id="island-confirm-no" class="btn-island-action btn-nav-app">Não</button>
+                  <button id="island-confirm-yes" class="btn-island-action">Sim</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botão flutuante de chat -->
+          <button id="floating-chat-button" class="floating-chat-btn" style="display: none;" title="Nova Mensagem">
+              <i class="ph-fill ph-chat-dots"></i>
+              <span class="badge">!</span>
+          </button>
+
+        </div>
+      </section>
+
+      <section
+        id="orders-section"
+        style="margin-top: 30px; content-visibility: auto"
+        contain-intrinsic-size="500px"
+      >
+        <div id="ready-for-delivery-container">
+          <h3><i class="ph ph-package"></i> Prontos para Entrega</h3>
+          <div id="ready-for-delivery-list"></div>
+        </div>
+
+        <h3 style="margin-top: 20px">
+          <i class="ph ph-moped"></i> Em Rota (Outros)
+        </h3>
+        <div id="in-route-list"></div>
+      </section>
+    </main>
+
+    <div id="modal-container"></div>
+    <div id="toast-container"></div>
+    <div id="chat-component-container"></div>
+
+    <!-- Novo Modal para Mapa em Tela Cheia -->
+    <div
+      id="map-fullscreen-modal"
+      class="map-fullscreen-modal-container"
+      aria-modal="true"
+      role="dialog"
+    >
+      <div id="fullscreen-map-target">
+        <!-- O #map-container será movido para cá via JS -->
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script type="module" src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <!-- Importa o plugin MapLibre GL Directions como módulo e expõe globalmente -->
+    <script type="module">
+      import Directions from "https://unpkg.com/@maplibre/maplibre-gl-directions@0.7.1/dist/maplibre-gl-directions.js";
+      window.MapLibreGlDirections = Directions.default || Directions;
+    </script>
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/firebase.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/ui-entregador.js"></script>
+    <script type="module" src="js/map.js"></script>
+    <script type="module" src="js/componentLoader.js"></script> <!-- Carrega os componentes HTML -->
+    <script type="module" src="js/entregador.js"></script>
+  </body>
+</html>

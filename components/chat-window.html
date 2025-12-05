@@ -1,0 +1,83 @@
+<!-- components/chat-window.html -->
+<div id="chat-modal" class="chat-modal-container">
+  <div class="chat-modal-content">
+    <!-- Cabeçalho que muda dinamicamente -->
+    <div class="chat-modal-header">
+      <div class="header-left-actions">
+        <!-- Botão de voltar para a lista de conversas (escondido por padrão) -->
+        <button id="chat-back-button" class="back-button" style="display: none;"><i class="ph ph-arrow-left"></i></button>
+        <button id="clear-chat-button" class="header-action-button" title="Limpar conversa" style="display: none;"><i class="ph ph-trash"></i></button>
+      </div>
+      <div class="chat-header-info">
+        <i id="chat-header-icon" class="ph ph-chats-circle"></i>
+        <h3 id="chat-conversation-title">Conversas</h3>
+      </div>
+      <div class="header-right-actions">
+        <button id="chat-close-button" class="close-button">&times;</button>
+      </div>
+    </div>
+
+    <div class="chat-modal-body">
+      <!-- 1. Visão da Lista de Conversas (padrão) -->
+      <div id="chat-conversation-list-view">
+        <div class="chat-conversation-list">
+          <!-- A lista de conversas será populada dinamicamente via JavaScript -->
+        </div>
+      </div>
+
+      <!-- 2. Visão das Mensagens (escondida por padrão) -->
+      <div id="chat-messages-view" style="display: none;">
+        <div id="chat-messages-list" class="chat-messages-list">
+          <!-- As mensagens serão populadas dinamicamente via JavaScript -->
+        </div>
+        <!-- Typing indicator -->
+        <div id="chat-typing-indicator" class="chat-typing-indicator">
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span id="typing-indicator-text"></span>
+        </div>
+        <!-- NEW: Reply Preview -->
+        <div id="chat-reply-preview" class="chat-reply-preview">
+            <div class="reply-preview-content">
+                <div class="reply-preview-border"></div>
+                <div class="reply-preview-text">
+                    <strong id="reply-preview-author"></strong>
+                    <span id="reply-preview-snippet"></span>
+                </div>
+            </div>
+            <button id="cancel-reply-btn" class="cancel-reply-btn" title="Cancelar resposta">&times;</button>
+        </div>
+        <!-- NEW: Image Preview -->
+        <div id="chat-image-preview" class="chat-image-preview">
+            <div class="image-preview-content">
+                <img id="image-preview-element" src="#" alt="Image Preview"/>
+            </div>
+            <button id="cancel-image-preview-btn" class="cancel-reply-btn" title="Cancelar imagem">&times;</button>
+        </div>
+        <form id="chat-input-form" class="chat-input-form">
+          <label for="chat-image-input" class="chat-attach-button" title="Anexar imagem">
+            <i class="ph ph-paperclip"></i>
+          </label>
+          <input type="file" id="chat-image-input" accept="image/*" style="display: none;">
+          <input id="chat-message-input" type="text" placeholder="Digite uma mensagem..." autocomplete="off">
+          <button type="submit" id="chat-send-button" class="btn-primary">
+            <i class="ph-bold ph-paper-plane-tilt"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Emoji Picker (posicionado de forma absoluta em relação ao modal-content) -->
+    <div id="emoji-picker" class="emoji-picker">
+        <button>👍</button>
+        <button>❤️</button>
+        <button>😂</button>
+        <button>😮</button>
+        <button>😢</button>
+        <button>🙏</button>
+    </div>
+  </div>
+</div>

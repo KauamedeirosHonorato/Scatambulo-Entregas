@@ -1,0 +1,1923 @@
+:root {
+  /* === CORES GERAIS DO SISTEMA (TEMA iOS NATIVO) === */
+  --cor-principal: #fafafa; /* Branco Pérola (Fundo Principal) */
+  --cor-secundaria: #f2f2f7; /* Cinza Claro (Fundo Secundário) */
+  --cor-destaque: #d4af37; /* Dourado Marca */
+  --cor-texto: #1c1c1e; /* Preto Suave (Apple style) */
+  --cor-texto-secundario: #8e8e93; /* iOS System Gray */
+  --cor-branco: #ffffff;
+  --cor-card: #ffffff;
+  --cor-sucesso: #34c759; /* Verde iOS */
+  --cor-aviso: #ff9500; /* Laranja iOS */
+  --cor-erro: #ff3b30; /* Vermelho iOS */
+  --cor-info: var(--cor-destaque); /* Dourado para consistência */
+  --sombra: 0 10px 30px rgba(0, 0, 0, 0.1); /* Sombra mais pronunciada */
+  --sombra-suave: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --borda-radius: 16px; /* Padrão App */
+  --borda-radius-ios: 12px; /* Padrão Input iOS */
+  /* Variáveis de Sistema (Safe Areas) */
+  --safe-top: env(safe-area-inset-top, 20px);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--cor-principal);
+  color: var(--cor-texto);
+  margin: 0;
+  line-height: 1.6;
+  padding-bottom: calc(80px + var(--safe-bottom)); /* Espaço para nav mobile */
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  touch-action: manipulation; /* Adicionado para melhorar a responsividade de toque no iOS */
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Playfair Display", serif;
+  color: var(--cor-texto);
+  letter-spacing: -0.5px;
+}
+
+/* =========================================
+   TELA DE LOGIN (ESTILO IOS NATIVO)
+   ========================================= */
+
+/* Estilos do Body APENAS para a página de login */
+body.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Evita scroll na tela de login */
+  padding-bottom: 20px; /* Remove o padding do body geral */
+}
+
+.login-container {
+  flex: 1; /* Ocupa todo o espaço vertical disponível */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+}
+
+.login-content {
+  width: 100%;
+  max-width: 360px; /* Largura padrão de iPhone */
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Branding do Login */
+.brand-header {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.icon-logo {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #d4af37 0%, #f8e398 100%);
+  border-radius: 22px; /* Formato Squircle do iOS */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+}
+
+.icon-logo i {
+  font-size: 40px;
+  color: white;
+}
+
+.brand-header h1 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.brand-header .subtitle {
+  margin: 10px 0 0;
+
+  color: var(--cor-texto-secundario);
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Estilo de Formulário iOS (Grouped List) */
+.ios-form-group {
+  background-color: var(--cor-branco);
+  border: 1px solid #000000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--sombra-suave);
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 56px;
+  background: white;
+  width: 100%; /* Garante que ocupe toda a largura */
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.input-row:focus-within {
+  background-color: #f9f9f9;
+}
+
+.input-icon {
+  display: inline-flex; /* Alinha verticalmente */
+  align-items: center;
+  font-size: 24px;
+  color: #c7c7cc; /* Cor de ícone inativo iOS */
+  margin-right: 14px;
+  transition: color 0.3s ease;
+}
+
+/* Quando o campo está em foco, o ícone fica dourado */
+.input-row:focus-within .input-icon {
+  color: var(--cor-destaque);
+}
+
+.input-row input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 17px; /* Tamanho padrão legível iOS */
+  color: var(--cor-texto);
+  padding: 0;
+  height: 100%;
+  padding-right: 48px; /* Aumentado para garantir espaço para o ícone de olho */
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Adiciona uma sombra interna sutil quando o campo está focado */
+/* O background-color: white !important; é crucial para evitar o "azul" do autofill do navegador */
+.input-row input:focus {
+  box-shadow: inset 2px 0 0 var(--cor-destaque);
+}
+
+.input-row input::placeholder {
+  color: #c7c7cc;
+}
+
+/* Divisória fina entre inputs (Hairline) */
+.divider {
+  height: 1px;
+  background-color: #e5e5ea;
+  margin-left: 52px; /* Alinhado com o texto, pulando o ícone */
+}
+
+/* Botão de Mostrar/Ocultar Senha */
+.password-toggle-btn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: #c7c7cc;
+  display: flex;
+  font-size: 22px;
+  transition: color 0.2s;
+}
+.password-toggle-btn:hover {
+  color: var(--cor-texto-secundario);
+}
+
+/* Botão de Login iOS */
+#login-button {
+  background-color: var(--cor-destaque);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  height: 56px;
+  width: 100%;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.25);
+  transition: transform 0.1s, opacity 0.2s;
+  -webkit-user-select: none;
+  margin-top: 10px;
+}
+
+#login-button:active {
+  transform: scale(0.96);
+  -webkit-transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* Mensagem de Erro do Login */
+#login-error {
+  color: var(--cor-erro);
+  font-size: 13px;
+  text-align: center;
+  min-height: 20px;
+  margin: 8px 0; /* Ajustado para um espaçamento mais natural */
+  font-weight: 500;
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.login-footer a {
+  color: var(--cor-destaque);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.app-version {
+  position: absolute;
+  bottom: calc(20px + var(--safe-bottom));
+  color: #c7c7cc;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================
+   ESTILOS DA APLICAÇÃO PRINCIPAL
+   ========================================= */
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* === HEADER (App Style: Sticky + Glass) === */
+header {
+  background-color: rgba(245, 245, 245, 0.85);
+  backdrop-filter: blur(20px); /* Efeito de vidro */
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+  padding: 12px 20px;
+  padding-top: max(12px, var(--safe-top));
+  position: sticky;
+  top: 0;
+  z-index: 2001;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header-container h1 {
+  font-size: 1.4rem;
+  margin: 0;
+  color: var(--cor-destaque);
+}
+
+/* === MENU (Desktop & Mobile) === */
+.desktop-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.hamburger-menu {
+  display: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 10px;
+  z-index: 3000;
+}
+
+.hamburger-menu .bar {
+  display: block;
+  width: 26px;
+  height: 2.5px;
+  margin: 5px auto; /* Espaçamento entre as barras */
+  background-color: var(--cor-texto);
+  border-radius: 3px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animação X */
+.hamburger-menu.open .bar:nth-child(1) {
+  transform: translateY(7.5px) rotate(45deg);
+  background-color: var(--cor-destaque);
+}
+.hamburger-menu.open .bar:nth-child(2) {
+  opacity: 0;
+}
+.hamburger-menu.open .bar:nth-child(3) {
+  transform: translateY(-7.5px) rotate(-45deg);
+  background-color: var(--cor-destaque);
+}
+
+/* Menu Mobile Deslizante */
+.mobile-nav {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 300px;
+  height: 100vh;
+  height: 100dvh;
+  background-color: #fff;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1); /* Sombra lateral */
+  z-index: 2999;
+  transition: right 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding: calc(60px + var(--safe-top)) 20px 40px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-nav.open {
+  right: 0;
+}
+
+.mobile-nav.open::before {
+  content: "";
+  position: fixed; /* Overlay para o restante da tela */
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: -1;
+  transform: translateX(-100%); /* Cobre o resto da tela */
+}
+
+.mobile-nav button {
+  width: 100%;
+  padding: 16px;
+  text-align: left; /* Alinha texto à esquerda */
+  background: #f5f5f5;
+  border: none;
+  border-radius: 12px;
+  color: var(--cor-texto);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.mobile-nav button:active {
+  background-color: #ececec; /* Feedback de clique */
+  transform: scale(0.98);
+}
+
+.mobile-nav #logout-button {
+  margin-top: auto;
+  background-color: rgba(255, 59, 48, 0.1);
+  color: var(--cor-erro);
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none;
+  }
+  .hamburger-menu {
+    display: block;
+  }
+}
+
+/* === BOTÕES GERAIS (Estilo iOS 17) === */
+.btn-primary,
+.btn-secondary,
+.btn-sucesso,
+.btn-danger {
+  border: none;
+  border-radius: 50px; /* Pílula */
+  padding: 14px 28px; /* Espaçamento interno iOS */
+  min-height: 48px;
+  font-size: 17px;
+  font-weight: 500; /* Peso de fonte iOS */
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, opacity 0.2s;
+  margin: 0;
+}
+
+.btn-primary:active,
+.btn-secondary:active,
+.btn-sucesso:active,
+.btn-danger:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.btn-primary {
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2);
+}
+
+.btn-secondary {
+  background-color: rgba(212, 175, 55, 0.1); /* Dourado bem claro */
+  color: var(--cor-destaque);
+  border: none;
+}
+
+/* Estado ativo para botões de controle (HUD) */
+.btn-secondary.active {
+  background-color: var(--cor-destaque);
+  color: white;
+}
+
+.btn-sucesso {
+  background-color: var(--cor-sucesso);
+  color: white;
+  box-shadow: 0 5px 15px rgba(52, 199, 89, 0.2);
+}
+
+.btn-danger {
+  background-color: var(--cor-erro);
+  color: white;
+  box-shadow: 0 5px 15px rgba(255, 59, 48, 0.2);
+}
+
+/* === MAPA E HUD === */
+#map-container {
+  position: relative; /* Para posicionar overlays */
+  height: 450px; /* Mais altura no mobile */
+  border-radius: var(--borda-radius);
+  /* overflow: hidden; */ /* Removido para compatibilidade com iOS */
+  box-shadow: var(--sombra);
+}
+
+.map-interaction-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: transparent; /* Invisible overlay */
+  z-index: 499; /* Below HUD controls (z-index 500) but above the map */
+}
+
+.map-interaction-overlay.hidden {
+  display: none;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* HUD Flutuante Estilo iPhone */
+#nav-hud,
+.map-hud-modal #nav-hud {
+  /* HUD para mapa */
+  background: rgba(240, 240, 240, 0.9);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  padding: 8px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Info Rows dentro do HUD */
+#nav-hud .hud-row {
+  background: transparent;
+  color: var(--cor-texto); /* Cor do texto no HUD */
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  gap: 12px;
+}
+
+#nav-hud .hud-controls {
+  display: flex;
+  gap: 8px;
+}
+
+/* Botões HUD Redondos */
+#nav-hud button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%; /* Botões redondos */
+  font-size: 10px; /* Ícones ou texto pequeno */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === ILHA DINÂMICA (App Like) === */
+/* General button styles for map HUD controls */
+.hud-controls button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-controls button i {
+  font-size: 24px; /* Default icon size for HUD buttons */
+}
+
+/* === MAP OVERLAYS (ADMIN & ENTREGADOR) === */
+.map-overlay-top-admin,
+.map-overlay-top-entregador {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  padding: 5px 10px;
+  box-shadow: var(--sombra-suave); /* Usar sombra suave definida */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 500; /* Garante que fique acima do mapa */
+}
+
+.map-overlay-top-admin .map-info-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.map-overlay-top-admin .map-info-icon {
+  font-size: 12px;
+  color: var(--cor-texto-secundario);
+}
+
+.map-overlay-top-entregador .map-info-item {
+  text-align: center;
+}
+
+.map-overlay-top-entregador .map-info-item-border-right {
+  padding-right: 10px;
+  border-right: 1px solid var(--cor-secundaria);
+}
+
+.map-overlay-top-entregador .map-info-item-border-left {
+  padding-left: 10px;
+  border-left: 1px solid var(--cor-secundaria);
+}
+
+.map-overlay-top-entregador .map-info-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cor-info); /* Azul iOS */
+}
+
+.map-overlay-top-entregador .map-info-label {
+  font-size: 10px;
+  color: var(--cor-texto-secundario);
+  text-transform: uppercase;
+}
+
+/* === MAP HUD CONTROLS === */
+/* Base styles for all map HUDs */
+#nav-hud {
+  /* Existing #nav-hud styles will apply */
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 500;
+}
+
+/* Specific positioning for Admin HUD */
+.nav-hud-admin {
+  bottom: 10px;
+  right: 10px;
+}
+
+/* Specific positioning for Entregador HUD */
+.nav-hud-entregador {
+  bottom: 20px;
+  right: 20px;
+}
+
+/* === ADMIN ACTIONS SECTION === */
+.section-subtitle {
+  font-size: 15px;
+  color: var(--cor-texto-secundario);
+  margin-left: 5px;
+  margin-bottom: 10px; /* Adicionado para espaçamento */
+}
+
+.btn-admin-action {
+  width: 100%;
+  height: 38px;
+  justify-content: start;
+  background: none;
+  font-weight: 400;
+  border: none; /* Garante que não haja borda padrão de botão */
+  border-radius: 0; /* Remove border-radius para botões tipo lista */
+  padding: 0 10px; /* Ajusta o padding conforme necessário */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-admin-action:hover {
+  background-color: var(--cor-secundaria);
+}
+
+.btn-admin-action i {
+  font-size: 20px;
+}
+
+/* Cores específicas para as ações de admin */
+.btn-admin-action.clear-delivered {
+  color: var(--cor-info);
+}
+
+.btn-admin-action.reset-deliveries,
+.btn-admin-action.clear-all-orders {
+  color: var(--cor-erro);
+}
+
+/* Remove estilos inline dos botões do HUD do mapa no admin.html */
+.nav-hud-admin .hud-controls button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+/* === CARDS DE PEDIDOS === */
+#orders-section h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.4rem; /* Tamanho do título da seção */
+}
+
+#kanban-board {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.order-card {
+  background: var(--cor-card);
+  padding: 20px;
+  border-radius: 20px; /* Cantos arredondados */
+  border: none; /* Remove borda sólida, usa sombra */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Barras coloridas laterais mais elegantes */
+.order-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0; /* Barra lateral colorida */
+  bottom: 0;
+  width: 6px;
+  background: #eee;
+}
+
+.order-card.in-route::before {
+  background: var(--cor-destaque);
+}
+.order-card.ready-for-delivery::before {
+  background: var(--cor-sucesso);
+}
+
+.order-card.highlight {
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 0 15px rgba(0, 123, 255, 0.7), 0 0 0 2px rgba(0, 123, 255, 0.5); /* Destaque azul */
+  transform: scale(1.02);
+}
+
+.order-card-header {
+  margin-bottom: 12px;
+  padding-left: 12px; /* Espaço para a barra lateral */
+}
+
+.order-card-header h4 {
+  font-size: 1.1rem;
+  margin-bottom: 4px; /* Espaçamento */
+}
+
+.order-id {
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  color: #8e8e93;
+  background: #f2f2f7;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.copy-feedback {
+  background-color: var(--cor-sucesso);
+  color: var(--cor-texto); /* Cor do feedback de cópia */
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.copy-feedback.visible {
+  opacity: 1;
+}
+
+.order-actions {
+  margin-top: 15px;
+  padding-left: 12px; /* Espaçamento */
+  display: flex;
+  gap: 10px;
+}
+
+/* === MODAIS (NATIVE BOTTOM SHEETS) === */
+.modal-backdrop,
+.modal-novo-pedido {
+  position: fixed;
+  inset: 0; /* Ocupa toda a tela */
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-backdrop.active,
+.modal-novo-pedido.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background: var(--cor-secundaria);
+  width: 100%;
+  max-width: 500px; /* Largura máxima */
+  border-radius: 24px 24px 0 0;
+  padding: 24px;
+  padding-bottom: calc(24px + var(--safe-bottom)); /* Safe Area */
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+/* Animação de entrada */
+.modal-backdrop.active .modal-content,
+.modal-novo-pedido.active .modal-content {
+  transform: translateY(0);
+}
+
+/* Tablet/Desktop: Modal Centralizado */
+@media (min-width: 768px) {
+  .modal-backdrop,
+  .modal-novo-pedido {
+    align-items: center;
+  }
+  .modal-content {
+    border-radius: 24px;
+    padding-bottom: 24px;
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  .modal-backdrop.active .modal-content,
+  .modal-novo-pedido.active .modal-content {
+              transform: scale(1);
+              -webkit-transform: scale(1);    opacity: 1;
+  }
+
+  .container {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  #map-container {
+    height: 500px;
+  }
+}
+
+/* === FORMULÁRIOS DENTRO DE MODAIS === */
+.modal-content .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.modal-content .modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.close-button {
+  background: #e5e5e5;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #8e8e93; /* Cor do ícone de fechar */
+  font-size: 20px;
+  line-height: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background: #dcdcdc;
+  color: var(--cor-texto);
+}
+
+.modal-content .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  text-align: left;
+  grid-template-areas:
+    "bolo bolo"
+    "cliente cliente"
+    "email whatsapp"
+    "cep cep"
+    "rua rua"
+    "numero bairro"
+    "complemento complemento";
+}
+
+@media (min-width: 500px) {
+  .modal-content .form-grid {
+    grid-template-areas:
+      "bolo bolo"
+      "cliente cliente"
+      "email whatsapp"
+      "cep rua"
+      "numero bairro"
+      "complemento complemento";
+  }
+}
+
+.modal-content .input-group {
+  position: relative;
+  margin: 0;
+}
+
+/* Mapeamento das áreas do grid */
+.modal-content .input-group:nth-child(1) {
+  grid-area: bolo;
+}
+.modal-content .input-group:nth-child(2) {
+  grid-area: cliente;
+}
+.modal-content .input-group:nth-child(3) {
+  grid-area: email;
+}
+.modal-content .input-group:nth-child(4) {
+  grid-area: whatsapp;
+}
+.modal-content .input-group:nth-child(5) {
+  grid-area: cep;
+}
+.modal-content .input-group:nth-child(6) {
+  grid-area: rua;
+}
+.modal-content .input-group:nth-child(7) {
+  grid-area: numero;
+}
+.modal-content .input-group:nth-child(8) {
+  grid-area: bairro;
+}
+.modal-content .input-group:nth-child(9) {
+  grid-area: complemento;
+}
+
+/* Inputs dentro do modal com Floating Label */
+.modal-content .input-group input {
+  width: 100%;
+  background-color: var(--cor-branco);
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
+  padding: 20px 12px 8px 12px;
+  font-size: 16px;
+  color: var(--cor-texto);
+}
+
+.modal-content .input-group input:focus {
+  outline: none;
+  border-color: var(--cor-destaque);
+}
+
+.modal-content .input-group label {
+  position: absolute;
+  top: 15px;
+  left: 13px;
+  font-size: 16px;
+  color: var(--cor-texto-secundario);
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.modal-content .input-group input:focus + label,
+.modal-content .input-group input:not(:placeholder-shown) + label {
+  top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cor-destaque);
+}
+
+/* === MODAL DE SUGESTÃO (Estilo Dark) === */
+#suggestion-modal {
+  background-color: rgba(10, 10, 10, 0.85);
+  z-index: 10001; /* Acima de outros modais */
+}
+
+#suggestion-modal .modal-content {
+  background-color: #1e1e1e;
+  color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-width: 400px;
+  text-align: left;
+}
+
+#suggestion-modal .modal-header h3 {
+  color: #ffffff;
+}
+
+#suggestion-modal .modal-body {
+  color: #e0e0e0;
+  font-size: 0.95rem;
+}
+
+#suggestion-modal .modal-body strong {
+  color: #ffffff;
+}
+
+#suggestion-modal #suggestion-details {
+  background-color: #2f2f2f;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+  border-left: 4px solid var(--cor-destaque);
+}
+
+#suggestion-modal #suggestion-details p {
+  margin: 8px 0;
+}
+
+#suggestion-modal .modal-footer {
+  border-top: 1px solid #333;
+  padding-top: 15px;
+  margin-top: 20px;
+}
+
+#suggestion-modal #suggestion-modal-accept-btn {
+  background-color: var(--cor-destaque);
+  color: white;
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+#suggestion-modal #suggestion-modal-accept-btn:hover {
+  filter: brightness(1.1);
+}
+
+#suggestion-modal .close-button {
+  color: #aaa;
+  background: none;
+}
+
+#suggestion-modal .close-button:hover {
+  color: white;
+}
+
+/* === ILHA DINÂMICA (App Like) === */
+.dynamic-island {
+  position: absolute;
+  top: 60px; /* Posição ajustada para ficar abaixo do HUD de informações */
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  width: 92%;
+  max-width: 420px; /* Aumentado para acomodar conteúdo expandido */
+  background: rgba(28, 28, 30, 0.95); /* Dark mode Apple */
+  color: white;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 35px; /* Cantos arredondados */
+  padding: 0 20px; /* Padding horizontal, vertical é controlado pela altura */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Centraliza o conteúdo (compacto ou expandido) */
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* Animação de mola */
+  cursor: pointer; /* Indica que é clicável */
+  overflow: hidden; /* Garante que o conteúdo não vaze durante a animação */
+  height: 60px; /* Altura inicial da ilha compacta */
+}
+
+.dynamic-island.active {
+  transform: translateX(-50%) scale(1);
+  opacity: 1;
+  visibility: visible;
+}
+
+/* --- Visão Compacta --- */
+.island-compact-view {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.dynamic-island .island-icon {
+  font-size: 20px;
+  color: var(--cor-aviso);
+}
+
+.dynamic-island-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 0 10px;
+}
+
+.dynamic-island-content strong {
+  color: var(--cor-destaque);
+  font-size: 0.95rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dynamic-island-content span {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Visão Expandida --- */
+.island-expanded-content {
+  display: none; /* Escondido por padrão */
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 10px;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out 0.2s; /* Fade in com delay */
+  width: 100%;
+}
+
+/* --- Estado Expandido --- */
+.dynamic-island.expanded {
+  height: auto; /* Altura se ajusta ao conteúdo */
+  padding-top: 12px;
+  padding-bottom: 20px;
+  cursor: default; /* Cursor padrão quando expandido */
+}
+
+.dynamic-island.expanded .island-compact-view {
+  display: none; /* Esconde a visão compacta */
+}
+
+.dynamic-island.expanded .island-expanded-content {
+  display: flex; /* Mostra o conteúdo expandido */
+  opacity: 1;
+}
+
+/* --- Visão de Confirmação --- */
+.island-confirmation-view {
+  display: none; /* Escondido por padrão */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.island-confirmation-view p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: white;
+}
+
+/* --- Estado de Confirmação --- */
+.dynamic-island.confirming {
+  height: auto; /* Altura se ajusta ao conteúdo */
+  padding-top: 16px;
+  padding-bottom: 16px;
+  cursor: default;
+}
+
+.dynamic-island.confirming .island-compact-view,
+.dynamic-island.confirming .island-expanded-content {
+  display: none; /* Esconde as outras visões */
+}
+
+.dynamic-island.confirming .island-confirmation-view {
+  display: flex; /* Mostra a visão de confirmação */
+  opacity: 1;
+}
+
+/* Ajuste no botão de confirmação 'Sim' para poder mudar a cor */
+#island-confirm-yes.btn-island-finish {
+  background-color: rgba(52, 199, 89, 0.2);
+  color: #32d74b;
+}
+#island-confirm-yes.btn-island-finish:hover {
+  background-color: rgba(52, 199, 89, 0.3);
+}
+
+/* --- Conteúdo Expandido --- */
+.expanded-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.expanded-details p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+.expanded-details p strong {
+  color: white;
+}
+
+.expanded-route-info {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  width: 100%;
+}
+
+.expanded-route-info p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.expanded-route-info i {
+  font-size: 18px;
+  color: var(--cor-destaque);
+}
+
+.island-navigation-actions,
+.island-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* --- Botões da Ilha --- */
+.btn-island-action {
+  border: none;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s;
+}
+.btn-island-action:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.btn-island-action i {
+  font-size: 18px;
+}
+
+.btn-nav-app {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.btn-island-cancel {
+  background-color: rgba(255, 59, 48, 0.2);
+  color: #ff453a;
+}
+.btn-island-cancel:hover {
+  background-color: rgba(255, 59, 48, 0.3);
+}
+
+#island-confirm-yes.btn-island-cancel {
+  background-color: rgba(255, 59, 48, 0.2);
+  color: #ff453a;
+}
+#island-confirm-yes.btn-island-cancel:hover {
+  background-color: rgba(255, 59, 48, 0.3);
+}
+
+.btn-island-finish {
+  background-color: rgba(52, 199, 89, 0.2);
+  color: #32d74b;
+}
+.btn-island-finish:hover {
+  background-color: rgba(52, 199, 89, 0.3);
+}
+
+/* === TOAST NOTIFICATION === */
+#toast-container {
+  position: fixed;
+  top: calc(10px + var(--safe-top)); /* Posição */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 350px;
+  z-index: 11000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  color: var(--cor-texto);
+  padding: 14px 20px; /* Espaçamento interno */
+  border-radius: 50px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  font-weight: 500;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.toast-success {
+  border-left-color: var(--cor-sucesso);
+}
+.toast.toast-error {
+  border-left-color: var(--cor-erro);
+}
+.toast.toast-info {
+  border-left-color: var(--cor-destaque);
+}
+
+/* === STATUS DO ENTREGADOR === */
+#delivery-status-container {
+  background-color: var(--cor-card);
+  padding: 15px 20px;
+  border-radius: var(--borda-radius); /* Cantos arredondados */
+  box-shadow: var(--sombra);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#delivery-person-status {
+  margin: 0;
+  font-weight: 600;
+  color: var(--cor-texto); /* Cor do texto */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+#delivery-person-status::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%; /* Círculo */
+  background-color: var(--cor-aviso);
+}
+
+#delivery-person-status.online::before {
+  background-color: var(--cor-sucesso);
+}
+
+/* === MEDIA QUERIES FINAIS (TABLETS & DESKTOP) === */
+@media (min-width: 1024px) {
+  .container {
+    grid-template-columns: 1.2fr 2fr;
+    gap: 40px; /* Espaçamento entre colunas */
+  }
+
+  #kanban-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .order-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1); /* Sombra ao passar o mouse */
+  }
+
+  .map-mirror {
+    top: 100px;
+  }
+}
+
+/* =========================================
+   ESTILOS DA TABELA DE PEDIDOS (ADMIN)
+   ========================================= */
+
+/* Contêiner para cada grupo de status */
+.status-group-wrapper {
+  margin-bottom: 30px;
+}
+
+.status-group-wrapper h3 {
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+}
+
+.orders-table-wrapper {
+  background: var(--cor-card);
+  border-radius: var(--borda-radius);
+  box-shadow: var(--sombra-suave);
+  overflow: hidden;
+  margin-top: 20px;
+  border: 1px solid var(--cor-secundaria);
+}
+
+.orders-table-header {
+  display: none;
+  background-color: var(--cor-secundaria);
+  padding: 12px 20px;
+  color: var(--cor-texto-secundario);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@media (min-width: 768px) {
+  .orders-table-header {
+    display: grid;
+    grid-template-columns: 0.5fr 2fr 1fr 1.5fr 1fr;
+    align-items: center;
+  }
+}
+
+.order-row {
+  display: block;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--cor-secundaria);
+  cursor: pointer;
+  transition: background-color 0.1s ease-in-out;
+}
+
+.order-row:active {
+  background-color: #f0f0f5;
+}
+
+.order-row:last-child {
+  border-bottom: none;
+}
+
+@media (min-width: 768px) {
+  .order-row {
+    display: grid;
+    grid-template-columns: 0.5fr 2fr 1fr 1.5fr 1fr;
+    align-items: center;
+    padding: 10px 20px;
+  }
+}
+
+.order-data-item {
+  padding: 2px 0;
+  font-size: 0.95rem;
+  color: var(--cor-texto);
+  font-weight: 500;
+}
+
+.order-data-item .label {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--cor-texto-secundario);
+  font-weight: 400;
+  margin-right: 8px;
+  min-width: 60px;
+}
+
+@media (min-width: 768px) {
+  .order-data-item .label {
+    display: none;
+  }
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.status-pendente {
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--cor-destaque);
+}
+.status-em_preparo {
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--cor-destaque);
+}
+.status-feito {
+  background-color: rgba(88, 86, 214, 0.1);
+  color: #5856d6;
+} /* Roxo iOS */
+.status-pronto_para_entrega {
+  background-color: rgba(255, 149, 0, 0.1);
+  color: var(--cor-aviso);
+}
+.status-em_entrega {
+  background-color: rgba(255, 149, 0, 0.1);
+  color: var(--cor-aviso);
+}
+.status-entregue {
+  background-color: rgba(52, 199, 89, 0.1);
+  color: var(--cor-sucesso);
+}
+.status-cancelado {
+  background-color: rgba(255, 59, 48, 0.1);
+  color: var(--cor-erro);
+}
+
+@media (max-width: 767px) {
+  .order-data-item.status-data {
+    margin-top: 8px;
+  }
+}
+
+.order-actions-mini {
+  display: flex;
+  gap: 8px;
+}
+
+.action-icon-btn {
+  background: var(--cor-secundaria);
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--cor-texto-secundario);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.action-icon-btn:hover {
+  background-color: #dcdcdc;
+  color: var(--cor-texto);
+}
+
+.action-icon-btn:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+.action-icon-btn.primary {
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
+}
+
+/* === ESTILOS DO MODAL DE HISTÓRICO === */
+.history-item {
+  background-color: var(--cor-branco);
+  padding: 12px 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border-left: 4px solid var(--cor-sucesso);
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.history-item-header strong {
+  font-size: 1rem;
+}
+
+.history-item-header span {
+  font-size: 0.8rem;
+  color: var(--cor-texto-secundario);
+}
+
+.history-item-body {
+  margin-bottom: 12px; /* Espaço entre o corpo e o botão */
+}
+
+.history-invoice-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.history-invoice-btn i {
+  font-size: 18px;
+}
+
+.action-icon-btn.primary:hover {
+  background-color: #c49a31;
+}
+
+/* Botão de Ação com Texto (Estilo Pílula Pequena) */
+.action-text-btn {
+  background: var(--cor-secundaria);
+  border: none;
+  border-radius: 20px; /* Formato pílula */
+  color: var(--cor-texto);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.action-text-btn:hover {
+  opacity: 0.8;
+}
+
+.action-text-btn:active {
+  transform: scale(0.96);
+}
+
+.action-text-btn.primary {
+  background-color: var(--cor-destaque);
+  color: var(--cor-branco);
+}
+
+/* =========================================
+   MODAL DE PEDIDOS AGENDADOS (ENTREGADOR)
+   ========================================= */
+
+/* O modal em si pode reutilizar .modal-backdrop, .modal-content, etc. */
+/* Corpo do modal com scroll para a lista de agendamentos */
+#scheduled-orders-modal .modal-body {
+  max-height: 70vh; /* Altura máxima para o corpo do modal */
+  overflow-y: auto; /* Adiciona scroll se o conteúdo exceder a altura */
+  padding: 10px;
+  margin: -10px; /* Compensa o padding para alinhar com o modal-content */
+}
+
+/* Contêiner para cada grupo de data */
+.scheduled-date-group {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  background-color: var(--cor-principal);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: -11px; /* Compensa o padding do modal-body */
+  z-index: 10;
+}
+
+/* Card para cada pedido agendado */
+.scheduled-order-card {
+  background-color: var(--cor-branco);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--sombra-suave);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.scheduled-order-info {
+  flex-grow: 1;
+}
+
+.scheduled-order-info .client-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--cor-texto);
+}
+
+.scheduled-order-info .order-address {
+  font-size: 0.85rem;
+  color: var(--cor-texto-secundario);
+  margin-top: 4px;
+}
+
+.scheduled-order-time {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cor-destaque);
+}
+
+@media (max-width: 767px) {
+  .order-data-item.status-data {
+    margin-top: 8px;
+  }
+}
+
+.order-actions-mini {
+  display: flex;
+  gap: 8px;
+}
+
+/* =========================================
+   PAINEL ENTREGADOR - LISTAS DE PEDIDOS
+   ========================================= */
+
+/* Lista horizontal para "Prontos para Entrega" */
+#ready-for-delivery-list {
+  display: flex;
+  flex-wrap: nowrap; /* Garante que os itens não quebrem a linha */
+  overflow-x: auto; /* Habilita o scroll horizontal */
+  -webkit-overflow-scrolling: touch; /* Melhora a experiência de scroll no iOS */
+  gap: 15px; /* Espaçamento entre os cards */
+  /* Padding e margem para criar um efeito de scroll de ponta a ponta dentro do container */
+  padding: 10px 20px 20px 20px;
+  margin-left: -20px;
+  margin-right: -20px;
+  scroll-snap-type: x mandatory; /* Efeito de "ímã" no scroll */
+  scrollbar-width: none; /* Firefox */
+}
+
+#ready-for-delivery-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Ajustes nos cards dentro da lista horizontal */
+#ready-for-delivery-list .order-card {
+  flex: 0 0 85%; /* O card ocupa 85% da largura da viewport, não encolhe */
+  max-width: 340px; /* Uma largura máxima para telas maiores */
+  scroll-snap-align: start; /* Alinha o card no início ao parar o scroll */
+}
+
+/* Lista vertical para "Em Rota" (mantém o comportamento padrão) */
+#in-route-list {
+  display: grid;
+  gap: 15px;
+}
+
+/* =========================================
+   MODAL DE TELA CHEIA PARA O MAPA (iOS Fake Fullscreen)
+   ========================================= */
+.map-fullscreen-modal-container {
+  position: fixed;
+  inset: 0;
+  background-color: var(--cor-principal);
+  z-index: 9990; /* Abaixo de modais de confirmação e da ilha dinâmica */
+  display: none; /* Controlado por JS */
+}
+
+.map-fullscreen-modal-container.active {
+  display: block;
+}
+
+#fullscreen-map-target {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Quando o #map-container é movido para dentro do modal de tela cheia */
+#fullscreen-map-target > #map-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  /* Garante que ocupe o espaço seguro no iOS */
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+/* ===== IPHONE FIXES ===== */
+
+/* Corrige o 100vh bugado do Safari */
+:root {
+  --iphone-vh: 100vh;
+}
+
+@supports (-webkit-touch-callout: none) {
+  :root {
+    --iphone-vh: calc(var(--safe-area-inset-top, 0px)
+      + var(--safe-area-inset-bottom, 0px)
+      + 100vh);
+  }
+}
+
+/* Modal ajustado pra iPhone */
+.modal-content {
+  max-width: 100%;
+  width: 100%;
+  border-radius: 22px 22px 0 0;
+  padding-bottom: calc(22px + env(safe-area-inset-bottom));
+  
+  /* Impede corte no iOS */
+  max-height: calc(var(--iphone-vh) - 50px);
+  max-height: calc(100dvh - 50px); /* Fallback para navegadores modernos */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fundo cobre perfeitamente sem bugs de zoom */
+.modal-backdrop,
+.modal-novo-pedido {
+  height: 100vh;
+  height: 100dvh; /* Usa a altura dinâmica da viewport, corrigindo bugs do Safari */
+}
+
+/* Trava o scroll do fundo quando o modal está ativo (iOS/Safari) */
+body:has(.modal-novo-pedido.active) {
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch; /* Garante consistência em webkits mais antigos */
+}
+
+/* Botões e inputs mais confortáveis para dedo no iPhone */
+.modal-content input {
+  font-size: 17px;
+  padding: 20px 14px 10px;
+}
+
+/* O label não pode “pular” pra fora em telas menores */
+.modal-content label {
+  transform-origin: left top;
+}
+
+/* Ajuste de grid para iPhone 11–15 (telas 6.1” e 6.7”) */
+@media (max-width: 430px) {
+  .modal-content .form-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "bolo"
+      "cliente"
+      "email"
+      "whatsapp"
+      "cep"
+      "rua"
+      "numero"
+      "bairro"
+      "complemento";
+    gap: 12px;
+  }
+  
+  .modal-content {
+    padding: 20px 18px;
+  }
+  
+  .modal-content .modal-header h3 {
+    font-size: 1.1rem;
+  }
+}
+
+/* iPhone 11, 12, 13, 14, 15 específicos */
+@media (device-width: 390px) and (device-height: 844px),
+       (device-width: 393px) and (device-height: 852px),
+       (device-width: 428px) and (device-height: 926px),
+       (device-width: 430px) and (device-height: 932px) {
+  
+  /* Ajuste fino da safe-area */
+  .modal-content {
+    padding-bottom: calc(30px + env(safe-area-inset-bottom));
+  }
+
+  /* Evita que o modal “afunde” atrás da barra inferior */
+  .modal-backdrop,
+  .modal-novo-pedido {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ===================================================================
+   ESTILOS DE IMPRESSÃO (MODAL DE PDF E MODAL DE IMPRIMIR PEDIDO)
+   =================================================================== */
+
+@media print {
+  /* 1. Esconde tudo por padrão ao imprimir */
+  body * {
+    visibility: hidden;
+  }
+
+  /* 2. Torna visível APENAS o conteúdo do modal de impressão ativo */
+  .printable-content,
+  .printable-content * {
+    visibility: visible;
+  }
+
+  /* 3. Formata o conteúdo para ocupar a página inteira */
+  .printable-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 15mm; /* Margem de impressão padrão */
+    border: none;
+    box-shadow: none;
+    background: white;
+    color: black;
+    font-size: 12pt; /* Tamanho de fonte legível para impressão */
+    line-height: 1.4;
+  }
+
+  /* 4. Esconde cabeçalhos, rodapés e botões dos modais na impressão */
+  .printable-content .modal-header,
+  .printable-content .modal-footer {
+    display: none;
+  }
+
+  /* 5. Garante que links e textos tenham cores adequadas para impressão */
+  a {
+    color: #000 !important;
+    text-decoration: none;
+  }
+
+  /* Adicione aqui estilos específicos para o modal de imprimir pedido, se necessário */
+  /* Ex: #order-print-modal .printable-content { ... } */
+}
