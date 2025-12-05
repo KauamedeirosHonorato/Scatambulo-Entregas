@@ -123,48 +123,59 @@ export async function initializeMap(
         const isIos =
           /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-        const handleIosFullscreen = () => {
+        const handleIosFullscreen = async () => {
           // Envolve a lógica em um try-catch para capturar exceções do DOM no iOS.
           try {
             // Verifica se o modo de tela cheia é suportado pelo elemento de vídeo
             if (videoEl.webkitSupportsFullscreen) {
               if (document.webkitFullscreenElement) {
-                document.webkitExitFullscreen();
+                await document.webkitExitFullscreen();
               } else {
-                videoEl.webkitEnterFullscreen();
+                await videoEl.webkitEnterFullscreen();
               }
             } else {
               // Fallback para o método padrão se a API de vídeo não for suportada
-              toggleStandardFullscreen();
+              await toggleStandardFullscreen();
             }
           } catch (e) {
+            if (e.name === 'AbortError') {
+              // User canceled fullscreen, this is not an application error.
+              return;
+            }
             console.error("Erro ao alternar tela cheia no iOS:", e);
             // Tenta o método padrão como último recurso em caso de erro
-            toggleStandardFullscreen();
+            await toggleStandardFullscreen();
           }
         };
 
-        const toggleStandardFullscreen = () => {
+        const toggleStandardFullscreen = async () => {
           const isFullscreen =
             document.fullscreenElement ||
             document.webkitFullscreenElement ||
             document.mozFullScreenElement ||
             document.msFullscreenElement;
     
-          if (!isFullscreen) {
-            if (mapContainer.requestFullscreen) mapContainer.requestFullscreen();
-            else if (mapContainer.webkitRequestFullscreen)
-              mapContainer.webkitRequestFullscreen(); // Safari
-            else if (mapContainer.mozRequestFullScreen)
-              mapContainer.mozRequestFullScreen(); // Firefox
-            else if (mapContainer.msRequestFullscreen)
-              mapContainer.msRequestFullscreen(); // IE/Edge
-          } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen)
-              document.webkitExitFullscreen();
-            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-            else if (document.msExitFullscreen) document.msExitFullscreen();
+          try {
+            if (!isFullscreen) {
+              if (mapContainer.requestFullscreen) await mapContainer.requestFullscreen();
+              else if (mapContainer.webkitRequestFullscreen)
+                await mapContainer.webkitRequestFullscreen(); // Safari
+              else if (mapContainer.mozRequestFullScreen)
+                await mapContainer.mozRequestFullScreen(); // Firefox
+              else if (mapContainer.msRequestFullscreen)
+                await mapContainer.msRequestFullscreen(); // IE/Edge
+            } else {
+              if (document.exitFullscreen) await document.exitFullscreen();
+              else if (document.webkitExitFullscreen)
+                await document.webkitExitFullscreen();
+              else if (document.mozCancelFullScreen) await document.mozCancelFullScreen();
+              else if (document.msExitFullscreen) await document.msExitFullscreen();
+            }
+          } catch (err) {
+            // The user aborting the request is not an error.
+            if (err.name !== 'AbortError') {
+              console.error("Fullscreen API error:", err);
+            }
           }
         };
 

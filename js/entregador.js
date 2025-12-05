@@ -14,10 +14,11 @@ import {
   updateEtaDisplay,
   updateNavigationStatus,
   updateSpeedDisplay,
-  showConfirmDeliveryModal,
   setFollowMeButtonState,
   showScheduledOrdersModal,
+  showIslandConfirmation,
 } from "./ui-entregador.js";
+import { triggerConfettiAnimation } from "./ui-entregador.js";
 import {
   showToast,
   updateLocationStatus,
@@ -156,15 +157,20 @@ window.addEventListener("load", () => {
     );
 
     if (islandFinishBtn) {
-      islandFinishBtn.addEventListener("click", () => {
+      islandFinishBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
         if (activeDelivery) {
           orderIdToConfirm = activeDelivery.orderId;
-          showConfirmDeliveryModal(true, orderIdToConfirm);
+          showIslandConfirmation(
+            'finish',
+            'Confirmar finalização da entrega?',
+            handleFinishDelivery
+          );
         }
       });
     }
     if (islandCancelBtn) {
-      islandCancelBtn.addEventListener("click", handleCancelNavigation);
+      islandCancelBtn.addEventListener("click", (e) => { e.stopPropagation(); handleCancelNavigation(); });
     }
 
     // Botões de Navegação Externa (Waze/Maps)
@@ -202,25 +208,6 @@ window.addEventListener("load", () => {
       wazeBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // Impede que a ilha se feche
         openNavigationApp('waze');
-      });
-    }
-
-    // Botões do Modal de Confirmação de Entrega
-    const confirmDeliveryFinalBtn = document.getElementById(
-      "confirm-delivery-final-btn"
-    );
-    const cancelDeliveryFinalBtn = document.getElementById(
-      "cancel-delivery-final-btn"
-    );
-
-    if (confirmDeliveryFinalBtn) {
-      confirmDeliveryFinalBtn.addEventListener("click", () =>
-        handleFinishDelivery()
-      );
-    }
-    if (cancelDeliveryFinalBtn) {
-      cancelDeliveryFinalBtn.addEventListener("click", () => {
-        showConfirmDeliveryModal(false);
       });
     }
 
@@ -291,7 +278,7 @@ window.addEventListener("load", () => {
     navigator.permissions.query({ name: "geolocation" }).then((result) => {
       console.log("Geolocation permission query result:", result.state); // Added logging
       if (result.state === "granted" || result.state === "prompt") {
-        startWatchingLocation();
+        startWatchingLocation(true); // Inicia com alta precisão
       } else {
         updateLocationStatus(`Permissão de localização ${result.state}. Por favor, conceda acesso à sua localização.`, "error");
         console.warn(`Geolocation permission ${result.state}. User needs to grant access.`);
@@ -302,21 +289,37 @@ window.addEventListener("load", () => {
     });
   }
 
-  function startWatchingLocation() {
-    console.log("Attempting to start watching geolocation..."); // Added logging
+  function startWatchingLocation(highAccuracy = true) {
+    console.log(`Iniciando geolocalização (alta precisão: ${highAccuracy})`);
     const watchOptions = {
-      enableHighAccuracy: true,
-      timeout: 20000, // Aumentado para 20 segundos para mais tolerância
-      maximumAge: 5000, // Permite usar uma localização de até 5s atrás
+      enableHighAccuracy: highAccuracy,
+      timeout: 25000, // Aumentado para 25 segundos
+      maximumAge: 10000, // Aceita uma posição de até 10s atrás
     };
+
+    // Limpa qualquer monitoramento anterior para evitar múltiplos watchers
+    if (watchId) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+
     watchId = navigator.geolocation.watchPosition(
       handleLocationUpdate,
-      handleLocationError,
+      (error) => handleLocationError(error, highAccuracy), // Passa o modo atual para o handler de erro
       watchOptions
     );
   }
 
   function handleLocationUpdate(position) {
+    // Se a precisão for baixa e uma nova tentativa com alta precisão não estiver agendada, tenta fazer o upgrade.
+    if (position.coords.accuracy > 50 && !window.upgradeAccuracyTimeout) {
+      console.log("Precisão baixa detectada. Tentando obter alta precisão em segundo plano.");
+      // Agenda uma única tentativa de upgrade para não sobrecarregar
+      window.upgradeAccuracyTimeout = setTimeout(() => {
+        startWatchingLocation(true);
+        window.upgradeAccuracyTimeout = null;
+      }, 15000); // Tenta após 15 segundos
+    }
+
     const { latitude, longitude, speed, heading } = position.coords;
 
     const speedKmh = (speed || 0) * 3.6; // Convert m/s to km/h
@@ -341,8 +344,18 @@ window.addEventListener("load", () => {
     }
   }
 
-  function handleLocationError(error) {
+  function handleLocationError(error, wasHighAccuracy) {
     console.error("Erro de geolocalização:", error); // Log the full error object
+
+    // Se o erro for um timeout e estávamos em modo de alta precisão,
+    // tenta novamente com baixa precisão como fallback.
+    if (error.code === error.TIMEOUT && wasHighAccuracy) {
+      console.warn("Timeout com alta precisão. Tentando com baixa precisão.");
+      showToast("Sinal de GPS fraco. Usando localização aproximada.", "info");
+      startWatchingLocation(false); // Tenta novamente com baixa precisão
+      return; // Interrompe a execução para não mostrar a mensagem de erro final
+    }
+
     let userMessage = "Erro ao obter localização.";
     if (error.code === error.PERMISSION_DENIED) {
       userMessage = "Permissão de localização negada. Por favor, ative a localização nas configurações do seu dispositivo.";
@@ -665,32 +678,32 @@ window.addEventListener("load", () => {
 
   async function handleFinishDelivery() {
     // O orderId é pego da variável global `orderIdToConfirm`
-    if (!orderIdToConfirm) return;
+    if (!orderIdToConfirm) {
+        if (activeDelivery && activeDelivery.orderId) {
+            orderIdToConfirm = activeDelivery.orderId;
+        } else {
+            return;
+        }
+    }
     await updateStatus(orderIdToConfirm, "entregue");
-    showConfirmDeliveryModal(false);
+    triggerConfettiAnimation(); // Dispara a animação de confete
     stopNavigation();
+    orderIdToConfirm = null; // Limpa após o uso
   }
 
   async function handleCancelNavigation() {
     if (!activeDelivery) return;
 
-    const confirmed = await new Promise((resolve) => {
-      showConfirmModal(
-        "Tem certeza que deseja cancelar a entrega em andamento?",
-        resolve,
-        "Sim, Cancelar",
-        "btn-danger"
-      );
-    });
-
-    if (confirmed) {
-      const orderId = activeDelivery.orderId;
-      await update(ref(db), {
-        [`/pedidos/${orderId}/status`]: "pronto_para_entrega",
-      });
-      stopNavigation();
-      showToast("A entrega foi cancelada.", "info");
-    }
+    showIslandConfirmation(
+      'cancel',
+      'Cancelar a entrega em andamento?',
+      async () => {
+        const orderId = activeDelivery.orderId;
+        await update(ref(db), { [`/pedidos/${orderId}/status`]: "pronto_para_entrega" });
+        stopNavigation();
+        showToast("A entrega foi cancelada.", "info");
+      }
+    );
   }
 
   // ======= 7. Lógica de Pedidos (Firebase) =======

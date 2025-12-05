@@ -75,48 +75,6 @@
           <div class="map-interaction-overlay" id="map-overlay">
           </div>
 
-          <!-- Dynamic Island (movida para dentro do container do mapa) -->
-          <div id="dynamic-island-wrapper">
-            <div id="dynamic-island" class="dynamic-island" tabindex="0" aria-label="Detalhes da entrega atual">
-              <div class="island-compact-view">
-                <div class="island-icon">
-                  <i class="ph-fill ph-moped"></i>
-                </div>
-                <div class="island-content">
-                  <strong id="dynamic-island-client">Entregador</strong>
-                  <span id="dynamic-island-address">Aguardando entrega</span>
-                </div>
-              </div>
-              <div class="island-expanded-content">
-                <div class="expanded-details">
-                  <p>
-                    <strong>Bolo:</strong> <span id="expanded-island-item">--</span>
-                  </p>
-                  <p>
-                    <strong>Endereço:</strong>
-                    <span id="expanded-island-address">--</span>
-                  </p>
-                </div>
-                <div class="island-navigation-actions">
-                  <button id="open-gmaps-btn" class="btn-island-action btn-nav-app" title="Abrir no Google Maps">
-                    <i class="ph ph-map-trifold"></i> Maps
-                  </button>
-                  <button id="open-waze-btn" class="btn-island-action btn-nav-app" title="Abrir no Waze">
-                    <i class="ph ph-car"></i> Waze
-                  </button>
-                </div>
-                <div class="island-actions">
-                  <button id="dynamic-island-cancel-btn" class="btn-island-action btn-island-cancel">
-                    <i class="ph ph-x"></i> Cancelar
-                  </button>
-                  <button id="dynamic-island-finish-btn" class="btn-island-action btn-island-finish">
-                    <i class="ph ph-check"></i> Finalizar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div id="map-overlay-top" class="map-overlay-top-entregador">
             <div class="map-info-item map-info-item-border-right">
               <div id="distance-display" class="map-info-value">-- km</div>
@@ -151,6 +109,68 @@
               </button>
             </div>
           </div>
+
+          <!-- Dynamic Island (movida para o final para garantir que fique na frente) -->
+          <div id="dynamic-island-wrapper">
+            <div id="dynamic-island" class="dynamic-island" tabindex="0" aria-label="Detalhes da entrega atual">
+              <div class="island-compact-view">
+                <div class="island-icon">
+                  <i class="ph-fill ph-moped"></i>
+                </div>
+                <div class="dynamic-island-content">
+                  <strong id="dynamic-island-client">Entregador</strong>
+                  <span id="dynamic-island-address">Aguardando entrega</span>
+                </div>
+              </div>
+              <div class="island-expanded-content">
+                <div class="expanded-details">
+                  <p>
+                    <strong>Bolo:</strong> <span id="expanded-island-item">--</span>
+                  </p>
+                  <p>
+                    <strong>Endereço:</strong>
+                    <span id="expanded-island-address">--</span>
+                  </p>
+                  <div class="expanded-route-info">
+                    <p>
+                      <i class="ph ph-path"></i>
+                      <strong>Distância:</strong>
+                      <span id="expanded-island-distance">-- km</span>
+                    </p>
+                    <p>
+                      <i class="ph ph-clock"></i>
+                      <strong>Tempo:</strong>
+                      <span id="expanded-island-eta">-- min</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="island-navigation-actions">
+                  <button id="open-gmaps-btn" class="btn-island-action btn-nav-app" title="Abrir no Google Maps">
+                    <i class="ph ph-map-trifold"></i> Maps
+                  </button>
+                  <button id="open-waze-btn" class="btn-island-action btn-nav-app" title="Abrir no Waze">
+                    <i class="ph ph-car"></i> Waze
+                  </button>
+                </div>
+                <div class="island-actions">
+                  <button id="dynamic-island-cancel-btn" class="btn-island-action btn-island-cancel">
+                    <i class="ph ph-x"></i> Cancelar
+                  </button>
+                  <button id="dynamic-island-finish-btn" class="btn-island-action btn-island-finish">
+                    <i class="ph ph-check"></i> Finalizar
+                  </button>
+                </div>
+              </div>
+              <!-- Nova Visão de Confirmação -->
+              <div class="island-confirmation-view">
+                <p id="island-confirmation-message">Tem certeza?</p>
+                <div class="island-actions">
+                  <button id="island-confirm-no" class="btn-island-action btn-nav-app">Não</button>
+                  <button id="island-confirm-yes" class="btn-island-action">Sim</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -174,6 +194,7 @@
     <div id="modal-container"></div>
     <div id="toast-container"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script type="module" src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
     <!-- Importa o plugin MapLibre GL Directions como módulo e expõe globalmente -->
     <script type="module">
@@ -187,8 +208,6 @@
     <script type="module" src="js/ui-entregador.js"></script>
     <script type="module" src="js/map.js"></script>
     <script type="module" src="js/componentLoader.js"></script> <!-- Carrega os componentes HTML -->
-    <script type="module" src="js/entregador.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    
+    <script type="module" src="js/entregador.js"></script>    
   </body>
 </html>

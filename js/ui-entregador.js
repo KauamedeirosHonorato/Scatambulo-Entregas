@@ -38,29 +38,27 @@ export function setupEventListeners(
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const islandWrapper = document.getElementById("dynamic-island-wrapper");
-  if (islandWrapper) {
-    const island = islandWrapper.querySelector(".dynamic-island");
-    island.addEventListener("click", (e) => {
-      toggleIslandExpansion(islandWrapper, e);
+  const dynamicIsland = document.getElementById("dynamic-island");
+
+  if (dynamicIsland) {
+    dynamicIsland.addEventListener("click", (event) => {
+      // Ignora o clique se for em um botão de ação (Maps, Waze, Finalizar, etc.)
+      // Isso permite que os botões funcionem sem expandir/recolher a ilha.
+      if (event.target.closest("button, a")) {
+        return;
+      }
+
+      // Só permite a ação se a ilha estiver visível (ativa).
+      // A classe 'active' está no elemento pai.
+      if (!dynamicIsland.classList.contains("active")) {
+        return;
+      }
+
+      // Alterna a classe 'expanded' para expandir ou contrair.
+      dynamicIsland.classList.toggle("expanded");
     });
   }
 });
-
-function toggleIslandExpansion(islandWrapper, event) {
-  if (!islandWrapper) return;
-
-  const island = islandWrapper.querySelector(".dynamic-island");
-  if (!island) return;
-
-  // Só expande/contrai se o clique for na área compacta e a ilha estiver ativa
-  if (
-    islandWrapper.classList.contains("active") &&
-    event.target.closest(".island-compact-view")
-  ) {
-    island.classList.toggle("expanded");
-  }
-}
 
 export function setFollowMeButtonState(isActive) {
   const followMeButton = document.getElementById("follow-me-button");
@@ -282,38 +280,31 @@ export function updateSpeedDisplay(speed) {
 
 export function updateEtaDisplay(duration) {
   const etaDisplay = document.getElementById("eta-display");
+  const expandedEtaEl = document.getElementById("expanded-island-eta");
+  const text = duration ? `${duration} min` : "-- min";
+
   if (etaDisplay) {
-    if (duration) {
-      etaDisplay.textContent = `${duration} min`;
-      etaDisplay.style.display = "block";
-    } else {
-      etaDisplay.style.display = "none";
-    }
+    etaDisplay.textContent = text;
+    etaDisplay.style.display = duration ? "block" : "none";
+  }
+  if (expandedEtaEl) {
+    expandedEtaEl.textContent = text;
   }
 }
 
 export function updateDistanceDisplay(distance) {
   const distanceDisplay = document.getElementById("distance-display");
-  if (distanceDisplay) {
-    if (distance) {
-      distanceDisplay.innerHTML = `${distance}<span class="unit">km</span>`;
-      distanceDisplay.style.display = "flex";
-    } else {
-      distanceDisplay.style.display = "none";
-    }
-  }
-}
+  const expandedDistanceEl = document.getElementById("expanded-island-distance");
+  const text = distance ? `${distance} km` : "-- km";
 
-export function showConfirmDeliveryModal(show) {
-  const confirmDeliveryModal = document.getElementById(
-    "confirm-delivery-modal"
-  );
-  if (confirmDeliveryModal) {
-    if (show) {
-      confirmDeliveryModal.classList.add("active");
-    } else {
-      confirmDeliveryModal.classList.remove("active");
-    }
+  if (distanceDisplay) {
+    distanceDisplay.innerHTML = distance
+      ? `${distance}<span class="unit">km</span>`
+      : "-- km";
+    distanceDisplay.style.display = distance ? "flex" : "none";
+  }
+  if (expandedDistanceEl) {
+    expandedDistanceEl.textContent = text;
   }
 }
 
@@ -323,8 +314,8 @@ export function showDynamicIsland(show, order) {
   const addressEl = document.getElementById("dynamic-island-address");
   const expandedItemEl = document.getElementById("expanded-island-item");
   const expandedAddressEl = document.getElementById("expanded-island-address");
-  // distanceEl foi removido da estrutura da ilha dinâmica, não é mais necessário aqui.
-  // const distanceEl = document.getElementById("dynamic-island-distance");
+  const expandedDistanceEl = document.getElementById("expanded-island-distance");
+  const expandedEtaEl = document.getElementById("expanded-island-eta");
   const cancelBtn = document.getElementById("dynamic-island-cancel-btn");
   const finishBtn = document.getElementById("dynamic-island-finish-btn");
 
@@ -348,19 +339,72 @@ export function showDynamicIsland(show, order) {
     //   distanceEl.textContent = order.distancia
     //     ? `${order.distancia} km`
     //     : "-- km";
-    islandWrapper.classList.add("active");
+    const dynamicIslandEl = islandWrapper.querySelector(".dynamic-island");
+    if (dynamicIslandEl) dynamicIslandEl.classList.add("active");
   } else {
     // Limpa o texto ao esconder para não mostrar dados antigos rapidamente
     clientNameEl.textContent = "";
     addressEl.textContent = "";
     if (expandedItemEl) expandedItemEl.textContent = "--";
     if (expandedAddressEl) expandedAddressEl.textContent = "--";
-    islandWrapper.classList.remove("active");
+    if (expandedDistanceEl) expandedDistanceEl.textContent = "-- km";
+    if (expandedEtaEl) expandedEtaEl.textContent = "-- min";
+    const dynamicIslandEl = islandWrapper.querySelector(".dynamic-island");
+    if (dynamicIslandEl) dynamicIslandEl.classList.remove("active");
     // Garante que a ilha não permaneça expandida ao ser desativada
-    islandWrapper
-      .querySelector(".dynamic-island")
-      ?.classList.remove("expanded");
+    if (dynamicIslandEl) dynamicIslandEl.classList.remove("expanded");
   }
+}
+
+/**
+ * Mostra uma visão de confirmação na Ilha Dinâmica.
+ * @param {'finish' | 'cancel'} action - O tipo de ação para estilizar o botão.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {() => void} onConfirm - Callback a ser executado ao confirmar.
+ */
+export function showIslandConfirmation(action, message, onConfirm) {
+  const island = document.getElementById("dynamic-island");
+  const confirmMsgEl = document.getElementById("island-confirmation-message");
+  const confirmYesBtn = document.getElementById("island-confirm-yes");
+  const confirmNoBtn = document.getElementById("island-confirm-no");
+
+  if (!island || !confirmMsgEl || !confirmYesBtn || !confirmNoBtn) {
+    console.error("Elementos de confirmação da Ilha Dinâmica não encontrados.");
+    return;
+  }
+
+  // Garante que a ilha esteja expandida antes de mostrar a confirmação
+  island.classList.remove("expanded");
+  island.classList.add("confirming");
+
+  confirmMsgEl.textContent = message;
+
+  // Estiliza o botão de confirmação
+  confirmYesBtn.className = "btn-island-action"; // Reseta classes
+  if (action === 'finish') {
+    confirmYesBtn.classList.add("btn-island-finish");
+    confirmYesBtn.innerHTML = '<i class="ph ph-check"></i> Sim';
+  } else if (action === 'cancel') {
+    confirmYesBtn.classList.add("btn-island-cancel");
+    confirmYesBtn.innerHTML = '<i class="ph ph-x"></i> Sim';
+  }
+
+  // Função para reverter ao estado expandido
+  const goBack = () => {
+    island.classList.remove("confirming");
+    island.classList.add("expanded");
+  };
+
+  // Clona os botões para remover listeners antigos
+  const newConfirmYesBtn = confirmYesBtn.cloneNode(true);
+  confirmYesBtn.parentNode.replaceChild(newConfirmYesBtn, confirmYesBtn);
+
+  const newConfirmNoBtn = confirmNoBtn.cloneNode(true);
+  confirmNoBtn.parentNode.replaceChild(newConfirmNoBtn, confirmNoBtn);
+
+  // Adiciona novos listeners
+  newConfirmYesBtn.addEventListener("click", (e) => { e.stopPropagation(); onConfirm(); });
+  newConfirmNoBtn.addEventListener("click", (e) => { e.stopPropagation(); goBack(); });
 }
 
 export function updateButtonsForNavigation(isNavigating, activeOrderId) {
@@ -383,6 +427,48 @@ export function updateButtonsForNavigation(isNavigating, activeOrderId) {
       button.disabled = false;
     }
   });
+}
+
+/**
+ * Dispara uma animação de confete na tela.
+ * Requer que a biblioteca canvas-confetti seja carregada.
+ */
+export function triggerConfettiAnimation() {
+  if (typeof confetti !== "function") {
+    console.warn("Biblioteca de confete não carregada.");
+    return;
+  }
+
+  const duration = 3 * 1000; // Duração da animação em milissegundos
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10000 };
+
+  function randomInRange(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  const interval = setInterval(function () {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+    // Dispara de dois pontos para um efeito mais preenchido
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+      colors: ["#d4af37", "#ffffff", "#ff9500", "#34c759"], // Cores da marca
+    });
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+      colors: ["#d4af37", "#ffffff", "#ff9500", "#34c759"], // Cores da marca
+    });
+  }, 250);
 }
 
 export function showSuggestionModal(orderData, onAccept) {
