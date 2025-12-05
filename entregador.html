@@ -7,21 +7,17 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Scatambulo" />
     <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png" />
-            <meta http-equiv="Content-Security-Policy"
+    <meta http-equiv="Content-Security-Policy"
       content="
-        default-src 'self';
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com;
-        style-src 'self' 'unsafe-inline' https:;
-        img-src 'self' data: blob: https:;
-        font-src 'self' data: https:;
-        connect-src 
-          'self' 
-          blob:
-          wss:
-          https:;
-        frame-src https://*.firebaseio.com https://vercel.live;
-        worker-src 'self' blob:;
-      ">
+    default-src 'self';
+    frame-src https://*.firebaseio.com https://vercel.live;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://*.firebaseio.com https://www.gstatic.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com https://cdnjs.cloudflare.com https://server.arcgisonline.com https://*.arcgisonline.com;
+    font-src * data:;
+    img-src 'self' data: https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.arcgisonline.com blob:;
+    connect-src 'self' wss://*.firebaseio.com https://www.gstatic.com https://viacep.com.br https://nominatim.openstreetmap.org https://*.openstreetmap.org https://router.project-osrm.org https://unpkg.com https://server.arcgisonline.com https://*.arcgisonline.com blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+    worker-src 'self' blob:;
+  ">
     <title>Painel Entregador - Scatambulo</title>
 
     <link
@@ -67,51 +63,6 @@
       <!-- Os botões do desktop-nav serão movidos para cá em telas menores -->
     </nav>
 
-    <!-- Dynamic Island -->
-    <div id="dynamic-island-wrapper">
-      <div
-        id="dynamic-island"
-        class="dynamic-island"
-        tabindex="0"
-        aria-label="Detalhes da entrega atual"
-      >
-        <div class="island-compact-view">
-          <div class="island-icon">
-            <i class="ph-fill ph-moped"></i>
-          </div>
-          <div class="island-content">
-            <strong id="dynamic-island-client">Entregador</strong>
-            <span id="dynamic-island-address">Aguardando entrega</span>
-          </div>
-        </div>
-        <div class="island-expanded-content">
-          <div class="expanded-details">
-            <p>
-              <strong>Bolo:</strong> <span id="expanded-island-item">--</span>
-            </p>
-            <p>
-              <strong>Endereço:</strong>
-              <span id="expanded-island-address">--</span>
-            </p>
-          </div>
-          <div class="island-actions">
-            <button
-              id="dynamic-island-cancel-btn"
-              class="btn-island-action btn-island-cancel"
-            >
-              <i class="ph ph-x"></i> Cancelar
-            </button>
-            <button
-              id="dynamic-island-finish-btn"
-              class="btn-island-action btn-island-finish"
-            >
-              <i class="ph ph-check"></i> Finalizar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <main class="container">
       <section id="map-section">
         <h2><i class="ph ph-map-pin"></i> Mapa de Entregas</h2>
@@ -122,6 +73,48 @@
           </div>
           <div id="map"></div>
           <div class="map-interaction-overlay" id="map-overlay">
+          </div>
+
+          <!-- Dynamic Island (movida para dentro do container do mapa) -->
+          <div id="dynamic-island-wrapper">
+            <div id="dynamic-island" class="dynamic-island" tabindex="0" aria-label="Detalhes da entrega atual">
+              <div class="island-compact-view">
+                <div class="island-icon">
+                  <i class="ph-fill ph-moped"></i>
+                </div>
+                <div class="island-content">
+                  <strong id="dynamic-island-client">Entregador</strong>
+                  <span id="dynamic-island-address">Aguardando entrega</span>
+                </div>
+              </div>
+              <div class="island-expanded-content">
+                <div class="expanded-details">
+                  <p>
+                    <strong>Bolo:</strong> <span id="expanded-island-item">--</span>
+                  </p>
+                  <p>
+                    <strong>Endereço:</strong>
+                    <span id="expanded-island-address">--</span>
+                  </p>
+                </div>
+                <div class="island-navigation-actions">
+                  <button id="open-gmaps-btn" class="btn-island-action btn-nav-app" title="Abrir no Google Maps">
+                    <i class="ph ph-map-trifold"></i> Maps
+                  </button>
+                  <button id="open-waze-btn" class="btn-island-action btn-nav-app" title="Abrir no Waze">
+                    <i class="ph ph-car"></i> Waze
+                  </button>
+                </div>
+                <div class="island-actions">
+                  <button id="dynamic-island-cancel-btn" class="btn-island-action btn-island-cancel">
+                    <i class="ph ph-x"></i> Cancelar
+                  </button>
+                  <button id="dynamic-island-finish-btn" class="btn-island-action btn-island-finish">
+                    <i class="ph ph-check"></i> Finalizar
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div id="map-overlay-top" class="map-overlay-top-entregador">
@@ -177,220 +170,6 @@
         <div id="in-route-list"></div>
       </section>
     </main>
-
-    <style>
-      /* Estilos para a Dynamic Island com visual iOS */
-      #dynamic-island-wrapper {
-        position: fixed;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%) scale(0.95);
-        transform-origin: top center;
-        z-index: 1000;
-        opacity: 0;
-        visibility: hidden;
-        transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
-          opacity 0.4s ease, visibility 0.4s;
-      }
-      #dynamic-island-wrapper.active {
-        transform: translateX(-50%) scale(1);
-        opacity: 1;
-        visibility: visible;
-      }
-
-      .dynamic-island {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;        
-        background-color: var(--cor-fundo-ilha, #000);
-        color: var(--cor-texto-ilha-principal, #fff);
-
-        padding: 12px 16px;        
-        border-radius: 25px; /* Bordas bem arredondadas */
-
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-        transition: height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
-          width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-
-        height: 64px;
-        width: 95vw;
-        max-width: 380px;
-        box-sizing: border-box;
-        cursor: pointer;
-        overflow: hidden;
-      }
-
-      .dynamic-island.expanded {
-        height: 180px; /* Altura expandida */
-        cursor: default;
-      }
-
-      .island-compact-view {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-shrink: 0;
-      }
-      .island-icon {
-        flex-shrink: 0;
-        background-color: var(--primary-color);
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .island-icon i {
-        font-size: 18px;
-        color: #fff;
-      }
-
-      .island-content {
-        display: flex;
-        flex-direction: column;
-        line-height: 1.2;
-        flex-grow: 1;
-        overflow: hidden;
-      }
-      .island-content strong {
-        font-size: 15px;
-        font-weight: 600;
-      }
-      .island-content span {
-        font-size: 13px;
-        color: var(--cor-texto-ilha-secundario, #aaa);
-      }
-
-      .island-expanded-content {
-        opacity: 0;
-        transition: opacity 0.3s ease 0.1s;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-        padding-top: 10px;
-        justify-content: space-between;
-      }
-
-      .dynamic-island.expanded .island-expanded-content {
-        opacity: 1;
-      }
-
-      .expanded-details p {
-        margin: 0 0 4px;
-        font-size: 14px;
-        color: var(--cor-texto-ilha-suave, #ddd);
-      }
-      .expanded-details p strong {
-        color: var(--cor-texto-ilha-principal, #fff);
-      }
-
-      .island-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: auto; /* Empurra para o fundo */
-      }
-
-      .btn-island-action {
-        flex: 1;
-        border: none;
-        padding: 10px;
-        border-radius: 12px;
-        font-size: 15px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      .btn-island-cancel {
-        background-color: var(--cor-fundo-ilha-secundario, #555);
-        color: var(--cor-texto-ilha-principal, #fff);
-      }
-      .btn-island-finish {
-        background-color: var(--ios-green);
-        color: var(--cor-fundo-ilha, #000);
-      }
-
-      /* Estilos para o Modal de Pedidos Agendados */
-      .scheduled-day-group {
-        background-color: var(--cor-principal, #fff);
-        border-radius: var(--raio-borda-padrao, 12px);
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      }
-      .scheduled-day-group h4 {
-        font-size: 16px;
-        color: var(--cor-texto-principal, #333);
-        padding-bottom: 10px;
-        border-bottom: 1px solid #eee;
-        margin-bottom: 15px;
-        text-transform: capitalize;
-      }
-
-      .order-row-scheduled {
-        display: grid;
-        grid-template-columns: 1.5fr 1.5fr 80px 2fr 85px;
-        gap: 15px;
-        align-items: center;
-        padding: 12px 0;        
-        border-bottom: 1px solid #f0f0f0;
-      }
-      .order-row-scheduled:last-child {
-        border-bottom: none;
-      }
-
-      .order-data-item-scheduled {
-        font-size: 14px;
-        color: var(--cor-texto-secundario, #555);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .order-data-item-scheduled strong {
-        color: var(--cor-texto-forte, #111);
-        font-weight: 600;
-      }
-
-      /* Estilos para o loading do mapa */
-      #map-container {
-        position: relative; /* Necessário para o overlay */
-      }
-      .map-loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #eef0f2;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 5;
-        border-radius: 8px;
-        transition: opacity 0.5s ease;
-        opacity: 1;
-        color: var(--cor-texto-secundario, #555);
-        font-weight: 500;
-      }
-      .map-loading-overlay:not(.active) {
-        opacity: 0;
-        pointer-events: none;
-      }
-      .map-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid #ccc;
-        border-top-color: var(--primary-color);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 15px;
-      }
-    </style>
 
     <div id="modal-container"></div>
     <div id="toast-container"></div>

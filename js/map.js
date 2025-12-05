@@ -194,6 +194,10 @@ export async function initializeMap(
               document.mozFullScreenElement ||
               document.msFullscreenElement
             );
+            // Adiciona ou remove uma classe genérica para estilização
+            if (mapContainer) {
+              mapContainer.classList.toggle("fullscreen", isFullscreen);
+            }
           }
 
           const icon = fullscreenBtn.querySelector("i");
@@ -596,144 +600,43 @@ export function clearMap() {
     const doCleanup = () => {
       try {
         const style = map.getStyle() || {};
-        // Debug: lista initial de layers/sources para diagnóstico
-        try {
-          const layerIds = (style.layers || [])
-            .map((l) => l && l.id)
-            .filter(Boolean);
-          const sourceIds = Object.keys(style.sources || {});
-          console.debug("clearMap: initial layers:", layerIds);
-          console.debug("clearMap: initial sources:", sourceIds);
-        } catch (e) {
-          console.debug("clearMap: erro ao listar layers/sources", e);
-        }
+        const allLayers = style.layers || [];
 
-        // 1) Remove layers que pareçam ter sido adicionadas pela aplicação/plugin
-        const layers = Array.isArray(style.layers) ? style.layers.slice() : [];
+        const layersToRemove = [];
+        const sourcesToRemove = new Set();
+
         const layerPattern =
           /(route|directions|main-route|osrm|mirror|delivery|client|line)/i;
-        layers.forEach((l) => {
-          try {
-            if (!l || !l.id) return;
-            // Se o id casar com padrões de rota/directions ou for do tipo 'line', remove
-            if (layerPattern.test(l.id) || l.type === "line") {
-              if (map.getLayer && map.getLayer(l.id)) {
-                try {
-                  map.removeLayer(l.id);
-                } catch (e) {
-                  /* ignore */
-                }
-              }
 
-              // tenta remover a fonte associada à layer (se fizer sentido)
-              const src = l.source;
-              if (src && style.sources && style.sources[src]) {
-                const srcMeta = style.sources[src];
-                if (
-                  (srcMeta && srcMeta.type === "geojson") ||
-                  /route|directions|main-route|osrm|geojson/i.test(src)
-                ) {
-                  try {
-                    if (map.getSource && map.getSource(src))
-                      map.removeSource(src);
-                  } catch (e) {
-                    /* ignore */
-                  }
-                }
-              }
+        // 1. Collect layers and their sources for removal
+        allLayers.forEach((layer) => {
+          if (layer && layer.id && (layerPattern.test(layer.id) || layer.type === "line")) {
+            layersToRemove.push(layer.id);
+            if (layer.source) {
+              sourcesToRemove.add(layer.source);
             }
-          } catch (e) {
-            /* ignore per-layer errors */
           }
         });
 
-        // 2) Remove explicitamente fontes/layers conhecidos do plugin (não removemos 'main-route' aqui)
-        const explicitIds = [
-          "directions-route",
-          "directions-layer",
-          "directions-source",
-        ];
-        explicitIds.forEach((id) => {
-          try {
-            if (map.getLayer && map.getLayer(id)) map.removeLayer(id);
-          } catch (e) {}
-          try {
-            if (map.getSource && map.getSource(id)) map.removeSource(id);
-          } catch (e) {}
-        });
-
-        // 3) Varre todas as fontes e remove fontes geojson ou com nomes relacionados a rotas
-        const sources = Object.keys(style.sources || {});
-        sources.forEach((s) => {
-          try {
-            const src = style.sources[s];
-            if (!src) return;
-            if (
-              /route|directions|main-route|osrm|geojson/i.test(s) ||
-              src.type === "geojson"
-            ) {
-              if (map.getSource && map.getSource(s)) {
-                try {
-                  map.removeSource(s);
-                } catch (e) {
-                  /* ignore */
-                }
-              }
-            }
-          } catch (e) {
-            /* ignore per-source errors */
-          }
-        });
-
-        // Segunda passagem: tenta remover qualquer layer do tipo 'line' ou que ainda contenha padrões
-        try {
-          const remainingLayers = (map.getStyle && map.getStyle().layers) || [];
-          remainingLayers.forEach((l) => {
+        // 2. Remove all collected layers first.
+        layersToRemove.forEach((layerId) => {
+          if (map.getLayer(layerId)) {
             try {
-              if (!l || !l.id) return;
-              const matchesPattern =
-                /(route|directions|main-route|osrm|mirror|delivery|client|line)/i.test(
-                  l.id
-                );
-              const isLine =
-                l.type === "line" ||
-                (l &&
-                  l.paint &&
-                  Object.keys(l.paint).some((k) => k.includes("line")));
-              const paintColor =
-                l &&
-                l.paint &&
-                (l.paint["line-color"] ||
-                  (typeof l.paint["line-color"] === "function"
-                    ? ""
-                    : l.paint["line-color"]));
-              const suspiciousColor =
-                paintColor && paintColor.toString().includes("1b9af7");
-              if (matchesPattern || isLine || suspiciousColor) {
-                if (map.getLayer && map.getLayer(l.id)) {
-                  try {
-                    map.removeLayer(l.id);
-                  } catch (e) {
-                    /* ignore */
-                  }
-                }
-                // try to remove associated source
-                const src = l.source;
-                if (src && map.getSource && map.getSource(src)) {
-                  try {
-                    map.removeSource(src);
-                  } catch (e) {
-                    /* ignore */
-                  }
-                }
-              }
+              map.removeLayer(layerId);
+            } catch (e) { /* Ignore errors, maybe it was already removed */ }
+          }
+        });
+
+        // 3. After layers are gone, it's safe to remove the sources.
+        sourcesToRemove.forEach((sourceId) => {
+          if (map.getSource(sourceId)) {
+            try {
+              map.removeSource(sourceId);
             } catch (e) {
-              /* ignore per-layer errors */
+              console.warn(`clearMap: Could not remove source '${sourceId}'. It might still be in use by a layer not caught by the filter. Error: ${e.message}`);
             }
-          });
-        } catch (e) {
-          /* ignore second pass errors */
-        }
+          }
+        });
       } catch (e) {
         console.warn("Erro durante limpeza de camadas/sources:", e);
       }
@@ -865,60 +768,35 @@ export function forceClearAllRoutes() {
   try {
     if (!map || !map.getStyle) return;
     const style = map.getStyle() || {};
-    const layers = Array.isArray(style.layers) ? style.layers.slice() : [];
+    const allLayers = style.layers || [];
+
+    const layersToRemove = [];
+    const sourcesToRemove = new Set();
+
     const layerPattern =
       /(route|directions|main-route|osrm|mirror|delivery|client|line|shadow|route-line)/i;
 
-    layers.forEach((l) => {
-      try {
-        if (!l || !l.id) return;
-        const suspicious = layerPattern.test(l.id) || l.type === "line";
-        if (suspicious) {
-          if (map.getLayer && map.getLayer(l.id)) {
-            try {
-              map.removeLayer(l.id);
-              console.debug("forceClearAllRoutes: removed layer", l.id);
-            } catch (e) {
-              /* ignore */
-            }
-          }
-          // remove associated source if forçado
-          const src = l.source;
-          if (src && map.getSource && map.getSource(src)) {
-            try {
-              map.removeSource(src);
-              console.debug("forceClearAllRoutes: removed source", src);
-            } catch (e) {
-              /* ignore */
-            }
-          }
+    // 1. Collect layers and their sources for removal
+    allLayers.forEach((layer) => {
+      if (layer && layer.id && (layerPattern.test(layer.id) || layer.type === "line")) {
+        layersToRemove.push(layer.id);
+        if (layer.source) {
+          sourcesToRemove.add(layer.source);
         }
-      } catch (e) {
-        /* ignore per-layer errors */
       }
     });
 
-    // Remover quaisquer fontes geojson remanescentes
-    const sources = Object.keys(style.sources || {});
-    sources.forEach((s) => {
-      try {
-        const src = style.sources[s];
-        if (!src) return;
-        if (
-          /route|directions|main-route|osrm|geojson/i.test(s) ||
-          src.type === "geojson"
-        ) {
-          if (map.getSource && map.getSource(s)) {
-            try {
-              map.removeSource(s);
-              console.debug("forceClearAllRoutes: removed source by name", s);
-            } catch (e) {
-              /* ignore */
-            }
-          }
-        }
-      } catch (e) {
-        /* ignore per-source errors */
+    // 2. Remove all collected layers first.
+    layersToRemove.forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId);
+      }
+    });
+
+    // 3. After layers are gone, it's safe to remove the sources.
+    sourcesToRemove.forEach((sourceId) => {
+      if (map.getSource(sourceId)) {
+        map.removeSource(sourceId);
       }
     });
   } catch (e) {
@@ -1213,4 +1091,34 @@ export function fitMapToBounds(deliveryLocation, clientCoords) {
     [clientCoords.lon, clientCoords.lat]
   );
   map.fitBounds(bounds, { padding: 80 });
+}
+
+/**
+ * Ativa o modo de tela cheia para o mapa, se não estiver ativo.
+ * Isso é feito acionando programaticamente o botão de tela cheia.
+ */
+export function enterFullscreen() {
+  const fullscreenBtn = document.getElementById("map-fullscreen-btn");
+  if (fullscreenBtn) {
+    const icon = fullscreenBtn.querySelector("i");
+    // Se o ícone for 'arrows-out', não estamos em tela cheia, então podemos entrar.
+    if (icon && icon.classList.contains("ph-arrows-out")) {
+      fullscreenBtn.click();
+    }
+  }
+}
+
+/**
+ * Desativa o modo de tela cheia para o mapa, se estiver ativo.
+ * Isso é feito acionando programaticamente o botão de tela cheia.
+ */
+export function exitFullscreen() {
+  const fullscreenBtn = document.getElementById("map-fullscreen-btn");
+  if (fullscreenBtn) {
+    const icon = fullscreenBtn.querySelector("i");
+    // Se o ícone for 'arrows-in', estamos em tela cheia, então podemos sair.
+    if (icon && icon.classList.contains("ph-arrows-in")) {
+      fullscreenBtn.click();
+    }
+  }
 }

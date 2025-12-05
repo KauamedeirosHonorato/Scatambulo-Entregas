@@ -1,4 +1,5 @@
 import { showToast, printLabel } from "./ui.js"; // Importa showToast e printLabel
+import { enterFullscreen } from "./map.js";
 
 export function setupEventListeners(
   onLogout,
@@ -171,6 +172,7 @@ function createOrderCard(
       onCancelNavigation();
     } else {
       onStartNavigation(orderId, order);
+      enterFullscreen();
     }
   });
 
@@ -325,15 +327,6 @@ export function showDynamicIsland(show, order) {
   // const distanceEl = document.getElementById("dynamic-island-distance");
   const cancelBtn = document.getElementById("dynamic-island-cancel-btn");
   const finishBtn = document.getElementById("dynamic-island-finish-btn");
-
-  console.log(
-    "showDynamicIsland called. show:",
-    show,
-    "order:",
-    order,
-    "islandWrapper:",
-    islandWrapper
-  );
 
   if (!islandWrapper || !clientNameEl || !addressEl) {
     console.error("Dynamic Island elements not found:", {
@@ -610,6 +603,7 @@ export function renderScheduledOrders(scheduledOrders, onStartNavigation) {
       if (orderData) {
         const [, order] = orderData;
         onStartNavigation(orderId, order, startBtn);
+        enterFullscreen();
       }
     }
   });

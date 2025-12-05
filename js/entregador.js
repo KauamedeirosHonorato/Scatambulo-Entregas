@@ -28,6 +28,8 @@ import {
 } from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
 
+let watchId = null;
+
 window.addEventListener("load", () => {
   // ======= 1. Validação de Usuário =======
   const currentUser = JSON.parse(localStorage.getItem("currentUser"));
@@ -165,6 +167,44 @@ window.addEventListener("load", () => {
       islandCancelBtn.addEventListener("click", handleCancelNavigation);
     }
 
+    // Botões de Navegação Externa (Waze/Maps)
+    const gmapsBtn = document.getElementById("open-gmaps-btn");
+    const wazeBtn = document.getElementById("open-waze-btn");
+
+    const openNavigationApp = (app) => {
+      if (!activeDelivery || !activeDelivery.order || !activeDelivery.order.endereco) {
+        showToast("Endereço da entrega não disponível.", "error");
+        return;
+      }
+
+      const address = activeDelivery.order.endereco;
+      const encodedAddress = encodeURIComponent(address);
+      let url;
+
+      if (app === 'gmaps') {
+        url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      } else if (app === 'waze') {
+        url = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+      }
+
+      if (url) {
+        window.open(url, '_blank');
+      }
+    };
+
+    if (gmapsBtn) {
+      gmapsBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Impede que a ilha se feche
+        openNavigationApp('gmaps');
+      });
+    }
+    if (wazeBtn) {
+      wazeBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Impede que a ilha se feche
+        openNavigationApp('waze');
+      });
+    }
+
     // Botões do Modal de Confirmação de Entrega
     const confirmDeliveryFinalBtn = document.getElementById(
       "confirm-delivery-final-btn"
@@ -204,12 +244,8 @@ window.addEventListener("load", () => {
     window.addEventListener("proximity-alert", (e) => {
       const distance = e.detail.distance;
       showToast(`Você está a ${distance}m do destino!`, "success");
-    }
-  
-    );
+    });
   }
-
-    
 
   function handleLogout() {
     localStorage.removeItem("currentUser");
@@ -273,7 +309,7 @@ window.addEventListener("load", () => {
       timeout: 20000, // Aumentado para 20 segundos para mais tolerância
       maximumAge: 5000, // Permite usar uma localização de até 5s atrás
     };
-    navigator.geolocation.watchPosition(
+    watchId = navigator.geolocation.watchPosition(
       handleLocationUpdate,
       handleLocationError,
       watchOptions
@@ -485,14 +521,6 @@ window.addEventListener("load", () => {
     activeDelivery = { orderId, destinationCoords: geocodeResult, order };
     Map.updateClientMarkerOnMap(geocodeResult);
 
-    // Atualiza ilha dinâmica com informações iniciais
-    showDynamicIsland(true, {
-      nomeCliente: order.nomeCliente,
-      endereco: order.endereco || enderecoParaGeocodar,
-      distancia: "--",
-      orderId,
-    });
-
     updateButtonsForNavigation(true, orderId);
     updateNavigationStatus(`Navegando para ${order.nomeCliente}.`);
     update(ref(db), {
@@ -505,7 +533,6 @@ window.addEventListener("load", () => {
       ...order,
       endereco: order.endereco || enderecoParaGeocodar,
     });
-    Map.updateClientMarkerOnMap(geocodeResult);
 
     // Define a rota usando o novo plugin e solicita OSRM para desenhar a linha azul
     if (entregadorLocation) {
@@ -567,6 +594,11 @@ window.addEventListener("load", () => {
       buttonElement.disabled = false;
       buttonElement.innerHTML = `<i class="ph ph-moped"></i> Iniciar`;
     }
+    // If a geolocation watch is active, clear it
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
   }
 
   async function resumeActiveDelivery() {
@@ -587,6 +619,7 @@ window.addEventListener("load", () => {
   }
 
   function stopNavigation() {
+    Map.exitFullscreen(); // Sai do modo de tela cheia
     Map.resetProximityAlert(); // Resetar o alerta de proximidade ao parar a navegação
     // Use a more aggressive clear to remove quaisquer rotas fantasmas
     if (Map.forceClearAllRoutes) {
