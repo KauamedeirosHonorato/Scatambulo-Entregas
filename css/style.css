@@ -800,7 +800,7 @@ header {
 .modal-content {
   background: var(--cor-secundaria);
   width: 100%;
-  max-width: 500px; /* Largura máxima */
+  max-width: 500px; /* Largura máxima (desktop override below) */
   border-radius: 24px 24px 0 0;
   padding: 24px;
   padding-bottom: calc(24px + var(--safe-bottom)); /* Safe Area */
@@ -808,6 +808,8 @@ header {
   transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
   text-align: center;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
 }
 
 /* Animação de entrada */
@@ -881,7 +883,8 @@ header {
 
 .modal-content .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Mobile-first: single column */
+  grid-template-columns: 1fr;
   gap: 16px;
   text-align: left;
   grid-template-areas:
@@ -896,6 +899,7 @@ header {
 
 @media (min-width: 500px) {
   .modal-content .form-grid {
+    grid-template-columns: 1fr 1fr;
     grid-template-areas:
       "bolo bolo"
       "cliente cliente"
@@ -903,6 +907,63 @@ header {
       "cep rua"
       "numero bairro"
       "complemento complemento";
+  }
+}
+
+/* Make textarea and inputs responsive inside modals */
+.modal-content textarea,
+.modal-content input[type="text"],
+.modal-content input[type="email"],
+.modal-content input[type="date"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-content textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Make modals narrower on desktop for better readability */
+@media (min-width: 768px) {
+  .modal-content {
+    max-width: 600px; /* Narrower modal on desktop */
+    padding: 22px;
+    border-radius: 16px;
+  }
+}
+
+/* Slight increase for very wide screens but keep moderate width */
+@media (min-width: 1200px) {
+  .modal-content {
+    max-width: 640px;
+  }
+}
+
+/* Per-modal width overrides and desktop border-radius tweaks */
+@media (min-width: 768px) {
+  /* Novo Pedido modal slightly narrower */
+  #novo-pedido-modal .modal-content {
+    max-width: 560px;
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  /* Read Message modal even narrower */
+  #modal-read-message .modal-content {
+    max-width: 480px;
+    padding: 18px;
+    border-radius: 12px;
+  }
+}
+
+/* Mobile: keep bottom-sheet rounded top corners but slightly smaller radius on small screens */
+@media (max-width: 767px) {
+  #novo-pedido-modal .modal-content,
+  #modal-read-message .modal-content {
+    border-radius: 20px 20px 0 0;
+    padding-left: 18px;
+    padding-right: 18px;
   }
 }
 
@@ -1919,5 +1980,99 @@ body:has(.modal-novo-pedido.active) {
   }
 
   /* Adicione aqui estilos específicos para o modal de imprimir pedido, se necessário */
+
   /* Ex: #order-print-modal .printable-content { ... } */
-}
+
+  }
+
+  
+
+  /* Floating Chat Button */
+
+  .floating-chat-button {
+
+    position: fixed;
+
+    bottom: calc(20px + var(--safe-bottom));
+
+    right: 20px;
+
+    width: 60px;
+
+    height: 60px;
+
+    background-color: var(--cor-destaque);
+
+    color: white;
+
+    border-radius: 50%;
+
+    border: none;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+
+    cursor: pointer;
+
+    z-index: 1000;
+
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  }
+
+  
+
+  .floating-chat-button:hover {
+
+    transform: scale(1.05);
+
+  }
+
+  
+
+  .floating-chat-button i {
+
+    font-size: 28px;
+
+  }
+
+  
+
+  .floating-chat-button .badge {
+
+    position: absolute;
+
+    top: -2px;
+
+    right: -2px;
+
+    background-color: var(--cor-erro);
+
+    color: white;
+
+    border-radius: 50%;
+
+    width: 24px;
+
+    height: 24px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 13px;
+
+    font-weight: bold;
+
+    border: 2px solid white;
+
+  }
+
+  

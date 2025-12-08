@@ -671,3 +671,26 @@
   max-height: 80px;
   border-radius: 8px;
 }
+
+/* Per-message status (sent, delivered, read) */
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.message-status {
+  font-size: 12px;
+  color: var(--cor-texto-secundario);
+  opacity: 0.9;
+  user-select: none;
+}
+.message-status.delivered {
+  color: var(--cor-texto-secundario);
+}
+.message-status.read {
+  color: var(--cor-sucesso, #2e7d32);
+}
+.chat-message.sent .message-meta {
+  justify-content: flex-end;
+}

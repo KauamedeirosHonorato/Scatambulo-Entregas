@@ -1,5 +1,6 @@
 // js/entregador.js - Refatorado para MapLibre GL JS
 
+import { initializeChat } from './chat.js';
 import { db, ref, set, onValue, update, get } from "./firebase.js";
 import { geocodeAddress, calculateSpeed, calculateDistance } from "./utils.js";
 import * as Map from "./map.js";
@@ -108,7 +109,7 @@ window.addEventListener("load", () => {
     listenToFirebaseOrders();
 
     // Espera o carregamento dos componentes (modais) antes de continuar
-    await loadComponents("#modal-container");
+    await loadComponents("#modal-container", ["components/chat-window.html"]);
     // Configura todos os listeners de ações (modais, botões da ilha, etc.)
     setupActionListeners();
 
@@ -117,6 +118,8 @@ window.addEventListener("load", () => {
 
     setFollowMeButtonState(isFollowingDeliveryPerson);
     Map.setFollowMode(isFollowingDeliveryPerson);
+
+    initializeChat();
   }
 
   // ======= 4. Event Listeners =======
@@ -206,67 +209,7 @@ window.addEventListener("load", () => {
       islandCancelBtn.addEventListener("click", (e) => { e.stopPropagation(); handleCancelNavigation(); });
     }
 
-    // Botões de Navegação Externa (Waze/Maps)
-    const gmapsBtn = document.getElementById("open-gmaps-btn");
-    const wazeBtn = document.getElementById("open-waze-btn");
-
-    const openNavigationApp = (app) => {
-      if (!activeDelivery || !activeDelivery.order || !activeDelivery.order.endereco) {
-        showToast("Endereço da entrega não disponível.", "error");
-        return;
-      }
-
-      const address = activeDelivery.order.endereco;
-      const encodedAddress = encodeURIComponent(address);
-      let url;
-
-      if (app === 'gmaps') {
-        url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-      } else if (app === 'waze') {
-        url = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
-      }
-
-      if (url) {
-        window.open(url, '_blank');
-      }
-    };
-
-    if (gmapsBtn) {
-      gmapsBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Impede que a ilha se feche
-        openNavigationApp('gmaps');
-      });
-    }
-    if (wazeBtn) {
-      wazeBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Impede que a ilha se feche
-        openNavigationApp('waze');
-      });
-    }
-
-    // Listeners para o Modal de Pedidos Agendados
-    const scheduledModal = document.getElementById("scheduled-orders-modal");
-    if (scheduledModal) {
-      const closeButtons = scheduledModal.querySelectorAll(".close-button");
-      const hideModal = () => scheduledModal.classList.remove("active");
-
-      closeButtons.forEach((btn) => btn.addEventListener("click", hideModal));
-
-      // Fecha também se clicar no backdrop
-      scheduledModal.addEventListener("click", (e) => {
-        if (e.target === scheduledModal) {
-          hideModal();
-        }
-      });
-    }
-
-    // Listener para o alerta de proximidade do mapa
-    window.addEventListener("proximity-alert", (e) => {
-      const distance = e.detail.distance;
-      showToast(`Você está a ${distance}m do destino!`, "success");
-    });
   }
-
   // Funções para controlar o "fullscreen fake" compatível com iOS
   function handleToggleFullscreen() {
     if (!fullscreenModal) return;
@@ -277,6 +220,15 @@ window.addEventListener("load", () => {
       enterFakeFullscreen();
     }
   }
+
+    // Global handler for the modal-confirm-delivery confirmation
+    document.addEventListener('modal-confirm-delivery-confirmed', () => {
+      try {
+        handleFinishDelivery();
+      } catch (e) {
+        console.warn('Error handling modal-confirm-delivery-confirmed', e);
+      }
+    });
 
   function enterFakeFullscreen() {
     if (!mapContainerElement || !fullscreenModal || !fullscreenTarget) return;
@@ -866,7 +818,6 @@ window.addEventListener("load", () => {
         inRouteOrders,
         (orderId) => {
           orderIdToConfirm = orderId;
-          showConfirmDeliveryModal(true);
         },
         startNavigation,
         handleCancelNavigation

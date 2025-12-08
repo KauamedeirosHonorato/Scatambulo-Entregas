@@ -29,6 +29,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/chat.css" />
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
   </head>
@@ -42,6 +43,9 @@
           </button>
           <button id="history-button" class="btn-secondary">
             <i class="ph ph-scroll"></i> Histórico
+          </button>
+          <button id="chat-button" class="btn-primary">
+            <i class="ph ph-chat-text"></i> Conversas
           </button>
           <button id="logout-button" class="btn-secondary">
             <i class="ph ph-sign-out"></i> Sair
@@ -192,6 +196,12 @@
 
     <div id="modal-container"></div>
     <div id="toast-container"></div>
+
+    <!-- Botão de Chat Flutuante -->
+    <button id="floating-chat-button" class="floating-chat-button" style="display: none;">
+      <i class="ph ph-chats-circle"></i>
+      <span class="badge"></span>
+    </button>
 
     <!-- Novo Modal para Mapa em Tela Cheia -->
     <div

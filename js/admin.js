@@ -1,5 +1,6 @@
 // js/admin.js - Refatorado para MapLibre GL JS
 
+import { initializeChat } from './chat.js';
 import {
   db,
   ref,
@@ -18,7 +19,6 @@ import * as Map from "./map.js"; // UI.showToast será usado aqui
 import * as UI from "./ui.js";
 import {
   handleNewOrderSubmit,
-  handleReadMessageSubmit,
   handleCepInput,
 } from "./ui.js";
 import { showPrintPreviewModal } from './modal-print-preview.js';
@@ -130,17 +130,33 @@ window.addEventListener("load", () => {
       "components/modal-print-all.html",
       "components/modal-print-preview.html",
       "components/modal-order-history.html",
+      "components/chat-window.html",
     ]);
 
     // Agora que os modais existem, podemos configurar todos os listeners
     setupUIEventListeners();
     listenToFirebaseChanges();
+    initializeChat();
   }
 
   // ======= 4. Event Listeners =======
   function setupUIEventListeners() {
     const newOrderModal = document.getElementById("novo-pedido-modal");
-    const readMessageModal = document.getElementById("read-message-modal");
+
+    // Helper: Abrir modal para colar/ler mensagem (transformar em novo pedido)
+    function handleReadMessage() {
+      const readModal = document.getElementById("modal-read-message");
+      if (readModal) {
+        readModal.classList.add("active");
+        // foca o textarea quando o modal estiver visível
+        setTimeout(() => {
+          const ta = document.getElementById("message-text");
+          if (ta) ta.focus();
+        }, 50);
+      } else {
+        console.warn("Modal de leitura de mensagem não encontrado.");
+      }
+    }
 
     // UI.setupEventListeners lida com todos os botões e formulários
     UI.setupEventListeners(
@@ -150,8 +166,8 @@ window.addEventListener("load", () => {
         window.location.href = "index.html";
       }, // onLogout
       () => newOrderModal.classList.add("active"), // onNewOrder
+      handleReadMessage, // onReadMessage (abre modal de leitura/chat)
       printAllEmPreparoLabels, // onPrintAll
-      () => readMessageModal.classList.add("active"), // onReadMessage
       handleClearDeliveredOrders, // onClearDelivered
       handleResetActiveDeliveries, // onResetActiveDeliveries
       handleClearAllOrders, // onClearAllOrders
@@ -159,7 +175,6 @@ window.addEventListener("load", () => {
 
       // Callbacks de Formulários
       handleNewOrderSubmit, // onNewOrderSubmit
-      handleReadMessageSubmit, // onReadMessageSubmit
       handleCepInput // onCepInput
     );
 

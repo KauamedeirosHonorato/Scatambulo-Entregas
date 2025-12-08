@@ -7,14 +7,13 @@ const cepCache = new Map();
 export function setupEventListeners(
   onLogout,
   onNewOrder,
-  onPrintAll,
   onReadMessage,
+  onPrintAll,
   onClearDelivered,
   onResetActiveDeliveries,
   onClearAllOrders,
   onHistory,
   onNewOrderSubmit, // Movido para o final para consistência
-  onReadMessageSubmit, // Movido para o final
   onCepInput
 ) {
   // Configuração do Menu Hambúrguer
@@ -23,14 +22,18 @@ export function setupEventListeners(
   // Configuração dos Listeners de Eventos
   const logoutButton = document.getElementById("logout-button");
   const newOrderModal = document.getElementById("novo-pedido-modal"); // CORREÇÃO: ID correto
-  const readMessageModal = document.getElementById("read-message-modal");
   const newOrderBtn = document.getElementById("new-order-button");
+  // Prefer an explicit "read message" button, fallback to legacy chat button if present
+  const readMessageBtn =
+    document.getElementById("read-message-button") ||
+    document.getElementById("chat-button");
+  const chatButton =
+    document.getElementById("chat-button") ||
+    document.getElementById("open-chat-button");
   const printAllEmPreparoBtn = document.getElementById(
     "print-all-em-preparo-button"
   );
-  const readMessageBtn = document.getElementById("read-message-button");
   const closeButtons = document.querySelectorAll(".close-button");
-  const readMessageForm = document.getElementById("read-message-form");
   const newOrderForm = document.getElementById("novo-pedido-form"); // CORREÇÃO: ID correto
   const cepField = document.getElementById("cep");
   const emailField = document.getElementById("email-cliente");
@@ -52,17 +55,28 @@ export function setupEventListeners(
       newOrderModal.classList.add("active")
     );
   }
+  if (readMessageBtn && onReadMessage) {
+    readMessageBtn.addEventListener("click", onReadMessage);
+  }
+
+  // If there's a dedicated chat button and it isn't the same as readMessageBtn,
+  // open the chat window (lazy init) when clicked. If a read handler exists,
+  // prefer calling that instead to preserve custom behavior.
+  if (chatButton && chatButton !== readMessageBtn) {
+    // Chat button always opens the conversation window (lazy load chat module)
+    chatButton.addEventListener("click", async () => {
+      try {
+        const { initializeChat } = await import("./chat.js");
+        initializeChat();
+      } catch (err) {
+        console.warn("Falha ao inicializar o chat:", err);
+      }
+      const chatModal = document.getElementById("chat-modal");
+      if (chatModal) chatModal.classList.add("active");
+    });
+  }
   if (printAllEmPreparoBtn)
     printAllEmPreparoBtn.addEventListener("click", onPrintAll);
-  if (readMessageBtn && onReadMessage) {
-    // Use the callback for the button click
-    readMessageBtn.addEventListener("click", onReadMessage);
-  } else if (readMessageBtn && readMessageModal) {
-    // Fallback
-    readMessageBtn.addEventListener("click", () =>
-      readMessageModal.classList.add("active")
-    );
-  }
   if (clearDeliveredBtn)
     clearDeliveredBtn.addEventListener("click", onClearDelivered);
   if (resetDeliveriesBtn && onResetActiveDeliveries)
@@ -88,8 +102,6 @@ export function setupEventListeners(
   window.addEventListener("click", (event) => {
     if (event.target === newOrderModal)
       newOrderModal.classList.remove("active");
-    if (event.target === readMessageModal)
-      readMessageModal.classList.remove("active");
   });
 
   if (cepField && onCepInput) {
@@ -148,8 +160,20 @@ export function setupEventListeners(
 
   if (newOrderForm && onNewOrderSubmit)
     newOrderForm.addEventListener("submit", onNewOrderSubmit);
-  if (readMessageForm && onReadMessageSubmit)
-    readMessageForm.addEventListener("submit", onReadMessageSubmit);
+
+  // Se existir o formulário de leitura de mensagem no modal, vincula o handler
+  const readMessageForm = document.getElementById("read-message-form");
+  if (readMessageForm) {
+    readMessageForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      // Usa o handler exportado deste módulo
+      try {
+        handleReadMessageSubmit(e);
+      } catch (err) {
+        console.error("Erro ao processar leitura de mensagem:", err);
+      }
+    });
+  }
 }
 
 /**
@@ -236,8 +260,10 @@ export function handleReadMessageSubmit(e) {
   }
 
   fillOrderForm(parsedData);
-  document.getElementById("read-message-modal").classList.remove("active");
-  document.getElementById("novo-pedido-modal").classList.add("active");
+  const readModal = document.getElementById("modal-read-message");
+  if (readModal && readModal.classList) readModal.classList.remove("active");
+  const novoModal = document.getElementById("novo-pedido-modal");
+  if (novoModal && novoModal.classList) novoModal.classList.add("active");
 }
 
 /**

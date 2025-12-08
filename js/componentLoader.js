@@ -54,7 +54,38 @@ export function loadComponents(containerSelector, componentPaths = []) {
     try {
       const componentsHtml = await Promise.all(fetchPromises);
       container.innerHTML = componentsHtml.join("");
-      resolve(); // Resolve a Promise após o innerHTML ser definido
+
+      // Attach small, safe handlers for specific modals if they exist.
+      try {
+        const confirmDeliveryModal = document.getElementById('modal-confirm-delivery');
+        const confirmDeliveryConfirmBtn = document.getElementById('modal-confirm-delivery-confirm');
+        const confirmDeliveryCancelBtn = document.getElementById('modal-confirm-delivery-cancel');
+        if (confirmDeliveryConfirmBtn) {
+          confirmDeliveryConfirmBtn.addEventListener('click', () => {
+            // Dispatch a global event so app code can react
+            document.dispatchEvent(new CustomEvent('modal-confirm-delivery-confirmed', { detail: {} }));
+            if (confirmDeliveryModal) confirmDeliveryModal.classList.remove('active');
+          });
+        }
+        if (confirmDeliveryCancelBtn) {
+          confirmDeliveryCancelBtn.addEventListener('click', () => {
+            if (confirmDeliveryModal) confirmDeliveryModal.classList.remove('active');
+          });
+        }
+
+        const readMessageModal = document.getElementById('modal-read-message');
+        const readMessageCloseBtn = document.getElementById('modal-read-message-close');
+        if (readMessageCloseBtn) {
+          readMessageCloseBtn.addEventListener('click', () => {
+            if (readMessageModal) readMessageModal.classList.remove('active');
+          });
+        }
+      } catch (e) {
+        // Non-fatal: continue even if handlers fail
+        console.warn('componentLoader: modal handlers attach error', e);
+      }
+
+      resolve(); // Resolve a Promise após o innerHTML e handlers serem definidos
     } catch (error) {
       console.error("Erro ao carregar componentes:", error);
       reject(error);

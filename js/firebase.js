@@ -5,10 +5,17 @@ import {
   set,
   update,
   onValue,
+  off,
   push,
   child,
   get,
 } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-storage.js";
 
 // Configuração do Firebase
 const firebaseConfig = {
@@ -25,9 +32,10 @@ const firebaseConfig = {
 // Inicializa o app e banco
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 // Exporta funções do Firebase para os outros módulos
-export { db, ref, set, update, onValue, push, child, get };
+export { db, ref, set, update, onValue, off, push, child, get };
 
 // ===== Funções customizadas =====
 
@@ -192,5 +200,200 @@ export async function getAllOrders() {
   } catch (error) {
     console.error("Erro ao buscar todos os pedidos:", error);
     throw error;
+  }
+}
+
+// ===== Chat-related functions =====
+
+export function getConversationId(userA, userB) {
+  if (!userA || !userB) return null;
+  // deterministic id regardless of order
+  return [userA, userB].sort().join('_');
+}
+
+export async function sendMessage(conversationId, senderId, content, type = 'text', replyInfo = null) {
+  if (!conversationId || !senderId) throw new Error('Invalid params for sendMessage');
+  const messagesRef = ref(db, `chats/${conversationId}/messages`);
+  const messagePayload = {
+    senderId,
+    content,
+    type,
+    timestamp: Date.now(),
+    edited: false,
+    replyTo: replyInfo || null,
+    reactions: {},
+  };
+
+  const newMsgRef = await push(messagesRef, messagePayload);
+
+  // notify the other participant(s)
+  const participants = conversationId.split('_');
+  participants.forEach(participant => {
+    if (participant === senderId) return;
+    // increment unread count for participant
+    const unreadRef = ref(db, `conversations_unread/${participant}/${conversationId}`);
+    get(unreadRef).then(snap => {
+      const cur = snap.exists() ? (snap.val().unread_count || 0) : 0;
+      set(unreadRef, { unread_count: cur + 1 });
+    }).catch(() => {});
+
+    // simple notification flag
+    set(ref(db, `notifications/${participant}`), { hasUnread: true, lastConversationId: conversationId });
+  });
+
+  return newMsgRef.key;
+}
+
+export function listenToConversation(conversationId, callback) {
+  const messagesRef = ref(db, `chats/${conversationId}/messages`);
+  const wrapper = (snapshot) => callback(snapshot.val() || {});
+  onValue(messagesRef, wrapper);
+  return () => off(messagesRef, 'value', wrapper);
+}
+
+export function listenToTypingStatus(conversationId, callback) {
+  const typingRef = ref(db, `typing/${conversationId}`);
+  const wrapper = (snapshot) => callback(snapshot.val() || {});
+  onValue(typingRef, wrapper);
+  return () => off(typingRef, 'value', wrapper);
+}
+
+export function setTypingStatus(conversationId, userId, isTyping) {
+  return set(ref(db, `typing/${conversationId}/${userId}`), !!isTyping);
+}
+
+export function deleteMessage(conversationId, messageId) {
+  if (!conversationId || !messageId) return Promise.reject(new Error('Invalid params'));
+  return update(ref(db, `chats/${conversationId}/messages/${messageId}`), { type: 'deleted', content: 'Mensagem apagada' });
+}
+
+export function editMessage(conversationId, messageId, newContent) {
+  if (!conversationId || !messageId) return Promise.reject(new Error('Invalid params'));
+  return update(ref(db, `chats/${conversationId}/messages/${messageId}`), { content: newContent, edited: true, editedAt: Date.now() });
+}
+
+export async function toggleReaction(conversationId, messageId, userId, emoji) {
+  if (!conversationId || !messageId || !userId) throw new Error('Invalid params');
+  const reactionRef = ref(db, `chats/${conversationId}/messages/${messageId}/reactions/${userId}`);
+  const snap = await get(reactionRef);
+  if (snap.exists()) {
+    // remove reaction
+    return set(reactionRef, null);
+  } else {
+    return set(reactionRef, emoji);
+  }
+}
+
+export function listenToConversationUnreadCounts(username, callback) {
+  const unreadRef = ref(db, `conversations_unread/${username}`);
+  const wrapper = (snapshot) => callback(snapshot.val() || {});
+  onValue(unreadRef, wrapper);
+  return () => off(unreadRef, 'value', wrapper);
+}
+
+export function markConversationAsRead(username, conversationId) {
+  if (!username || !conversationId) return Promise.reject(new Error('Invalid params'));
+  return set(ref(db, `conversations_unread/${username}/${conversationId}`), { unread_count: 0 });
+}
+
+export function markChatAsRead(username) {
+  if (!username) return Promise.reject(new Error('Invalid params'));
+  // remove all unread counts and notifications for user
+  set(ref(db, `conversations_unread/${username}`), null);
+  return set(ref(db, `notifications/${username}`), { hasUnread: false });
+}
+
+export function listenToChatNotifications(username, callback) {
+  const notifRef = ref(db, `notifications/${username}`);
+  const wrapper = (snapshot) => callback(snapshot.val() || { hasUnread: false });
+  onValue(notifRef, wrapper);
+  return () => off(notifRef, 'value', wrapper);
+}
+
+export async function uploadChatImage(file) {
+  if (!file) throw new Error('No file provided');
+  try {
+    // Create a storage path
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const path = `chat_images/${Date.now()}_${Math.floor(Math.random()*10000)}_${safeName}`;
+    const sRef = storageRef(storage, path);
+    const snapshot = await uploadBytes(sRef, file);
+    const url = await getDownloadURL(snapshot.ref);
+    return url;
+  } catch (err) {
+    console.error('uploadChatImage error:', err);
+    // Fallback to blob URL so UX still works offline/dev
+    try {
+      return URL.createObjectURL(file);
+    } catch (e) {
+      throw err;
+    }
+  }
+}
+
+export function clearConversation(conversationId) {
+  if (!conversationId) return Promise.reject(new Error('Invalid params'));
+  // Remove all messages for conversation and reset unread flags for participants
+  const messagesRef = ref(db, `chats/${conversationId}/messages`);
+  const participants = conversationId.split('_');
+  const updates = {};
+  updates[`chats/${conversationId}/messages`] = null;
+  participants.forEach(p => {
+    updates[`conversations_unread/${p}/${conversationId}`] = { unread_count: 0 };
+    updates[`notifications/${p}`] = { hasUnread: false };
+  });
+  return update(ref(db), updates);
+}
+
+// Marca mensagens como lidas (read) para o usuário que abriu a conversa.
+export async function markMessagesRead(conversationId, username) {
+  if (!conversationId || !username) return Promise.reject(new Error('Invalid params'));
+  try {
+    const messagesRef = ref(db, `chats/${conversationId}/messages`);
+    const snap = await get(messagesRef);
+    if (!snap.exists()) return 0;
+    const messages = snap.val();
+    const updates = {};
+    Object.entries(messages).forEach(([msgId, msg]) => {
+      if (msg.senderId && msg.senderId !== username && !msg.read) {
+        updates[`chats/${conversationId}/messages/${msgId}/read`] = true;
+        updates[`chats/${conversationId}/messages/${msgId}/readAt`] = Date.now();
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db), updates);
+      return Object.keys(updates).length;
+    }
+    return 0;
+  } catch (err) {
+    console.error('Erro ao marcar mensagens como lidas:', err);
+    throw err;
+  }
+}
+
+// Marca mensagens como entregues (delivered) para o usuário que abriu a conversa.
+export async function markMessagesDelivered(conversationId, username) {
+  if (!conversationId || !username) return Promise.reject(new Error('Invalid params'));
+  try {
+    const messagesRef = ref(db, `chats/${conversationId}/messages`);
+    const snap = await get(messagesRef);
+    if (!snap.exists()) return 0;
+    const messages = snap.val();
+    const updates = {};
+    Object.entries(messages).forEach(([msgId, msg]) => {
+      // Marca como entregue apenas mensagens que não foram enviadas pelo usuário atual
+      if (msg.senderId && msg.senderId !== username && !msg.delivered) {
+        updates[`chats/${conversationId}/messages/${msgId}/delivered`] = true;
+        updates[`chats/${conversationId}/messages/${msgId}/deliveredAt`] = Date.now();
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db), updates);
+      return Object.keys(updates).length;
+    }
+    return 0;
+  } catch (err) {
+    console.error('Erro ao marcar mensagens como entregues:', err);
+    throw err;
   }
 }

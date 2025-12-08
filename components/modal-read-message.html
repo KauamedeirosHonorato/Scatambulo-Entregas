@@ -1,37 +1,27 @@
 <!-- components/modal-read-message.html -->
 <div
-  id="read-message-modal"
+  id="modal-read-message"
   class="modal-novo-pedido"
   role="dialog"
   aria-modal="true"
-  aria-labelledby="read-message-titulo"
+  aria-labelledby="modal-read-message-title"
 >
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="read-message-titulo">Ler Mensagem</h3>
-      <button
-        type="button"
-        class="close-button"
-        aria-label="Fechar"
-        onclick="this.closest('.modal-novo-pedido').classList.remove('active')"
-      >
-        &times;
-      </button>
+  <div class="modal-content modal-content-centered">
+    <button class="close-button" aria-label="Fechar">&times;</button>
+    <h3 id="modal-read-message-title">Ler Mensagem</h3>
+    <div id="modal-read-message-body" class="modal-body">
+      <p class="message-author"><strong>Remetente</strong></p>
+      <div class="message-content">Nenhuma mensagem selecionada.</div>
+
+      <!-- Form para colar/editar a mensagem e transformar em novo pedido -->
+      <form id="read-message-form" class="read-message-form">
+        <label for="message-text" class="label">Mensagem (copie/cole aqui)</label>
+        <textarea id="message-text" rows="6" placeholder="Cole a mensagem do cliente aqui..."></textarea>
+        <div class="modal-actions" style="margin-top:10px; display:flex; gap:8px;">
+          <button type="button" id="modal-read-message-close" class="btn-secondary">Fechar</button>
+          <button type="submit" class="btn-primary">Criar Pedido a partir da Mensagem</button>
+        </div>
+      </form>
     </div>
-    <form id="read-message-form" novalidate>
-      <textarea
-        id="message-text"
-        placeholder="Cole a mensagem do WhatsApp aqui..."
-        rows="10"
-        required
-      ></textarea>
-      <button
-        type="submit"
-        class="btn-primary"
-        style="width: 100%; margin-top: 16px"
-      >
-        Processar Mensagem
-      </button>
-    </form>
   </div>
 </div>

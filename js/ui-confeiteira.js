@@ -20,7 +20,6 @@ export function setupEventListeners(
   onReadMessage,
   onHistory,
   onNewOrderSubmit,
-  onReadMessageSubmit,
   onCepBlur
 ) {
   // Reutiliza a função de setup global (ui.js), passando apenas os callbacks relevantes
@@ -28,14 +27,14 @@ export function setupEventListeners(
   genericSetupEventListeners(
     onLogout,
     onNewOrder,
-    null, // onPrintAll
     onReadMessage,
+    null, // onPrintAll
     null, // onClearDelivered
     null, // onResetActiveDeliveries
     null, // onClearAllOrders
     onHistory,
     onNewOrderSubmit,
-    onReadMessageSubmit,
+    null,
     (e) => onCepBlur(e)
   );
 }

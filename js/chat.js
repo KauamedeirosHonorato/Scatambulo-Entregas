@@ -3,7 +3,7 @@
  * Contém a lógica para controlar a interface do chat, como abrir, fechar e navegar entre as visualizações.
  */
 
-import { getConversationId, sendMessage, listenToConversation, markChatAsRead, uploadChatImage, listenToConversationUnreadCounts, markConversationAsRead, listenToChatNotifications, setTypingStatus, listenToTypingStatus, deleteMessage, editMessage, toggleReaction, clearConversation } from './firebase.js';
+import { getConversationId, sendMessage, listenToConversation, markChatAsRead, uploadChatImage, listenToConversationUnreadCounts, markConversationAsRead, listenToChatNotifications, setTypingStatus, listenToTypingStatus, deleteMessage, editMessage, toggleReaction, clearConversation, markMessagesDelivered, markMessagesRead } from './firebase.js';
 import { debounce } from './utils.js';
 
 let currentUser = null;
@@ -245,6 +245,20 @@ export function initializeChat() {
       unsubscribeTypingListener = listenToTypingStatus(conversationId, (typingUsers) => {
           handleTypingStatusUpdate(typingUsers, title);
       });
+
+      // Mark messages as delivered for this user (sets delivered flags on messages sent to them)
+      try {
+        markMessagesDelivered(conversationId, currentUser.username).catch(() => {});
+      } catch (e) {
+        // ignore
+      }
+
+      // Also mark messages as read for this user
+      try {
+        markMessagesRead(conversationId, currentUser.username).catch(() => {});
+      } catch (e) {
+        // ignore
+      }
     };
 
     const goBackToConversationList = () => {
@@ -389,14 +403,29 @@ export function initializeChat() {
               `;
           }
 
-          item.innerHTML = `
+            // Status indicator for sent messages (sent / delivered / read)
+            let statusHTML = '';
+            if (messageType === 'sent') {
+              if (msg.read) {
+                statusHTML = `<span class="message-status read" title="Lida">✓✓</span>`;
+              } else if (msg.delivered) {
+                statusHTML = `<span class="message-status delivered" title="Entregue">✓✓</span>`;
+              } else {
+                statusHTML = `<span class="message-status sent" title="Enviado">✓</span>`;
+              }
+            }
+
+            item.innerHTML = `
               <div class="${bubbleClasses}">
-                  ${quotedMessageHTML}
-                  ${messageContentHTML}
+                ${quotedMessageHTML}
+                ${messageContentHTML}
               </div>
+              <div class="message-meta">
               <span class="message-timestamp">${time}</span>
+              ${statusHTML}
+              </div>
               ${actionsHTML}
-          `;
+            `;
           messagesList.appendChild(item);
       });
 

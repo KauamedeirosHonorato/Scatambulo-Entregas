@@ -1,6 +1,4 @@
-/**
- * js/confeiteira.js - Lógica Principal do Painel Confeiteira
- */
+
 import {
   db,
   ref,
@@ -14,7 +12,6 @@ import * as CommonUI from "./ui.js"; // Para showToast, showModal, etc.
 import { parseWhatsappMessage, debounce, geocodeAddress } from "./utils.js";
 import {
   handleNewOrderSubmit,
-  handleReadMessageSubmit,
   handleCepInput,
 } from "./ui.js";
 import { loadComponents } from "./componentLoader.js";
@@ -78,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "components/modal-print-all.html",
       "components/modal-print-preview.html",
       "components/modal-order-history.html",
+      "components/chat-window.html",
     ]);
 
     // 3.2. Inicializar o Mapa
@@ -89,6 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 3.4. Iniciar Listeners do Firebase
     listenToFirebaseChanges();
+    
+    
   }
 
   function setupMapEventListeners() {
@@ -124,6 +124,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function handleReadMessage() {
+    const readModal = document.getElementById("modal-read-message");
+    if (readModal) {
+      readModal.classList.add("active");
+      setTimeout(() => {
+        const ta = document.getElementById("message-text");
+        if (ta) ta.focus();
+      }, 50);
+    } else {
+      console.warn("Modal de leitura de mensagem não encontrado.");
+    }
+  }
+
   // ======= 4. Event Listeners UI =======
   function setupUIEventListeners() {
     UI.setupEventListeners(
@@ -136,15 +149,14 @@ document.addEventListener("DOMContentLoaded", () => {
         handleNewOrder(); // Prepara o modal (limpa formulário)
         document.getElementById("novo-pedido-modal").classList.add("active"); // Abre o modal
       },
-      // onReadMessage: Callback para o clique do botão "Ler Mensagem"
-      () => {
-        handleReadMessage(); // Prepara o modal (limpa formulário)
-        document.getElementById("read-message-modal").classList.add("active"); // Abre o modal
-      },
-      showOrderHistoryModal,
-      handleNewOrderSubmit, // Handler genérico do ui.js
-      handleReadMessageSubmit, // Handler genérico do ui.js
-      handleCepInput
+      handleReadMessage,
+      null, // onPrintAll (not used in confeiteira)
+      null, // onClearDelivered
+      null, // onResetActiveDeliveries
+      null, // onClearAllOrders
+      showOrderHistoryModal, // onHistory
+      handleNewOrderSubmit, // onNewOrderSubmit (important placement)
+      handleCepInput // onCepInput
     );
 
     // Listener para o clique no marcador do cliente no mapa
@@ -414,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
         paginationContainer.appendChild(nextButton);
     };
     
-    const filterAndRender = (filter = "") => {
+    const filterAndRender = async (filter = "") => {
         const lowerCaseFilter = filter.toLowerCase();
         filteredOrders = allOrders.filter(([id, order]) => {
             return (
@@ -427,27 +439,24 @@ document.addEventListener("DOMContentLoaded", () => {
         currentPage = 1;
         renderHistoryList();
         renderPagination();
+
+        searchInput.addEventListener("input", debounce((e) => {
+            filterAndRender(e.target.value);
+        }, 300));
+
+        openModal();
+        container.innerHTML = "<p>Carregando histórico...</p>";
+
+        try {
+            const orders = await getAllOrders();
+            allOrders = Object.entries(orders || {}).sort(([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0));
+            filterAndRender("");
+        } catch (error) {
+            console.error("Erro ao carregar histórico de pedidos:", error);
+            container.innerHTML = "<p>Erro ao carregar o histórico. Tente novamente mais tarde.</p>";
+            CommonUI.showToast("Erro ao carregar o histórico.", "error");
+        }
     };
-
-    searchInput.addEventListener("input", debounce((e) => {
-        filterAndRender(e.target.value);
-    }, 300));
-
-    openModal();
-    container.innerHTML = "<p>Carregando histórico...</p>";
-
-    try {
-        const orders = await getAllOrders();
-        allOrders = Object.entries(orders).sort(([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0));
-        filterAndRender(searchInput.value);
-    } catch (error) {
-        console.error("Erro ao carregar histórico de pedidos:", error);
-        container.innerHTML = "<p>Erro ao carregar o histórico. Tente novamente mais tarde.</p>";
-        CommonUI.showToast("Erro ao carregar o histórico.", "error");
-    }
-  }
-
-  function processNotifications(pedidos) {
     if (isFirstLoad) {
       knownOrderIds = new Set(
         Object.keys(pedidos).filter((id) => pedidos[id].status === "pendente")
@@ -500,17 +509,6 @@ document.addEventListener("DOMContentLoaded", () => {
       form.reset();
     }
     const errorEl = document.getElementById("pedido-error");
-    if (errorEl) {
-      errorEl.textContent = "";
-    }
-  }
-
-  function handleReadMessage() {
-    const form = document.getElementById("read-message-form");
-    if (form) {
-      form.reset();
-    }
-    const errorEl = document.getElementById("read-message-error");
     if (errorEl) {
       errorEl.textContent = "";
     }

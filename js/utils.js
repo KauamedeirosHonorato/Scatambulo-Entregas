@@ -136,13 +136,39 @@ export function parseWhatsappMessage(originalText) {
   const extractedData = {};
 
   // --- 1. Extrair Nome do Bolo (mantendo a lógica existente para ITENS DO PEDIDO) ---
-  const itemsSectionMatch = originalText.match(/--- ITENS DO PEDIDO ---\s*([\s\S]*?)(?=\nSubtotal dos Itens|\n--- DADOS PARA ENTREGA ---|$)/im);
+  // Match items section and stop at 'Subtotal dos Itens' even if it's on the same line
+  const itemsSectionMatch = originalText.match(/--- ITENS DO PEDIDO ---\s*([\s\S]*?)(?=\s*Subtotal dos Itens|\s*--- DADOS PARA ENTREGA ---|$)/im);
   if (itemsSectionMatch && itemsSectionMatch[1]) {
     const itemLines = itemsSectionMatch[1].split('\n').map(line => line.trim()).filter(line => line.length > 0);
     if (itemLines.length > 0) {
       let firstItem = itemLines[0].replace(/^-/, '').trim();
-      firstItem = firstItem.replace(/\s*\(.*\)/g, '').trim();
-      extractedData.nomeBolo = firstItem;
+      // If the same line contains a 'Subtotal' marker, discard the trailing part
+      firstItem = firstItem.split(/Subtotal dos Itens/i)[0].trim();
+      // Remove parenthetical descriptors (supports nested parentheses by iterating)
+      while (/\([^()]*\)/.test(firstItem)) {
+        firstItem = firstItem.replace(/\([^()]*\)/g, '').trim();
+      }
+      // Remove any stray parentheses characters and extra punctuation
+      firstItem = firstItem.replace(/[()\[\]{}]/g, '').replace(/[\-–—]+$/,'').trim();
+
+      // Remove common size/format tokens and trailing adjectives
+      const removeTokensRegex = /\b(kg|g|unidades?|unidade|oval|redondo|quadrado|pç|pc|sem custo|sem-custo)\b/ig;
+      firstItem = firstItem.replace(removeTokensRegex, '').trim();
+
+      // Remove trailing adjectives from a small curated list (best-effort)
+      const trailingAdjectives = [
+        'trufado', 'recheado', 'decorado', 'caseiro', 'simples', 'especial',
+        'gigante', 'mini', 'sem cobertura'
+      ];
+      const words = firstItem.split(/\s+/);
+      while (words.length > 1 && trailingAdjectives.includes(words[words.length - 1].toLowerCase())) {
+        words.pop();
+      }
+      firstItem = words.join(' ').trim();
+
+      // Title-case the product name for consistency
+      const titleCase = (s) => s.toLowerCase().split(/\s+/).map(w => w.length>0 ? (w[0].toUpperCase() + w.slice(1)) : '').join(' ');
+      extractedData.nomeBolo = titleCase(firstItem);
     } else {
       extractedData.nomeBolo = '';
     }
@@ -189,7 +215,13 @@ export function parseWhatsappMessage(originalText) {
   extractedData.nomeCliente = rawNome;
   extractedData.cep = rawCep;
   extractedData.bairro = rawBairro;
-  extractedData.cidade = rawCidade;
+  // Clean city: remove trailing non-letter junk (e.g. '� Aviso...') and trim
+  try {
+    const cityMatch = rawCidade.match(/[\p{L}\s\-]+/u);
+    extractedData.cidade = cityMatch ? cityMatch[0].trim() : rawCidade.trim();
+  } catch (e) {
+    extractedData.cidade = rawCidade.trim();
+  }
   extractedData.estado = rawEstado;
   extractedData.complemento = rawComplemento;
 
@@ -235,11 +267,18 @@ export function parseWhatsappMessage(originalText) {
  */
 export function debounce(func, delay) {
   let timeout;
-  return function (...args) {
+  function debounced(...args) {
     const context = this;
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), delay);
+  }
+  debounced.cancel = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
   };
+  return debounced;
 }
 
 /**

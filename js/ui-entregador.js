@@ -2,18 +2,11 @@ import { showToast, printLabel } from "./ui.js"; // Importa showToast e printLab
 
 export function setupEventListeners(
   onLogout,
-  onConfirmDelivery,
-  onCancelDelivery,
   onFinishDynamicIsland,
   onCancelNavigation,
   onToggleFollowMe
 ) {
   const logoutButton = document.getElementById("logout-button");
-  const confirmDeliveryBtn = document.getElementById("confirm-delivery-btn");
-  const cancelDeliveryBtn = document.getElementById("cancel-delivery-btn");
-  const closeModalBtn = document.querySelector(
-    "#confirm-delivery-modal .close-button"
-  );
   const dynamicIslandFinishBtn = document.getElementById(
     "dynamic-island-finish-btn"
   );
@@ -23,13 +16,8 @@ export function setupEventListeners(
   const followMeButton = document.getElementById("follow-me-button");
 
   if (logoutButton) logoutButton.addEventListener("click", onLogout);
-  if (confirmDeliveryBtn)
-    confirmDeliveryBtn.addEventListener("click", onConfirmDelivery);
-  if (cancelDeliveryBtn)
-    cancelDeliveryBtn.addEventListener("click", onCancelDelivery);
-  if (closeModalBtn) closeModalBtn.addEventListener("click", onCancelDelivery);
   if (dynamicIslandFinishBtn)
-    dynamicIslandFinishBtn.addEventListener("click", onConfirmDelivery);
+    dynamicIslandFinishBtn.addEventListener("click", onFinishDynamicIsland);
   if (dynamicIslandCancelBtn)
     dynamicIslandCancelBtn.addEventListener("click", onCancelNavigation);
   if (followMeButton)
