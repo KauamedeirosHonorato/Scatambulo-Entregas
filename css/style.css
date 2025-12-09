@@ -791,6 +791,22 @@ header {
   justify-content: center;
 }
 
+/* Ensure the generic confirmation modal appears above other modals (chat, etc.) */
+#generic-confirm-modal {
+  z-index: 12050; /* higher than chat (10000) and toasts (11000) */
+}
+
+#generic-confirm-modal .modal-content {
+  position: relative;
+  z-index: 12060; /* ensure the content is above the modal backdrop */
+}
+
+/* Also ensure the specific confirm-delivery modal is above other modals */
+#modal-confirm-delivery {
+  z-index: 12040;
+}
+
+
 .modal-backdrop.active,
 .modal-novo-pedido.active {
   opacity: 1;
@@ -1822,6 +1838,12 @@ header {
   display: block;
 }
 
+/* Prevent background scroll when map fullscreen is active (iOS fix) */
+body.map-fullscreen-active {
+  overflow: hidden;
+  touch-action: none;
+}
+
 #fullscreen-map-target {
   width: 100%;
   height: 100%;
@@ -1837,6 +1859,60 @@ header {
   /* Garante que ocupe o espaço seguro no iOS */
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
+}
+/* Route loading overlay styling (reused for initial map load too) */
+.map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: opacity 0.18s ease, visibility 0.18s ease;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 40;
+}
+.map-loading-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+.map-loading-overlay .spinner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.map-loading-overlay .spinner i {
+  font-size: 20px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* subtle pulse/highlight when island opens */
+.island-highlight {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12) inset, 0 6px 30px rgba(27,154,247,0.06);
+  transform: scale(1.01);
+  transition: transform 260ms ease, box-shadow 260ms ease;
+}
+.route-loading {
+  filter: blur(0.6px) saturate(0.98);
+}
+/* Fullscreen specific tweaks for iPhone */
+.fullscreen-iphone, .map-fullscreen-modal-container.active #fullscreen-map-target > #map-container {
+  position: fixed !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9999;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 /* ===== IPHONE FIXES ===== */
 

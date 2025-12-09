@@ -91,6 +91,50 @@ document.addEventListener("DOMContentLoaded", () => {
     
   }
 
+  /**
+   * Processa notificações simples a partir do mapa de pedidos:
+   * - Toca som para novos pedidos
+   * - Toca som quando um pedido muda para 'entregue'
+   */
+  function processNotifications(pedidos = {}) {
+    try {
+      const ids = Object.keys(pedidos || {});
+      // Detect new orders
+      ids.forEach((id) => {
+        const pedido = pedidos[id];
+        if (!knownOrderIds.has(id)) {
+          knownOrderIds.add(id);
+          // New order notification for specific statuses (pronto_para_entrega or default)
+          try {
+            if (pedido && pedido.status !== 'entregue') {
+              tryPlaySound(newOrderSound);
+              CommonUI.showToast(`Novo pedido: ${pedido.nomeCliente || ''}`, 'info');
+            }
+          } catch (e) {}
+        }
+
+        // Detect transition to 'entregue'
+        if (pedido && pedido.status === 'entregue' && !knownDeliveredOrderIds.has(id)) {
+          knownDeliveredOrderIds.add(id);
+          try {
+            tryPlaySound(deliveryCompleteSound);
+            CommonUI.showToast(`Pedido entregue: ${pedido.nomeCliente || ''}`, 'success');
+          } catch (e) {}
+        }
+      });
+
+      // Cleanup: remove ids that no longer exist to avoid unbounded growth
+      Array.from(knownOrderIds).forEach((existingId) => {
+        if (!pedidos || !pedidos[existingId]) {
+          knownOrderIds.delete(existingId);
+          knownDeliveredOrderIds.delete(existingId);
+        }
+      });
+    } catch (e) {
+      console.warn('processNotifications error', e);
+    }
+  }
+
   function setupMapEventListeners() {
     if (!map) return;
 

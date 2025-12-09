@@ -224,7 +224,12 @@ export async function initializeMap(
             if (icon) icon.className = "ph ph-arrows-out";
           }
           // Redimensiona o mapa em ambos os casos para garantir o ajuste correto
-          map.resize();
+          try { map.resize(); } catch(e) {}
+          // schedule another resize after transition to ensure correct rendering
+          setTimeout(() => { try { map.resize(); } catch(e) {} }, 300);
+
+          // toggle a body-level class to prevent background scroll on iOS
+          try { document.body.classList.toggle('map-fullscreen-active', !!isFullscreen); } catch(e) {}
         };
 
         // Adiciona listeners para os eventos de tela cheia
@@ -286,6 +291,7 @@ export async function initializeMap(
         }
 
         // Adiciona a fonte e a camada de satélite, mas as mantém ocultas.
+        // Ensure satellite tiles source/layer exists (kept hidden by default)
         if (!map.getSource("sat-tiles")) {
           map.addSource("sat-tiles", satelliteStyle.sources["sat-tiles"]);
         }
@@ -294,13 +300,30 @@ export async function initializeMap(
             id: "sat-tiles",
             type: "raster",
             source: "sat-tiles",
-            layout: {
-              visibility: "none", // Começa invisível
-            },
+            layout: { visibility: "none" },
           });
-          // Move a camada de rota para cima da camada de satélite
-          if (map.getLayer("main-route-line"))
-            map.moveLayer("main-route-line", "sat-tiles");
+        }
+
+        // Ensure a simple raster base (OSM) exists so we can toggle back from satellite
+        try {
+          if (!map.getSource("simple-tiles") && osmStyle.sources && osmStyle.sources["raster-tiles"]) {
+            map.addSource("simple-tiles", osmStyle.sources["raster-tiles"]);
+          }
+          if (!map.getLayer("simple-tiles")) {
+            map.addLayer({
+              id: "simple-tiles",
+              type: "raster",
+              source: "simple-tiles",
+              layout: { visibility: "visible" },
+            });
+          }
+        } catch (e) {
+          console.warn("initializeMap: não foi possível adicionar camada base simple-tiles:", e);
+        }
+
+        // Move a camada de rota para cima das camadas base (satélite/osm)
+        if (map.getLayer("main-route-line")) {
+          try { map.moveLayer("main-route-line"); } catch(e) {}
         }
       } catch (e) {
         console.warn("initializeMap: não foi possível criar main-route:", e);
@@ -505,6 +528,8 @@ export function setRoute(origin, destination) {
 // Solicita uma rota ao OSRM e desenha no mapa como GeoJSON (linha azul)
 export async function requestRoute(origin, destination) {
   if (!map || !origin || !destination) return null;
+  // show loading UI for route
+  try { showRouteLoading(true); } catch(e) {}
 
   try {
     const lon1 =
@@ -532,10 +557,46 @@ export async function requestRoute(origin, destination) {
     currentRouteGeometry = geometry;
     drawMainRoute(geometry);
 
+    try { showRouteLoading(false); } catch(e) {}
+
     return data.routes[0];
   } catch (e) {
     console.warn("Erro ao solicitar rota do OSRM:", e);
+    try { showRouteLoading(false); } catch(e) {}
     return null;
+  }
+}
+
+/**
+ * Mostra/oculta o overlay de loading do mapa (usado durante carregamento de rota)
+ * @param {boolean} show
+ */
+export function showRouteLoading(show) {
+  try {
+    if (!map) return;
+    const container = map.getContainer();
+    const overlay = container && container.parentElement && container.parentElement.querySelector('.map-loading-overlay');
+    if (!overlay) return;
+    if (show) overlay.classList.add('active'); else overlay.classList.remove('active');
+    // also add a class to the map container for subtle pulsing effect
+    try { container.classList.toggle('route-loading', !!show); } catch(e) {}
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+/**
+ * Pulse/highlight the map when the dynamic island is active.
+ * @param {boolean} active
+ */
+export function pulseMapForIsland(active) {
+  try {
+    if (!map) return;
+    const container = map.getContainer();
+    if (!container) return;
+    container.classList.toggle('island-highlight', !!active);
+  } catch (e) {
+    /* ignore */
   }
 }
 
@@ -981,16 +1042,38 @@ export function setSatelliteMode(enabled) {
 
     if (enabled) {
       // Mostra satélite e esconde o mapa base
-      if (map.getLayer(satLayer))
-        map.setLayoutProperty(satLayer, "visibility", "visible");
-      if (map.getLayer(baseLayer))
+      if (!map.getLayer(satLayer)) {
+        // try to (re)create sat layer if missing
+        try {
+          if (map.getSource && !map.getSource('sat-tiles')) map.addSource('sat-tiles', satelliteStyle.sources['sat-tiles']);
+          map.addLayer({ id: satLayer, type: 'raster', source: 'sat-tiles' });
+        } catch (e) { /* ignore */ }
+      }
+      if (map.getLayer(satLayer)) map.setLayoutProperty(satLayer, "visibility", "visible");
+
+      if (map.getLayer(baseLayer)) {
         map.setLayoutProperty(baseLayer, "visibility", "none");
+      } else {
+        // ensure simple-tiles exists and hide it
+        try {
+          if (map.getSource && !map.getSource('simple-tiles') && osmStyle.sources && osmStyle.sources['raster-tiles']) {
+            map.addSource('simple-tiles', osmStyle.sources['raster-tiles']);
+            map.addLayer({ id: baseLayer, type: 'raster', source: 'simple-tiles', layout: { visibility: 'none' } });
+          }
+        } catch (e) {}
+      }
     } else {
       // Mostra o mapa base e esconde o satélite
-      if (map.getLayer(satLayer))
-        map.setLayoutProperty(satLayer, "visibility", "none");
-      if (map.getLayer(baseLayer))
-        map.setLayoutProperty(baseLayer, "visibility", "visible");
+      if (map.getLayer(satLayer)) map.setLayoutProperty(satLayer, "visibility", "none");
+      if (!map.getLayer(baseLayer)) {
+        try {
+          if (map.getSource && !map.getSource('simple-tiles') && osmStyle.sources && osmStyle.sources['raster-tiles']) {
+            map.addSource('simple-tiles', osmStyle.sources['raster-tiles']);
+            map.addLayer({ id: baseLayer, type: 'raster', source: 'simple-tiles', layout: { visibility: 'visible' } });
+          }
+        } catch (e) {}
+      }
+      if (map.getLayer(baseLayer)) map.setLayoutProperty(baseLayer, "visibility", "visible");
     }
 
     // Garante que a camada de rota esteja sempre visível e no topo

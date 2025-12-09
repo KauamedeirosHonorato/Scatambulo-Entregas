@@ -810,6 +810,16 @@ window.addEventListener("load", () => {
       );
       if (newReadyOrders.length && knownReadyOrderIds.size) {
         tryPlaySound(notificationSound);
+        try {
+          const firstId = newReadyOrders[0];
+          const firstOrder = readyOrders[firstId];
+          const client = firstOrder?.nomeCliente || '';
+          const count = newReadyOrders.length;
+          // Show a top push notification in the deliverer panel
+          try { showToast(`Novo pedido${count>1?`s (${count})`:''} pronto${client?` — ${client}`:''}`, 'info'); } catch(e) {}
+        } catch (e) {
+          /* ignore */
+        }
       }
       knownReadyOrderIds = new Set(Object.keys(readyOrders));
 

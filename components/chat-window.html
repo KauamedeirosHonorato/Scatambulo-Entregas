@@ -1,6 +1,9 @@
 <!-- components/chat-window.html -->
 <div id="chat-modal" class="chat-modal-container">
-  <div class="chat-modal-content">
+  <div class="chat-modal-backdrop" aria-hidden="true"></div>
+  <div class="chat-modal-content" role="dialog" aria-modal="true" aria-labelledby="chat-conversation-title" tabindex="-1">
+    <!-- iOS-style sheet handle -->
+    <div class="sheet-handle" aria-hidden="true"></div>
     <!-- Cabeçalho que muda dinamicamente -->
     <div class="chat-modal-header">
       <div class="header-left-actions">
@@ -13,7 +16,7 @@
         <h3 id="chat-conversation-title">Conversas</h3>
       </div>
       <div class="header-right-actions">
-        <button id="chat-close-button" class="close-button">&times;</button>
+        <button id="chat-close-button" class="close-button" aria-label="Fechar conversa">&times;</button>
       </div>
     </div>
 
@@ -57,13 +60,19 @@
             </div>
             <button id="cancel-image-preview-btn" class="cancel-reply-btn" title="Cancelar imagem">&times;</button>
         </div>
-        <form id="chat-input-form" class="chat-input-form">
+        <form id="chat-input-form" class="chat-input-form" autocomplete="off">
           <label for="chat-image-input" class="chat-attach-button" title="Anexar imagem">
             <i class="ph ph-paperclip"></i>
           </label>
           <input type="file" id="chat-image-input" accept="image/*" style="display: none;">
-          <input id="chat-message-input" type="text" placeholder="Digite uma mensagem..." autocomplete="off">
-          <button type="submit" id="chat-send-button" class="btn-primary">
+
+          <!-- Emoji toggle button -->
+          <button type="button" id="chat-emoji-button" class="chat-emoji-button" title="Emojis" aria-label="Abrir emojis">
+            <i class="ph ph-smiley"></i>
+          </button>
+
+          <input id="chat-message-input" type="text" placeholder="Digite uma mensagem..." aria-label="Mensagem" />
+          <button type="submit" id="chat-send-button" class="btn-primary" aria-label="Enviar mensagem">
             <i class="ph-bold ph-paper-plane-tilt"></i>
           </button>
         </form>
@@ -71,13 +80,17 @@
     </div>
 
     <!-- Emoji Picker (posicionado de forma absoluta em relação ao modal-content) -->
-    <div id="emoji-picker" class="emoji-picker">
-        <button>👍</button>
-        <button>❤️</button>
-        <button>😂</button>
-        <button>😮</button>
-        <button>😢</button>
-        <button>🙏</button>
+    <div id="emoji-picker" class="emoji-picker" role="dialog" aria-hidden="true">
+      <div class="emoji-tabs" role="tablist">
+        <button class="emoji-tab active" data-tab="smileys" role="tab" aria-selected="true">Smileys</button>
+        <button class="emoji-tab" data-tab="gestures" role="tab" aria-selected="false">Gestos</button>
+        <button class="emoji-tab" data-tab="animals" role="tab" aria-selected="false">Animais</button>
+      </div>
+      <div class="emoji-grid" data-tab-content="smileys"></div>
+      <div class="emoji-grid" data-tab-content="gestures" hidden></div>
+      <div class="emoji-grid" data-tab-content="animals" hidden></div>
     </div>
+    <!-- Live region to announce changes for screen readers -->
+    <div id="chat-live-region" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
   </div>
 </div>

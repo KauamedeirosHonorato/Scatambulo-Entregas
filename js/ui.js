@@ -66,13 +66,21 @@ export function setupEventListeners(
     // Chat button always opens the conversation window (lazy load chat module)
     chatButton.addEventListener("click", async () => {
       try {
-        const { initializeChat } = await import("./chat.js");
-        initializeChat();
+        const chat = await import("./chat.js");
+        if (chat && typeof chat.initializeChat === 'function') {
+          try { chat.initializeChat(); } catch(e) {}
+        }
+        // Prefer using the exported opener so the chat code handles focus/trap/backdrop sequencing
+        if (chat && typeof chat.openChatWindow === 'function') {
+          try { chat.openChatWindow(); } catch(e) { console.warn('openChatWindow failed', e); }
+        } else {
+          // Fallback: toggle class directly (rare)
+          const chatModal = document.getElementById("chat-modal");
+          if (chatModal) chatModal.classList.add("active");
+        }
       } catch (err) {
         console.warn("Falha ao inicializar o chat:", err);
       }
-      const chatModal = document.getElementById("chat-modal");
-      if (chatModal) chatModal.classList.add("active");
     });
   }
   if (printAllEmPreparoBtn)
@@ -1074,11 +1082,73 @@ export function showToast(message, type = "info") {
   `;
 
   container.prepend(toast); // Alterado para prepend para que a nova notificação apareça no topo
+  // Trigger show animation on next tick
+  setTimeout(() => toast.classList.add('show'), 10);
+
+  // Allow click to dismiss early
+  toast.addEventListener('click', () => {
+    try { toast.remove(); } catch(e) {}
+  });
 
   // Remove o toast automaticamente apenas se não for um erro
   if (type !== "error") {
-    setTimeout(() => toast.remove(), 5000); // Aumentei para 5 segundos
+    setTimeout(() => {
+      try { toast.remove(); } catch(e) {}
+    }, 5000);
   }
+}
+
+/**
+ * Exibe um modal de confirmação estilizado e retorna uma Promise que
+ * resolve para true (confirmado) ou false (cancelado).
+ * @param {string} message - Mensagem a ser exibida no modal
+ * @param {object} [options]
+ * @param {string} [options.title] - Título do modal
+ * @param {string} [options.confirmText] - Texto do botão confirmar
+ * @param {string} [options.cancelText] - Texto do botão cancelar
+ * @returns {Promise<boolean>}
+ */
+export function showConfirm(message, options = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('generic-confirm-modal');
+    if (!modal) {
+      // Fallback to native confirm if modal not loaded
+      try { return resolve(window.confirm(message)); } catch (e) { return resolve(false); }
+    }
+
+    const titleEl = document.getElementById('generic-confirm-modal-title');
+    const bodyEl = document.getElementById('generic-confirm-modal-body');
+    const cancelBtn = document.getElementById('generic-confirm-modal-cancel-btn');
+    const confirmBtn = document.getElementById('generic-confirm-modal-confirm-btn');
+    const closeBtn = modal.querySelector('.close-button');
+
+    const opts = Object.assign({ title: 'Confirmar Ação', confirmText: 'Confirmar', cancelText: 'Cancelar' }, options);
+
+    if (titleEl) titleEl.textContent = opts.title;
+    if (bodyEl) bodyEl.textContent = message;
+    if (confirmBtn) confirmBtn.textContent = opts.confirmText;
+    if (cancelBtn) cancelBtn.textContent = opts.cancelText;
+
+    // Show modal
+    modal.classList.add('active');
+
+    const cleanup = () => {
+      modal.classList.remove('active');
+      if (confirmBtn) confirmBtn.removeEventListener('click', onConfirm);
+      if (cancelBtn) cancelBtn.removeEventListener('click', onCancel);
+      if (closeBtn) closeBtn.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdropClick);
+    };
+
+    const onConfirm = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    const onBackdropClick = (e) => { if (e.target === modal) onCancel(); };
+
+    if (confirmBtn) confirmBtn.addEventListener('click', onConfirm);
+    if (cancelBtn) cancelBtn.addEventListener('click', onCancel);
+    if (closeBtn) closeBtn.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdropClick);
+  });
 }
 
 

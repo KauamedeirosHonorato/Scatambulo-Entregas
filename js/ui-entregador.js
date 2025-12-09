@@ -1,4 +1,5 @@
 import { showToast, printLabel } from "./ui.js"; // Importa showToast e printLabel
+import * as Map from './map.js';
 
 export function setupEventListeners(
   onLogout,
@@ -327,6 +328,8 @@ export function showDynamicIsland(show, order) {
     //     : "-- km";
     const dynamicIslandEl = islandWrapper.querySelector(".dynamic-island");
     if (dynamicIslandEl) dynamicIslandEl.classList.add("active");
+    // pulse/highlight the map to connect the island to the map view
+    try { Map.pulseMapForIsland(true); } catch(e) {}
   } else {
     // Limpa o texto ao esconder para não mostrar dados antigos rapidamente
     clientNameEl.textContent = "";
@@ -339,6 +342,7 @@ export function showDynamicIsland(show, order) {
     if (dynamicIslandEl) dynamicIslandEl.classList.remove("active");
     // Garante que a ilha não permaneça expandida ao ser desativada
     if (dynamicIslandEl) dynamicIslandEl.classList.remove("expanded");
+    try { Map.pulseMapForIsland(false); } catch(e) {}
   }
 }
 

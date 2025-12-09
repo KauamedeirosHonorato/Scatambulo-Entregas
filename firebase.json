@@ -9,6 +9,10 @@
     "rewrites": [
       {
         "source": "**",
+   ,
+    "database": {
+      "rules": "database.rules.json"
+    }
         "destination": "/index.html"
       }
     ]

@@ -1,0 +1,51 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "chats": {
+      "$conversationId": {
+        // Permite leitura das conversas (mensagens) para a interface. Em produção
+        // prefira restringir com `auth != null` e `participants`.
+        ".read": true,
+        // Escrita no nó da conversa é permitida, porém mensagens passam por validação
+        ".write": true,
+
+        "messages": {
+          "$messageId": {
+            // Valida estrutura mínima da mensagem
+            ".validate": "newData.hasChildren(['senderId','timestamp','type']) && newData.child('timestamp').isNumber() && (newData.child('type').val() === 'text' ? (newData.child('content').isString() && newData.child('content').val().length <= 2000) : newData.child('type').val() === 'image')"
+          }
+        },
+
+        "participants": {
+          "$uid": {
+            // Permite apenas valores booleanos verdadeiros para participantes
+            ".validate": "newData.val() === true"
+          }
+        }
+      }
+    },
+
+    "chat_notifications": {
+      "$recipientId": {
+        "$notificationId": {
+          ".validate": "newData.hasChildren(['recipient','sender','type','timestamp']) && newData.child('recipient').val() === $recipientId && newData.child('timestamp').isNumber()"
+        },
+        // leitura apenas pelo próprio destinatário (se usar Auth, trocar para auth.uid === $recipientId)
+        ".read": true,
+        ".write": true
+      }
+    },
+
+    "pedidos": {
+      // Temporariamente aberto para leitura/escrita. Recomenda-se autenticação.
+      ".read": true,
+      ".write": true
+    },
+    "localizacao": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

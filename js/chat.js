@@ -17,6 +17,12 @@ let activePicker = null; // To hold the currently active emoji picker
 let chatNotificationSound = null;
 let userInteracted = false;
 let pendingImageFile = null; // NEW: State for the pending image file
+// Prevent double initialization which causes duplicate event listeners/messages
+let chatInitialized = false;
+// Accessibility / focus management
+let previousActiveElement = null;
+let focusTrapHandler = null;
+const FOCUSABLE_SELECTORS = 'a[href], area[href], input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Tenta tocar um som, lidando com as restrições de autoplay dos navegadores.
@@ -49,6 +55,11 @@ function tryPlaySound(audio) {
  * Inicializa os event listeners e a lógica para a janela de chat.
  */
 export function initializeChat() {
+  if (chatInitialized) {
+    // Already initialized; avoid attaching duplicate listeners
+    console.debug('initializeChat: already initialized, skipping');
+    return;
+  }
   const maxRetries = 10;
   let retries = 0;
 
@@ -68,6 +79,14 @@ export function initializeChat() {
   }
 
   function setupChat(chatModal) {
+    // mark as initialized as soon as setup begins
+    chatInitialized = true;
+  const chatModalContent = chatModal.querySelector('.chat-modal-content');
+  const chatLiveRegion = document.getElementById('chat-live-region');
+    // Prevent clicks inside the modal content from bubbling to the backdrop/container
+    if (chatModalContent) {
+      chatModalContent.addEventListener('click', (e) => { e.stopPropagation(); });
+    }
     // O restante da lógica original de initializeChat vai aqui...
     const openChatButtons = document.querySelectorAll('#chat-button');
     const closeChatButton = document.getElementById('chat-close-button');
@@ -91,6 +110,93 @@ export function initializeChat() {
     const replyPreviewSnippet = document.getElementById('reply-preview-snippet');
     const cancelReplyButton = document.getElementById('cancel-reply-btn');
     const emojiPicker = document.getElementById('emoji-picker');
+    const emojiToggleButton = document.getElementById('chat-emoji-button');
+
+    // Emoji sets for the picker
+    const emojiSets = {
+      smileys: ['😀','😃','😄','😁','😆','😂','🙂','😉','😊','😍','😘','😎','🤩','🤔','😴','😢','😭','😡'],
+      gestures: ['👍','👎','🙏','👏','🤝','👌','✌️','👊','🤘','🤙'],
+      animals: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮']
+    };
+
+    // Populate emoji grids (idempotent)
+    function populateEmojiPicker() {
+      if (!emojiPicker) return;
+      const grids = emojiPicker.querySelectorAll('.emoji-grid');
+      grids.forEach(grid => {
+        if (grid.dataset._populated) return;
+        const tab = grid.dataset.tabContent;
+        const list = emojiSets[tab] || [];
+        grid.innerHTML = '';
+        list.forEach((ch) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'emoji-btn';
+          btn.textContent = ch;
+          btn.title = ch;
+          grid.appendChild(btn);
+        });
+        grid.dataset._populated = '1';
+      });
+    }
+
+    // Insert emoji at cursor in input
+    function insertAtCursor(input, text) {
+      try {
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const value = input.value || '';
+        input.value = value.slice(0, start) + text + value.slice(end);
+        const pos = start + text.length;
+        input.setSelectionRange(pos, pos);
+        input.focus();
+      } catch (e) {
+        // fallback: append
+        input.value = (input.value || '') + text;
+        try { input.focus(); } catch(e) {}
+      }
+    }
+
+    // Toggle the emoji picker (global, near the input)
+    function toggleEmojiPicker() {
+      if (!emojiPicker) return;
+      const isVisible = emojiPicker.classList.contains('visible');
+      if (isVisible) {
+        hideEmojiPicker();
+        return;
+      }
+      populateEmojiPicker();
+      emojiPicker.classList.add('visible');
+      emojiPicker.setAttribute('aria-hidden', 'false');
+      activePicker = emojiPicker;
+    }
+
+    // Handle tab switch inside picker
+    if (emojiPicker) {
+      emojiPicker.addEventListener('click', (ev) => {
+        const tabBtn = ev.target.closest('.emoji-tab');
+        if (tabBtn) {
+          // switch
+          emojiPicker.querySelectorAll('.emoji-tab').forEach(b => b.classList.remove('active'));
+          tabBtn.classList.add('active');
+          const tab = tabBtn.dataset.tab;
+          emojiPicker.querySelectorAll('.emoji-grid').forEach(g => {
+            if (g.dataset.tabContent === tab) { g.removeAttribute('hidden'); } else { g.setAttribute('hidden',''); }
+          });
+          return;
+        }
+
+        const emojiBtn = ev.target.closest('.emoji-btn');
+        if (emojiBtn && messageInput) {
+          insertAtCursor(messageInput, emojiBtn.textContent);
+          // keep picker open for multiple emojis
+        }
+      });
+    }
+
+    if (emojiToggleButton) {
+      emojiToggleButton.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleEmojiPicker(); });
+    }
 
     // NEW: Image Preview Elements
     const imagePreview = document.getElementById('chat-image-preview');
@@ -171,7 +277,18 @@ export function initializeChat() {
     }
 
     const openChat = (directConversationId = null) => {
+      // Save focus and open modal
+      previousActiveElement = document.activeElement;
+      // Sequence: show backdrop first, then content to avoid click-through/flash
       chatModal.classList.add('active');
+      document.body.classList.add('chat-open');
+      if (chatModalContent) {
+        // focus after a short delay so the backdrop paints first and avoids accidental background clicks
+        setTimeout(() => {
+          try { chatModalContent.focus(); } catch (e) {}
+          enableFocusTrap();
+        }, 80);
+      }
       if (floatingChatButton) floatingChatButton.style.display = 'none';
       // Mark notifications as read when opening the chat window
       markChatAsRead(currentUser.username);
@@ -189,8 +306,23 @@ export function initializeChat() {
       goBackToConversationList();
     };
 
+    // Expose openChat via a custom event so external modules can request the modal to open
+    try {
+      chatModal.addEventListener('open-chat', (ev) => {
+        const id = ev && ev.detail ? ev.detail : null;
+        try { openChat(id); } catch(e) { console.warn('open-chat handler failed', e); }
+      });
+    } catch (e) {
+      // ignore
+    }
+
     const closeChat = () => {
       chatModal.classList.remove('active');
+      document.body.classList.remove('chat-open');
+      disableFocusTrap();
+      try {
+        if (previousActiveElement && previousActiveElement.focus) previousActiveElement.focus();
+      } catch (e) {}
       // Unsubscribe from any active conversation when closing the modal
       if (unsubscribeConversationListener) {
         unsubscribeConversationListener();
@@ -429,8 +561,28 @@ export function initializeChat() {
           messagesList.appendChild(item);
       });
 
-      // Scroll to the bottom
-      messagesList.scrollTop = messagesList.scrollHeight;
+      // Scroll to the bottom smoothly and announce last message for screen readers
+      const lastMessageEl = messagesList.lastElementChild;
+      if (lastMessageEl) {
+        try {
+          lastMessageEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } catch (e) {
+          messagesList.scrollTop = messagesList.scrollHeight;
+        }
+      }
+
+      // Announce latest message in the live region for assistive tech
+      try {
+        if (chatLiveRegion && sortedMessages.length) {
+          const lastMsg = sortedMessages[sortedMessages.length - 1][1];
+          const author = lastMsg.senderId === currentUser.username ? 'Você' : (getOtherParticipantInfo(activeConversationId)?.name || lastMsg.senderId);
+          const snippet = lastMsg.type === 'image' ? 'Imagem' : (lastMsg.content || '').toString().slice(0, 120);
+          chatLiveRegion.textContent = `${author}: ${snippet}`;
+        }
+      } catch (e) {}
+
+      // Keep the input focused for quick replies
+      try { if (messageInput) messageInput.focus(); } catch (e) {}
     };
 
     const handleTypingStatusUpdate = (typingUsers, conversationPartnerName) => {
@@ -478,14 +630,23 @@ export function initializeChat() {
     // --- Event Handlers ---
 
     const handleClearConversation = () => {
-        if (!activeConversationId) return;
-        const confirmed = confirm("Tem certeza que deseja apagar todas as mensagens desta conversa? Esta ação não pode ser desfeita.");
-        if (confirmed) {
-            clearConversation(activeConversationId)
-                .catch(err => {
-                    console.error("Failed to clear conversation:", err);
-                });
+      if (!activeConversationId) return;
+      // use styled confirm modal if available
+      (async () => {
+        try {
+          const ui = await import('./ui.js');
+          const confirmed = await ui.showConfirm("Tem certeza que deseja apagar todas as mensagens desta conversa? Esta ação não pode ser desfeita.");
+          if (confirmed) {
+            clearConversation(activeConversationId).catch(err => console.error("Failed to clear conversation:", err));
+          }
+        } catch (e) {
+          // fallback to native confirm
+          const confirmed = confirm("Tem certeza que deseja apagar todas as mensagens desta conversa? Esta ação não pode ser desfeita.");
+          if (confirmed) {
+            clearConversation(activeConversationId).catch(err => console.error("Failed to clear conversation:", err));
+          }
         }
+      })();
     };
 
     // --- Emoji Picker Logic ---
@@ -528,6 +689,33 @@ export function initializeChat() {
         }
     }
 
+    // Focus trap helpers for accessibility
+    function enableFocusTrap() {
+      disableFocusTrap();
+      focusTrapHandler = function(e) {
+        if (e.key !== 'Tab') return;
+        const focusable = Array.from(chatModal.querySelectorAll(FOCUSABLE_SELECTORS)).filter(el => el.offsetParent !== null);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      };
+      document.addEventListener('keydown', focusTrapHandler);
+    }
+
+    function disableFocusTrap() {
+      if (focusTrapHandler) {
+        document.removeEventListener('keydown', focusTrapHandler);
+        focusTrapHandler = null;
+      }
+    }
+
     function handleReplyToMessage(messageId) {
       if (editingMessageId) {
           cancelEdit();
@@ -567,13 +755,21 @@ export function initializeChat() {
     }
 
     function handleDeleteMessage(messageId) {
-      const confirmed = confirm("Tem certeza que deseja apagar esta mensagem? Esta ação não pode ser desfeita.");
-      if (confirmed) {
-          deleteMessage(activeConversationId, messageId).catch(err => {
-              console.error("Failed to delete message:", err);
-              // showToast("Erro ao apagar mensagem.", "error");
-          });
-      }
+      (async () => {
+        try {
+          const ui = await import('./ui.js');
+          const confirmed = await ui.showConfirm("Tem certeza que deseja apagar esta mensagem? Esta ação não pode ser desfeita.");
+          if (confirmed) {
+            deleteMessage(activeConversationId, messageId).catch(err => console.error("Failed to delete message:", err));
+          }
+        } catch (e) {
+          // fallback
+          const confirmed = confirm("Tem certeza que deseja apagar esta mensagem? Esta ação não pode ser desfeita.");
+          if (confirmed) {
+            deleteMessage(activeConversationId, messageId).catch(err => console.error("Failed to delete message:", err));
+          }
+        }
+      })();
     }
 
     function handleEditMessage(messageElement, messageId) {
@@ -743,16 +939,18 @@ export function initializeChat() {
     listenToConversationUnreadCounts(currentUser.username, updateConversationBadges);
 
     chatModal.addEventListener('click', (event) => {
-      if (event.target === chatModal) {
-          if (editingMessageId) {
-              cancelEdit();
-          }
-          if (replyingToMessage) {
-              cancelReply();
-          }
-          if (pendingImageFile) cancelImagePreview(); // NEW
-          hideEmojiPicker();
-          closeChat();
+      // Close when clicking the backdrop or container itself, but not when clicking the content
+      const clickedBackdrop = event.target && (event.target.classList && event.target.classList.contains('chat-modal-backdrop'));
+      if (event.target === chatModal || clickedBackdrop) {
+        if (editingMessageId) {
+          cancelEdit();
+        }
+        if (replyingToMessage) {
+          cancelReply();
+        }
+        if (pendingImageFile) cancelImagePreview(); // NEW
+        hideEmojiPicker();
+        closeChat();
       }
     });
 
@@ -841,4 +1039,25 @@ export function initializeChat() {
 
   // Inicia o processo de inicialização
   attemptInit();
+}
+
+/**
+ * Programmatically request the chat modal to open. This dispatches a
+ * custom `open-chat` event onto the `#chat-modal` element which will be
+ * handled by the initialization code (if present).
+ * @param {string|null} directConversationId
+ */
+export function openChatWindow(directConversationId = null) {
+  try {
+    const chatModal = document.getElementById('chat-modal');
+    if (!chatModal) {
+      // If component not present, still call initialize to ensure it will be created later
+      try { initializeChat(); } catch(e) {}
+      return;
+    }
+    const ev = new CustomEvent('open-chat', { detail: directConversationId });
+    chatModal.dispatchEvent(ev);
+  } catch (e) {
+    console.warn('openChatWindow failed', e);
+  }
 }
